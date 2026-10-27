@@ -22,6 +22,7 @@ import { readErrorMessage } from "../json.js";
 import { publicPath } from "../runtime-paths.js";
 import { looksLikeAddress } from "../../lib/url.js";
 import { pickPost } from "../post-picker.js";
+import { openShareImage, warmShareImage } from "../share-launch.js";
 import {
   ensureComposeDialog,
   readComposeDialogLabels,
@@ -141,6 +142,14 @@ export function removeLeadingFeedDivider(
       child instanceof HTMLElement && child.classList.contains("feed-divider"),
   );
   firstDivider?.remove();
+}
+
+/**
+ * The image carries a QR code to the post, which a reader can open only once
+ * it is published and not Private.
+ */
+function canShareAsImage(data: PostMenuData): boolean {
+  return !data.isDraft && data.visibility !== "private";
 }
 
 function findThreadRootArticle(threadId: string): HTMLElement | null {
@@ -379,6 +388,7 @@ export class JantPostMenu extends LitElement {
       this._view = "menu";
       this._open = true;
       this.#focusAfterUpdate("[data-post-menu-item-primary]");
+      if (canShareAsImage(menuData)) warmShareImage();
       return;
     }
 
@@ -1022,6 +1032,14 @@ export class JantPostMenu extends LitElement {
     }
   }
 
+  #shareImage() {
+    if (!this._data) return;
+    const postId = this._data.id;
+    const trigger = this._triggerEl;
+    this.#close({ restoreFocus: false });
+    void openShareImage(postId, trigger);
+  }
+
   async #publish() {
     if (!this._data) return;
     const postId = this._data.id;
@@ -1589,6 +1607,22 @@ export class JantPostMenu extends LitElement {
       <path
         d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"
       />
+    </svg>`;
+  }
+
+  #iconImage() {
+    return html`<svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.75"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" />
     </svg>`;
   }
 
@@ -2458,6 +2492,27 @@ export class JantPostMenu extends LitElement {
                 : nothing
             }
           </div>
+
+          ${
+            canShareAsImage(this._data)
+              ? html`
+                  <div class="post-menu-section">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      data-post-menu-share-image
+                      @click=${() => this.#shareImage()}
+                    >
+                      <span class="post-menu-item-label">Share as image</span>
+                      <span class="post-menu-item-trailing"
+                        >${this.#iconImage()}</span
+                      >
+                    </button>
+                  </div>
+                `
+              : nothing
+          }
 
           <div class="post-menu-section post-menu-section-danger">
             <button

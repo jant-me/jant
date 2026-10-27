@@ -70,6 +70,14 @@ To extend a Thread, click "Reply" at the bottom of the post detail page.
 
 On a list page a Thread takes one card, folded: the root post, its first two replies, then the last three with the newest at the bottom. A Thread of six posts or fewer fits and is shown whole. Anything longer collapses the middle into a "3 more posts" link, which opens the first of the posts it hides. The feeds fold the same way, so a Thread reads the same in a reader as it does on the site. The Thread's own page always shows every post.
 
+## Share a post as an image
+
+On a published post that isn't Private, choose **… → Share as image**. Jant draws the post as a picture in your site's fonts and colors, with the site name, the post's address, and a QR code that opens it. On a phone, press and hold the picture to save it. On a computer, use **Download**, or **Copy image** and **Share…** where the browser offers them.
+
+The picture shows what the timeline shows: the same summary and up to four images. Documents, recordings, and text attachments are listed by name. A post taller than a phone screen is cut with a fade.
+
+A post in a Thread is drawn with the root post above it and the next post below, both faded, and its place in the Thread beside the date, such as `6 / 7`.
+
 ## Collections
 
 A Collection is a curated grouping organized under `/{slug}`. The same Thread can belong to multiple Collections; its root and replies always share one membership set.

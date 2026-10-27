@@ -6,7 +6,10 @@ import {
   assemblePostCardView,
   assemblePostPageDisplay,
 } from "../../lib/post-display.js";
+import { assembleShareCard } from "../../lib/share-card.js";
 import { assembleTimelineItem } from "../../lib/timeline.js";
+import { ShareCard } from "../../ui/share/ShareCard.js";
+import { renderIconsInline } from "../../ui/shared/icon-collector.js";
 import { TimelineFeedItemContent } from "../../ui/feed/TimelineFeed.js";
 import { TimelineItemFromPost } from "../../ui/feed/TimelineItem.js";
 import { PostPage } from "../../ui/pages/PostPage.js";
@@ -132,6 +135,27 @@ partialPageRoutes.get("/_/post-preview/:postId", async (c) => {
       />
     </I18nProvider>,
   );
+});
+
+/**
+ * The card "Share as image" captures. Author-only: the dialog that asks for
+ * it opens from the post menu, and the card is not a reader's page. Icons
+ * are drawn inline because the capture copies the card without the page's
+ * icon sprite.
+ */
+partialPageRoutes.get("/_/share-card/:postId", async (c) => {
+  if (!c.var.isAuthenticated) return c.notFound();
+  const postId = parseIdParam(c.req.param("postId"), ID_PREFIX.post);
+  const card = await assembleShareCard(c, postId);
+  if (!card) return c.notFound();
+  const html = renderIconsInline(() =>
+    (
+      <I18nProvider c={c}>
+        <ShareCard card={card} />
+      </I18nProvider>
+    ).toString(),
+  );
+  return c.html(html);
 });
 
 partialPageRoutes.get("/_/post-view/:postId", async (c) => {

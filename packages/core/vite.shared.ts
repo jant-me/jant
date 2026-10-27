@@ -82,8 +82,9 @@ export const CLIENT_TARGET = "es2022" as const;
  * Produces:
  * - `client.js` for public-page interactions
  * - `client-auth.js`, the shell for authenticated pages
- * - `client-compose.js`, `client-settings.js`, `client-manage.js`, loaded by
- *   the shell on demand (see `src/client/lazy-entries.ts`)
+ * - `client-compose.js`, `client-settings.js`, `client-manage.js`,
+ *   `client-share.js`, loaded by the shell on demand (see
+ *   `src/client/lazy-entries.ts`)
  * - `client.css` for the shared site styles
  * - `client-author.css`, the composer/settings/editor styles, linked only on
  *   authenticated pages
@@ -102,6 +103,7 @@ export const clientBuildOptions = {
       "client-compose": resolve(dir, "src/client-compose.ts"),
       "client-settings": resolve(dir, "src/client-settings.ts"),
       "client-manage": resolve(dir, "src/client-manage.ts"),
+      "client-share": resolve(dir, "src/client-share.ts"),
       style: resolve(dir, "src/style.css"),
       "style-author": resolve(dir, "src/style-author.css"),
       "style-cjk": resolve(dir, "src/style-cjk.css"),
@@ -314,6 +316,8 @@ const LAZY_ONLY_PACKAGES = [
   // Emoji picker, opened from the editor toolbar.
   "emoji-mart",
   "@emoji-mart/data",
+  // "Share as image" (`client-share.ts`), opened from the post menu.
+  "@zumer/snapdom",
 ];
 
 /**
@@ -338,6 +342,9 @@ const ENTRY_BUDGETS_GZIP: Record<string, number> = {
   "client-settings": 250 * 1024,
   // Measured 2026-09: 251 KB, mostly the shared editor chunk plus Sortable.
   "client-manage": 290 * 1024,
+  // Measured 2026-10: 103 KB, nearly all of it snapdom 3.4.0. Loaded only
+  // when an author opens a post menu that offers "Share as image".
+  "client-share": 118 * 1024,
 };
 
 /**

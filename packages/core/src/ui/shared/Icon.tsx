@@ -10,14 +10,30 @@
  * custom symbols defined in `custom-icons.ts`; any other name fails the
  * type check.
  *
+ * Inside `renderIconsInline()` it draws the icon's own paths instead, for
+ * markup that is copied out of the page (the share card).
+ *
  * Size: outer <svg> width/height in pixels. Defaults to 24 (lucide default).
  * Pass `class` to add CSS classes, e.g. for sizing via stylesheet instead
  * of inline width/height.
  */
 
 import type { FC } from "hono/jsx";
-import { collectIcon } from "./icon-collector.js";
-import { getIconViewBox, type IconName } from "./custom-icons.js";
+import { raw } from "hono/html";
+import { getIconInnerSvg, LUCIDE_SYMBOL_ATTRS } from "../../lib/icons.js";
+import { collectIcon, iconsRenderInline } from "./icon-collector.js";
+import {
+  getCustomSymbol,
+  getIconViewBox,
+  isCustomIconName,
+  type IconName,
+} from "./custom-icons.js";
+
+/** The icon's own drawing, as its sprite symbol would carry it. */
+function inlineIconMarkup(name: IconName): string {
+  if (isCustomIconName(name)) return getCustomSymbol(name).inner;
+  return `<g ${LUCIDE_SYMBOL_ATTRS}>${getIconInnerSvg(name)}</g>`;
+}
 
 export interface IconProps {
   /** Kebab-case icon name (lucide or custom). */
@@ -54,7 +70,11 @@ export const Icon: FC<IconProps> = ({
       {...(ariaLabel ? { "aria-label": ariaLabel, role: "img" } : {})}
       {...(hidden ? { "aria-hidden": "true" } : {})}
     >
-      <use href={`#icon-${name}`} />
+      {iconsRenderInline() ? (
+        raw(inlineIconMarkup(name))
+      ) : (
+        <use href={`#icon-${name}`} />
+      )}
     </svg>
   );
 };

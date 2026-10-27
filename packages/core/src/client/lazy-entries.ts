@@ -12,6 +12,9 @@
  * - `client-settings.ts` — the settings pages' components.
  * - `client-manage.ts` — navigation manager, collection directory, and the
  *   collection page menus.
+ * - `client-share.ts` — the "Share as image" dialog and snapdom. Loaded
+ *   when a post menu that offers it opens (`share-launch.ts`), so picking
+ *   the item has nothing left to wait for; no page needs it up front.
  *
  * The page decides: {@link loadEntriesForPage} looks for the elements and
  * hooks the server renders only where an entry is needed, and keeps looking
@@ -19,9 +22,20 @@
  * `docs/internal/lit-guide.md` says which entry a new component belongs in.
  */
 
+/**
+ * Share one load between callers. A load that fails is forgotten, so the
+ * next call tries again instead of repeating the failure until a reload.
+ */
 function once(load: () => Promise<unknown>): () => Promise<void> {
   let loading: Promise<void> | undefined;
-  return () => (loading ??= load().then(() => undefined));
+  return () =>
+    (loading ??= load().then(
+      () => undefined,
+      (error: unknown) => {
+        loading = undefined;
+        throw error;
+      },
+    ));
 }
 
 /** Load the composer entry; resolves once its elements are defined. */
@@ -32,6 +46,12 @@ export const ensureSettings = once(() => import("../client-settings.js"));
 
 /** Load the management entry; resolves once its elements are defined. */
 export const ensureManage = once(() => import("../client-manage.js"));
+
+/**
+ * Load the share entry — the "Share as image" dialog and snapdom — the first
+ * time a post menu offers it.
+ */
+export const ensureShare = once(() => import("../client-share.js"));
 
 /**
  * Markup the server renders only on pages that need an entry. A selector

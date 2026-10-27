@@ -35,7 +35,18 @@ export interface MediaGalleryProps {
 
 const DEFAULT_VISUAL_RATIO = 4 / 3;
 
-function formatSize(bytes: number): string {
+/**
+ * A file size the way the gallery labels documents.
+ *
+ * @param bytes - Size in bytes
+ * @returns "512 B", "3.4 KB" or "2.1 MB"
+ *
+ * @example
+ * ```ts
+ * formatSize(2_200_000); // "2.1 MB"
+ * ```
+ */
+export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
