@@ -67,6 +67,7 @@ export default defineConfig(({ mode }) => {
       __CLIENT_COMPOSE_PRELOAD__: JSON.stringify([]),
       __CLIENT_CSS_FILE__: JSON.stringify("/_assets/client.css"),
       __CLIENT_AUTHOR_CSS_FILE__: JSON.stringify("/_assets/client-author.css"),
+      __CLIENT_SHARE_CSS_FILE__: JSON.stringify("/_assets/client-share.css"),
       __CLIENT_CJK_CSS_FILE__: JSON.stringify("/_assets/client-cjk.css"),
       __CLIENT_CJK_TC_CSS_FILE__: JSON.stringify("/_assets/client-cjk-tc.css"),
       __CLIENT_CJK_JP_CSS_FILE__: JSON.stringify("/_assets/client-cjk-jp.css"),

@@ -3818,6 +3818,12 @@
     display: flex;
   }
 
+  /* A reader's menu (Copy link, Share as image) renders only for a reader,
+     so it shows without the signed-in flag. */
+  .post-menu-trigger[data-share-menu-trigger] {
+    display: flex;
+  }
+
   .post-menu-backdrop {
     position: fixed;
     inset: 0;

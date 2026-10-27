@@ -11,8 +11,11 @@ to save or share (WeChat Moments is the case that drove it).
 
 ## Decisions
 
-- Author-only, from the post menu only. No text-selection entry, no
-  reader-facing share button.
+- Readers share too (reversed from v1, which was author-only): the post's
+  "More" menu, on the timeline and the post page, holds Copy link and Share
+  as image for a reader; the author's menu gains Copy link above Share as
+  image. WeChat Moments, the case that drove the feature, is mostly readers
+  passing a post on. No text-selection entry.
 - Generated in the author's browser with snapdom; the server renders the
   card's HTML. Workers never rasterize (10 ms CPU on Free, CJK fonts too
   big to bundle, Satori can't read the theme CSS).
@@ -116,6 +119,62 @@ lines of context read as too busy):
   them. The QR code opens the shared post, which the post page shows in
   its Thread.
 
+## Readers
+
+A signed-out reader gets the same ⋯ in each post's footer, wherever the
+author's sits (`hideActions` decides both), with two items: Copy link and
+Share as image. Owen weighed a ⋯ on every timeline post against keeping the
+reader's timeline bare (mocked both) and chose the menu everywhere.
+
+- Strings stay English, like the rest of the reader chrome: the public
+  catalog is English-only by design (`lingui.config.ts`, mise
+  `i18n-translate`), and the dialog and author menu already hardcode theirs.
+- The share card and dialog styles leave `client-author.css` for a sheet of
+  their own, `client-share.css`, linked by `share-launch.ts` when a menu
+  that offers sharing opens. Readers need them, and they are too rarely used
+  for the render-blocking `client.css`. `<html data-share-stylesheet>`
+  carries its hashed path, the way `data-asset-base-path` carries the base.
+- `/_/share-card/:id` answers signed-out requests; `canShareAsImage` (on the
+  Thread's visibility) still refuses drafts and Private posts.
+- Copy link writes the post's own permalink (the footer's `u-url`, made
+  absolute), not the page's address; on a Thread page each post copies its
+  own. Shown for every post that is not a draft.
+
+- [x] Route: signed-out requests answered; tests for a reader, a draft, a
+      Private post, a reply in a Private Thread.
+- [x] Styles: `styles/share.css` + `style-share.css` entry, hashed name
+      through the manifest define like `client-author.css`, html attribute,
+      lazy link in `share-launch.ts`; audience test checks the author sheet
+      holds no share rules.
+- [x] Footer: reader trigger (`data-share-menu-trigger`) when the author's
+      would show; `<jant-share-menu>` mounted for signed-out pages. The
+      permalink rides on the article (`data-post-permalink`), since a
+      titled post's page hides the footer date.
+- [x] `jant-share-menu` (client.js): open/toggle, backdrop click, Escape,
+      focus, Copy link, Share as image; placement, icons and copy in
+      `client/post-menu-shared.ts`, which both menus use.
+- [x] Author menu: Copy link above Share as image; not on drafts, shown on
+      Private posts (the author can open those).
+- [x] Tests: footer, reader menu, author menu, stylesheet loading, layout
+      attribute.
+- [x] Docs: writing-and-organizing (en, zh-Hans).
+- [x] Browsers: reader and author, WebKit phone and Chromium desktop;
+      production build serves `client-share.css`.
+- [x] Checks and budgets.
+
+Results: WebKit phone (reader) and Chromium desktop (reader, author) on the
+seeded site: the menu lists Copy link and Share as image (the author's adds
+Copy link above Share as image), Copy link writes
+`http://localhost:19020/shape-thread-2` (read back from the clipboard in
+Chromium) and toasts "Link copied.", focus returns to the ⋯, the dialog
+opens styled by the linked `/src/style-share.css`, Escape closes menu and
+dialog; no console errors. `pnpm build`: `client-share-BNqD2izX.css`
+(3.4 KB gz) emitted and named in the server bundle; client.js 37.9 → 40.3
+KB gz of 48, client-auth 62.1 → 63.4 of 72, client.css unchanged at 48.0.
+check-tests 5402 passed, check-lint clean. Not verified: WeChat's in-app
+browser (the dialog's image is a `blob:` URL; whether its long-press save
+takes one needs a real phone).
+
 ## Plan
 
 - [x] `lib/share-card.ts`: `assembleShareCard` loads the post, its media
@@ -216,16 +275,16 @@ five photos, long untitled note, Private note, English article.
 
 Third round (paper on a mat), WebKit phone viewport / Chromium desktop:
 
-| Post | Card | WebKit | Chromium |
-|---|---|---|---|
-| note + photo | 1080×1456 | 206 ms | 205 ms |
-| article + 2 photos | 1080×2320 | 233 ms | 211 ms |
-| link | 1080×882 | 126 ms | 104 ms |
-| quote | 1080×1074 | 127 ms | 110 ms |
-| note + 5 photos (2×2, "+1") | 1080×1572 | 208 ms | 206 ms |
-| long note (cut, fade) | 1080×2154 | 127 ms | 113 ms |
-| English article | 1080×1108 | 125 ms | 107 ms |
-| Private note | no menu item | — | — |
+| Post                        | Card         | WebKit | Chromium |
+| --------------------------- | ------------ | ------ | -------- |
+| note + photo                | 1080×1456    | 206 ms | 205 ms   |
+| article + 2 photos          | 1080×2320    | 233 ms | 211 ms   |
+| link                        | 1080×882     | 126 ms | 104 ms   |
+| quote                       | 1080×1074    | 127 ms | 110 ms   |
+| note + 5 photos (2×2, "+1") | 1080×1572    | 208 ms | 206 ms   |
+| long note (cut, fade)       | 1080×2154    | 127 ms | 113 ms   |
+| English article             | 1080×1108    | 125 ms | 107 ms   |
+| Private note                | no menu item | —      | —        |
 
 Checked in Paper, Clay, Sage, Ember and Ink, light and dark.
 
@@ -235,15 +294,15 @@ mode renders a dark card with the QR on its white block.
 
 Fourth round, zh-Hans site, 3x, from the click (menu open 300 ms first):
 
-| Post | Image | WebKit card / image | Chromium card / image |
-|---|---|---|---|
-| quote with emoji | 1620×1452 | 90 / 299 ms (was 4864) | 73 / 139 ms |
-| note + photo | 1620×2208 | 93 / 255 ms | 65 / 179 ms |
-| article + 2 photos | 1620×3186 | 86 / 280 ms | 64 / 235 ms |
-| quote | 1620×1617 | 89 / 173 ms | 65 / 120 ms |
-| link | 1620×1338 | 81 / 178 ms | — |
-| long note (cut) | 1620×3423 | 87 / 223 ms | — |
-| files | 1620×1611 | 94 / 197 ms | — |
+| Post               | Image     | WebKit card / image    | Chromium card / image |
+| ------------------ | --------- | ---------------------- | --------------------- |
+| quote with emoji   | 1620×1452 | 90 / 299 ms (was 4864) | 73 / 139 ms           |
+| note + photo       | 1620×2208 | 93 / 255 ms            | 65 / 179 ms           |
+| article + 2 photos | 1620×3186 | 86 / 280 ms            | 64 / 235 ms           |
+| quote              | 1620×1617 | 89 / 173 ms            | 65 / 120 ms           |
+| link               | 1620×1338 | 81 / 178 ms            | —                     |
+| long note (cut)    | 1620×3423 | 87 / 223 ms            | —                     |
+| files              | 1620×1611 | 94 / 197 ms            | —                     |
 
 The same posts at 2x took 204–294 ms in WebKit. Chromium at 4x CPU
 throttling (a mid-range phone): card 285 ms, image 599 ms. Dark mode

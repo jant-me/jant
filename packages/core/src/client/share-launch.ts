@@ -1,10 +1,11 @@
 /**
- * Opens the "Share as image" dialog from the post menu.
+ * Opens the "Share as image" dialog from a post menu, the author's or a
+ * reader's.
  *
- * The dialog and snapdom ship in their own bundle. The post menu starts
- * loading it when it opens; picking the item asks the server for the card at
- * the same time as it waits for the bundle, and only then talks to the
- * element.
+ * The dialog and snapdom ship in their own bundle, and their styles in their
+ * own stylesheet. The menu starts loading both when it opens; picking the
+ * item asks the server for the card at the same time as it waits for them,
+ * and only then talks to the element.
  */
 
 import type { JantShareDialog } from "./components/jant-share-dialog.js";
@@ -20,14 +21,46 @@ async function fetchShareCard(postId: string): Promise<string> {
   return response.text();
 }
 
+let styles: Promise<void> | undefined;
+
 /**
- * Start loading the share bundle, so the dialog opens without waiting for
- * it. Out of the way of the menu's first frame; a failure is left for
- * {@link openShareImage} to report.
+ * Link the share stylesheet, which `<html data-share-stylesheet>` names, and
+ * resolve once it has loaded. A load that fails is forgotten, so the next
+ * call links it again.
+ */
+function ensureShareStyles(): Promise<void> {
+  return (styles ??= new Promise<void>((resolve, reject) => {
+    const href = document.documentElement.dataset.shareStylesheet;
+    if (!href) {
+      resolve();
+      return;
+    }
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.addEventListener("load", () => resolve(), { once: true });
+    link.addEventListener(
+      "error",
+      () => {
+        link.remove();
+        styles = undefined;
+        reject(new Error(`Could not load ${href}`));
+      },
+      { once: true },
+    );
+    document.head.appendChild(link);
+  }));
+}
+
+/**
+ * Start loading the share bundle and its styles, so the dialog opens without
+ * waiting for them. Out of the way of the menu's first frame; a failure is
+ * left for {@link openShareImage} to report.
  */
 export function warmShareImage(): void {
   setTimeout(() => {
     ensureShare().catch(() => {});
+    ensureShareStyles().catch(() => {});
   }, 0);
 }
 
@@ -52,7 +85,7 @@ export async function openShareImage(
   };
 
   try {
-    await ensureShare();
+    await Promise.all([ensureShare(), ensureShareStyles()]);
   } catch {
     showToast(
       "Could not open sharing. Check your connection and try again.",

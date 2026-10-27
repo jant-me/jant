@@ -124,6 +124,7 @@ async function createMenu(): Promise<{
     <article
       data-post
       data-post-id="post-1"
+      data-post-permalink="/hello-world"
       data-post-visibility="latest_hidden"
     >
       <button
@@ -740,6 +741,108 @@ describe("JantPostMenu", () => {
 
     confirmation.resolve(false);
     await Promise.resolve();
+  });
+
+  describe("Copy link", () => {
+    function stubClipboard(writeText: (text: string) => Promise<void>) {
+      Object.defineProperty(globalThis.navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: vi.fn(writeText) },
+      });
+      return globalThis.navigator.clipboard.writeText as ReturnType<
+        typeof vi.fn
+      >;
+    }
+
+    it("sits above Share as image", async () => {
+      const { menu, trigger } = await createMenu();
+
+      click(trigger);
+      await menu.updateComplete;
+
+      const items = Array.from(
+        menu.querySelectorAll<HTMLElement>(
+          "[data-post-menu-copy-link], [data-post-menu-share-image]",
+        ),
+      );
+      expect(items.map((item) => item.textContent?.trim())).toEqual([
+        "Copy link",
+        "Share as image",
+      ]);
+    });
+
+    it("copies the post's own address, closes, and says so", async () => {
+      const writeText = stubClipboard(async () => {});
+      const { menu, trigger } = await createMenu();
+
+      click(trigger);
+      await menu.updateComplete;
+      click(
+        requireElement(
+          menu.querySelector<HTMLElement>("[data-post-menu-copy-link]"),
+          "expected Copy link in the menu",
+        ),
+      );
+      await menu.updateComplete;
+      await Promise.resolve();
+
+      expect(writeText).toHaveBeenCalledWith(
+        new URL("/hello-world", globalThis.location.href).href,
+      );
+      expect(showToastMock).toHaveBeenCalledWith("Link copied.");
+      expect(menu.querySelector("[data-post-menu-copy-link]")).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+
+    it("says what to do when the clipboard refuses", async () => {
+      stubClipboard(async () => {
+        throw new Error("denied");
+      });
+      const { menu, trigger } = await createMenu();
+
+      click(trigger);
+      await menu.updateComplete;
+      click(
+        requireElement(
+          menu.querySelector<HTMLElement>("[data-post-menu-copy-link]"),
+          "expected Copy link in the menu",
+        ),
+      );
+      await vi.waitFor(() => expect(showToastMock).toHaveBeenCalled());
+
+      expect(showToastMock).toHaveBeenCalledWith(
+        "Could not copy the link. Open the post and copy it from the address bar.",
+        "error",
+      );
+    });
+
+    // A Private post still has an address; the author can open it.
+    it("is offered for a Private post", async () => {
+      const { menu, trigger } = await createMenu();
+      requireElement(
+        document.querySelector("article"),
+        "expected the post article",
+      ).setAttribute("data-post-visibility", "private");
+
+      click(trigger);
+      await menu.updateComplete;
+
+      expect(menu.querySelector("[data-post-menu-copy-link]")).not.toBeNull();
+    });
+
+    it("is not offered for a draft, which has no address yet", async () => {
+      const { menu, trigger } = await createMenu();
+      requireElement(
+        document.querySelector("article"),
+        "expected the post article",
+      ).setAttribute("data-post-draft", "");
+
+      click(trigger);
+      await menu.updateComplete;
+
+      expect(menu.textContent).toContain("Edit");
+      expect(menu.querySelector("[data-post-menu-copy-link]")).toBeNull();
+    });
   });
 
   describe("Share as image", () => {

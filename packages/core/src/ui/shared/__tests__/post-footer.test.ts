@@ -162,7 +162,7 @@ describe("PostFooter", () => {
     expect(html).toContain("data-post-menu-trigger");
   });
 
-  it("omits the action group for a reader, who can never see it", () => {
+  it("gives a reader the share menu in place of the author's actions", () => {
     const html = renderPostFooter(
       createPostView(),
       false,
@@ -171,11 +171,44 @@ describe("PostFooter", () => {
       false,
     );
 
+    expect(html).toContain("data-share-menu-trigger");
     expect(html).not.toContain("data-post-menu-trigger");
     expect(html).not.toContain("data-reply-trigger");
-    expect(html).not.toContain("post-menu-actions");
     // The reader still gets the footer itself.
     expect(html).toContain('href="/hello-world"');
+  });
+
+  it("gives the author no share menu of their own", () => {
+    expect(renderPostFooter(createPostView())).not.toContain(
+      "data-share-menu-trigger",
+    );
+  });
+
+  it("leaves a reader's share menu out where the author's actions are hidden", () => {
+    const html = renderPostFooter(
+      createPostView(),
+      false,
+      "en",
+      { hideActions: true },
+      false,
+    );
+
+    expect(html).not.toContain("post-menu-actions");
+  });
+
+  it.each([
+    ["a Private post", { visibility: "private" as const }],
+    ["a draft", { status: "draft" as const }],
+  ])("offers a reader nothing to share on %s", (_, overrides) => {
+    const html = renderPostFooter(
+      createPostView(overrides),
+      false,
+      "en",
+      undefined,
+      false,
+    );
+
+    expect(html).not.toContain("data-share-menu-trigger");
   });
 
   it("keeps the featured mark for the author and drops it for a reader", () => {

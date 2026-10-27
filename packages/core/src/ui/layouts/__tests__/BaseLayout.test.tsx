@@ -394,6 +394,31 @@ describe("BaseLayout", () => {
     expect(render(true)).toContain(`href="/blog/_assets/client.css"`);
   });
 
+  it("names the share stylesheet for a post menu to link, without linking it", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const render = (isAuthenticated: boolean) =>
+      renderToString(
+        BaseLayout({
+          title: "Jant",
+          c: createContext("featured", {
+            sitePathPrefix: "/blog",
+            siteUrl: "https://example.com/blog",
+            assetBasePath: "/blog/_assets",
+          }),
+          ...(isAuthenticated ? { isAuthenticated } : {}),
+          children: "Test",
+        }),
+      );
+
+    // A reader shares too, so both audiences get it, and neither waits on it.
+    for (const html of [render(false), render(true)]) {
+      expect(html).toContain(
+        'data-share-stylesheet="/blog/_assets/client-share.css"',
+      );
+      expect(html).not.toContain('href="/blog/_assets/client-share.css"');
+    }
+  });
+
   it("uses the public asset base path from appConfig in production", async () => {
     const { BaseLayout } = await loadBaseLayout();
     const html = renderToString(

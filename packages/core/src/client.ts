@@ -14,6 +14,7 @@ import "./client/form-enter-submit.js";
 import "./client/copy-field.js";
 import "./client/components/jant-media-lightbox.js";
 import "./client/components/jant-text-preview.js";
+import "./client/components/jant-share-menu.js";
 // First-run setup is a signed-out page, so the language picker it shares with
 // the settings page has to ship in the public bundle.
 import "./client/components/jant-locale-picker.js";

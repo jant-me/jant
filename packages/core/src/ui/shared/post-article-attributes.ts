@@ -4,6 +4,7 @@ type PostArticleAttributeSource = Pick<
   PostView,
   | "id"
   | "slug"
+  | "permalink"
   | "format"
   | "status"
   | "visibility"
@@ -37,6 +38,8 @@ export function getPostArticleAttributes(post: PostArticleAttributeSource) {
     "data-format": post.format,
     "data-post-id": post.id,
     "data-post-slug": post.slug,
+    // Where the post's date links to; both post menus copy it.
+    "data-post-permalink": post.permalink,
     "data-thread-root-id": post.threadRootId ?? post.id,
     ...(post.pinned ? { "data-post-pinned": "" } : {}),
     ...(post.pinnedInCollection

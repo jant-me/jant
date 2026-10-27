@@ -1,0 +1,1056 @@
+/*
+ * "Share as image": the dialog and the card it captures.
+ *
+ * Its own stylesheet, `client-share.css`, linked by `client/share-launch.ts`
+ * when a post menu that offers sharing opens, for a reader as for the
+ * author. Too rarely used for the render-blocking `client.css`, and readers
+ * never load `client-author.css`.
+ */
+
+@layer components {
+  /*
+   * Share card: the post as "Share as image" paints it — a sheet of paper on
+   * a mat tinted from the theme, 540 px wide, captured at 2x. The mat is what
+   * makes it read as a mounted card on the white of a chat or a feed, where a
+   * full-bleed page would have no edge.
+   *
+   * A picture of fixed width, so its type is in px rather than on the
+   * reading scale, which shrinks on narrow screens and would make the same
+   * post a different picture on every device. Colors and font families come
+   * from the theme: the mat is the theme's accent mixed into the page, the
+   * paper is the page (lifted in dark mode, where a shadow would not show,
+   * and edged instead).
+   */
+  .share-card,
+  .share-dialog-print {
+    --share-card-mat: color-mix(
+      in oklch,
+      var(--site-accent) 24%,
+      var(--site-page-bg)
+    );
+    --share-card-paper: var(--site-raised-bg);
+    --share-card-paper-edge: transparent;
+    --share-card-paper-shadow:
+      0 1px 2px rgb(0 0 0 / 0.05), 0 18px 40px -18px rgb(0 0 0 / 0.35);
+  }
+
+  .share-card {
+    box-sizing: border-box;
+    width: 540px;
+    padding: 40px 34px;
+    background: var(--share-card-mat);
+    color: var(--site-text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow-wrap: anywhere;
+  }
+
+  /* Dark: a little accent in a deep mat, paper lifted above it. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme-mode="light"]) :is(.share-card, .share-dialog-print) {
+      --share-card-mat: color-mix(
+        in oklch,
+        var(--site-accent) 8%,
+        var(--site-page-bg)
+      );
+      --share-card-paper-edge: var(--site-raised-border);
+      --share-card-paper-shadow: none;
+    }
+  }
+
+  :root[data-theme-mode="dark"] :is(.share-card, .share-dialog-print) {
+    --share-card-mat: color-mix(
+      in oklch,
+      var(--site-accent) 8%,
+      var(--site-page-bg)
+    );
+    --share-card-paper-edge: var(--site-raised-border);
+    --share-card-paper-shadow: none;
+  }
+
+  .share-card-paper {
+    overflow: hidden;
+    border: 1px solid var(--share-card-paper-edge);
+    border-radius: 16px;
+    background: var(--share-card-paper);
+    box-shadow: var(--share-card-paper-shadow);
+  }
+
+  .share-card-inner {
+    padding: 30px 32px 24px;
+  }
+
+  .share-card-images + .share-card-inner {
+    padding-top: 24px;
+  }
+
+  /* Images run across the top of the paper. One keeps its own shape, as
+     the post shows it, cut from the bottom only when it is taller than 4:5
+     so the text still has room; two stand side by side; three are one wide
+     over two; four are two by two, the last counting any more. */
+  .share-card-images {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+  }
+
+  .share-card-images[data-count="1"] {
+    grid-template-columns: 1fr;
+    container-type: inline-size;
+  }
+
+  .share-card-image {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: var(--site-subtle-bg);
+  }
+
+  .share-card-images[data-count="1"] .share-card-image {
+    aspect-ratio: auto;
+  }
+
+  /* Its width and height attributes, or the loaded image, give the shape. */
+  .share-card-images[data-count="1"] img {
+    height: auto;
+    max-height: 125cqi;
+    object-position: top;
+  }
+
+  .share-card-images[data-count="2"] .share-card-image {
+    aspect-ratio: 4 / 5;
+  }
+
+  .share-card-images[data-count="3"] .share-card-image:first-child {
+    grid-column: 1 / -1;
+    aspect-ratio: 2;
+  }
+
+  .share-card-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .share-card-play {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin: auto;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--foreground) 45%, transparent);
+    color: var(--background);
+  }
+
+  .share-card-play svg {
+    width: 24px;
+    height: 24px;
+    margin-left: 3px;
+  }
+
+  .share-card-more-images {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--foreground) 55%, transparent);
+    color: var(--background);
+    font-size: 28px;
+    font-weight: var(--fw-semibold);
+  }
+
+  .share-card-date {
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: var(--fw-medium);
+    line-height: 1.4;
+    letter-spacing: 0.04em;
+    color: var(--site-text-secondary);
+  }
+
+  .share-card-title {
+    margin: 14px 0 16px;
+    font-family: var(--font-heading);
+    font-size: 30px;
+    font-weight: var(--type-heading-weight);
+    line-height: 1.3;
+    color: var(--site-reading-title);
+  }
+
+  .share-card-body {
+    font-size: 17.5px;
+    line-height: 1.85;
+    color: var(--site-reading-body);
+  }
+
+  /* CJK wants the open leading; Latin text reads better a little closer. */
+  .share-card:not(:lang(zh), :lang(ja), :lang(ko)) .share-card-body {
+    line-height: 1.7;
+  }
+
+  .share-card-date + .share-card-body {
+    margin-top: 14px;
+  }
+
+  .share-card-body > :first-child {
+    margin-top: 0;
+  }
+
+  .share-card-body > :last-child {
+    margin-bottom: 0;
+  }
+
+  .share-card-body :is(p, ul, ol, pre, table) {
+    margin: 0 0 14px;
+  }
+
+  .share-card-body :is(ul, ol) {
+    padding-left: 1.3em;
+  }
+
+  .share-card-body ul {
+    list-style: disc;
+  }
+
+  .share-card-body ol {
+    list-style: decimal;
+  }
+
+  /* An item's spacing stays inside the list. snapdom fixes each item's
+     height in its copy, so a margin that collapses out through an item's
+     edge on the page would be gone from the picture. */
+  .share-card-body li > * {
+    margin-bottom: 8px;
+  }
+
+  .share-card-body li > :last-child {
+    margin-bottom: 0;
+  }
+
+  .share-card-body li + li {
+    margin-top: 8px;
+  }
+
+  .share-card-body :is(h1, h2, h3, h4, h5, h6) {
+    margin: 22px 0 8px;
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: var(--type-heading-weight);
+    line-height: 1.4;
+    color: var(--site-reading-heading);
+  }
+
+  .share-card-body blockquote {
+    margin: 16px 0;
+    padding-left: 14px;
+    border-left: 2px solid var(--site-divider);
+    font-family: var(--font-blockquote);
+    color: var(--site-reading-quote);
+  }
+
+  .share-card-body a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--site-divider);
+    text-underline-offset: 3px;
+  }
+
+  .share-card-body :is(code, pre) {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+
+  .share-card-body pre {
+    padding: 12px 14px;
+    border-radius: var(--media-radius);
+    background: var(--site-subtle-bg);
+    white-space: pre-wrap;
+  }
+
+  /* Footnotes point at notes the card does not carry. */
+  .share-card-body :is(.footnote-ref, .footnote-endnotes) {
+    display: none;
+  }
+
+  /* The summary stops short of the post; the way on is the QR code. A body
+     the capture cut already fades out, which says the same. */
+  .share-card-body.is-cut + .share-card-more {
+    display: none;
+  }
+
+  .share-card-more {
+    margin-top: 6px;
+    font-family: var(--font-heading);
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: 0.2em;
+    color: var(--site-text-secondary);
+  }
+
+  .share-card-link {
+    margin-top: 18px;
+  }
+
+  .share-card-link-domain {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    font-weight: var(--fw-medium);
+    line-height: 1.4;
+    color: var(--site-text-secondary);
+  }
+
+  .share-card-link-domain svg {
+    flex: none;
+    width: 14px;
+    height: 14px;
+  }
+
+  .share-card-link-title {
+    margin: 10px 0 0;
+    font-family: var(--font-heading);
+    font-size: 32px;
+    font-weight: var(--type-heading-weight);
+    line-height: 1.25;
+    color: var(--site-reading-title);
+  }
+
+  .share-card-link + .share-card-body {
+    margin-top: 16px;
+  }
+
+  .share-card-quote {
+    margin: 20px 0 0;
+  }
+
+  .share-card-quote-mark {
+    width: 36px;
+    color: color-mix(in oklch, var(--site-accent) 30%, var(--share-card-paper));
+  }
+
+  /* Set by length: a line gets room to be large, a paragraph stays even. */
+  .share-card-quote-text {
+    margin: 16px 0 0;
+    font-family: var(--font-serif);
+    font-size: 25px;
+    line-height: 1.75;
+    letter-spacing: 0.01em;
+    white-space: pre-line;
+    color: var(--site-reading-title);
+  }
+
+  .share-card-quote-text[data-size="short"] {
+    font-size: 29px;
+    line-height: 1.65;
+  }
+
+  .share-card-quote-text[data-size="long"] {
+    font-size: 21px;
+    line-height: 1.85;
+  }
+
+  .share-card-quote-source {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--site-text-secondary);
+  }
+
+  .share-card-quote-source::before {
+    content: "";
+    flex: none;
+    width: 18px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  /* The author's own words under a quote: quieter than what they quote. */
+  .share-card-quote + .share-card-body {
+    margin-top: 26px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--site-text-secondary);
+  }
+
+  /* Files a picture cannot show, listed like a reading list: a slip with
+     the format on it, the name, and how much there is. */
+  .share-card-files {
+    display: grid;
+    gap: 10px;
+    margin: 22px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .share-card-file {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--site-subtle-bg);
+  }
+
+  .share-card-file-format {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 40px;
+    height: 50px;
+    border: 1px solid var(--site-column-outline);
+    border-radius: 5px;
+    background: var(--share-card-paper);
+    color: color-mix(
+      in oklch,
+      var(--site-accent) 70%,
+      var(--site-text-primary)
+    );
+    font-family: var(--font-ui);
+    font-size: 10.5px;
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.06em;
+  }
+
+  .share-card-file-text {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .share-card-file-title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 15.5px;
+    font-weight: var(--fw-medium);
+    line-height: 1.4;
+    color: var(--site-text-primary);
+  }
+
+  /* An attached text is titled by its opening words; set them as words. */
+  .share-card-file[data-kind="text"] .share-card-file-title {
+    font-family: var(--font-serif);
+    font-weight: normal;
+  }
+
+  .share-card-file-meta {
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--site-text-secondary);
+  }
+
+  .share-card-file-more {
+    padding-left: 4px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--site-text-secondary);
+  }
+
+  /* A post in its Thread, on the rail the timeline draws through a Thread:
+     the Thread's first post in a line or two, the posts between folded to
+     a few dots on the rail, the post itself with the accent dot, and one
+     line of the post after, the rail running on past it.
+     The rail is drawn per post, so it can stop at the shared post's dot when
+     nothing follows; each post sets where its dot sits, on its first line.
+     The context fades its words, not the rail. */
+  .share-card-thread {
+    /* A step past the timeline's threadline: in a picture the rail is all
+       that says these posts are one Thread, and on the lifted dark paper
+       the plain line all but disappears. */
+    --share-card-rail-color: color-mix(
+      in oklch,
+      var(--site-threadline),
+      var(--site-text-secondary) 30%
+    );
+    --share-card-rail-x: 4px;
+    --share-card-rail-width: 1.5px;
+    --share-card-dot-size: 7px;
+  }
+
+  .share-card-thread-item {
+    --share-card-dot-y: 11px;
+
+    position: relative;
+    padding-left: 26px;
+  }
+
+  .share-card-thread-item::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--share-card-rail-x) - var(--share-card-rail-width) / 2);
+    width: var(--share-card-rail-width);
+    background: var(--share-card-rail-color);
+  }
+
+  .share-card-thread-item:first-child::after {
+    top: var(--share-card-dot-y);
+  }
+
+  .share-card-thread-item:last-child::after {
+    bottom: calc(100% - var(--share-card-dot-y));
+  }
+
+  .share-card-thread-item::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: calc(var(--share-card-dot-y) - var(--share-card-dot-size) / 2);
+    left: calc(var(--share-card-rail-x) - var(--share-card-dot-size) / 2);
+    width: var(--share-card-dot-size);
+    height: var(--share-card-dot-size);
+    border-radius: 50%;
+    background: var(--share-card-rail-color);
+    box-shadow: 0 0 0 4px var(--share-card-paper);
+  }
+
+  /* The shared post: the accent dot, ringed, as the timeline marks the post
+     a view is about. */
+  .share-card-thread-current {
+    --share-card-dot-y: 8.75px;
+  }
+
+  .share-card-thread-current::before {
+    background: color-mix(
+      in srgb,
+      var(--site-accent) 90%,
+      var(--share-card-rail-color)
+    );
+    box-shadow:
+      0 0 0 2px var(--share-card-paper),
+      0 0 0 4px var(--site-thread-dot-ring),
+      0 0 0 6px var(--share-card-paper);
+  }
+
+  .share-card-thread-current .share-card-images {
+    margin-top: 20px;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+
+  .share-card-thread-position {
+    margin-left: 10px;
+    color: color-mix(in srgb, var(--site-text-secondary) 75%, transparent);
+  }
+
+  .share-card-context {
+    min-height: 25px;
+  }
+
+  /* Quieter than the shared post, but read at a glance: the fading is left
+     to the rail's two ends, never laid over the words. */
+  .share-card-context > * {
+    opacity: 0.6;
+  }
+
+  .share-card-context-title,
+  .share-card-context-body,
+  .share-card-context-source {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* A title set apart from the words under it, the way a post leads with
+     one: the heading face, a step larger, a little air before the text. */
+  .share-card-context-title {
+    font-family: var(--font-heading);
+    font-size: 16.5px;
+    font-weight: var(--type-heading-weight);
+    line-height: 25px;
+  }
+
+  .share-card-context-body {
+    font-size: 14.5px;
+    line-height: 25px;
+  }
+
+  .share-card-context-title + .share-card-context-body {
+    margin-top: 6px;
+  }
+
+  /* A quote reads as one: its words in the quote face behind a rule, as
+     the site sets a blockquote, and who said it under them, as the quote
+     card does. */
+  .share-card-context[data-format="quote"] .share-card-context-body {
+    padding-left: 12px;
+    border-left: 2px solid var(--share-card-rail-color);
+    font-family: var(--font-blockquote);
+  }
+
+  .share-card-context-source {
+    margin-top: 6px;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    line-height: 18px;
+    color: var(--site-text-secondary);
+  }
+
+  .share-card-context-source::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 1px;
+    margin-right: 8px;
+    vertical-align: middle;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  /* A wordless post shows its images, as the timeline's context does: a
+     row of tiles big enough to see what they are, one alone at 4:3. */
+  .share-card-context-images {
+    display: flex;
+    gap: 6px;
+  }
+
+  .share-card-context-image {
+    position: relative;
+    flex: none;
+    width: 120px;
+    height: 120px;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+
+  .share-card-context-images[data-count="1"] .share-card-context-image {
+    width: 160px;
+  }
+
+  .share-card-context-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .share-card-context-image .share-card-play {
+    width: 34px;
+    height: 34px;
+  }
+
+  .share-card-context-image .share-card-play svg {
+    width: 15px;
+    height: 15px;
+    margin-left: 2px;
+  }
+
+  .share-card-context-image .share-card-more-images {
+    font-size: 20px;
+  }
+
+  /* The post after stays a glimpse. */
+  .share-card-context.is-next .share-card-context-image {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+  }
+
+  .share-card-context.is-next
+    .share-card-context-images[data-count="1"]
+    .share-card-context-image {
+    width: 85px;
+  }
+
+  .share-card[data-thread] .share-card-inner {
+    padding-top: 22px;
+  }
+
+  /* The Thread's first post in up to three lines, its title and the start
+     of its words, or a quote and its source: what the Thread is about. The
+     rail comes in out of the paper above it, as it does above the
+     timeline's faded context. */
+  .share-card-context.is-root {
+    --share-card-dot-y: 26.5px;
+
+    padding-top: 14px;
+    padding-bottom: 20px;
+  }
+
+  .share-card-context.is-root
+    :is(.share-card-context-title, .share-card-context-body) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    white-space: normal;
+  }
+
+  .share-card-context.is-root .share-card-context-body {
+    -webkit-line-clamp: 3;
+  }
+
+  .share-card-context.is-root
+    .share-card-context-title
+    + .share-card-context-body,
+  .share-card-context.is-root.has-source .share-card-context-body {
+    -webkit-line-clamp: 2;
+  }
+
+  .share-card-context.is-root::after {
+    top: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--share-card-rail-color) 14px
+    );
+  }
+
+  /* The posts between the first and the shared one, folded: the rail turns
+     to a few dots, as at a gap in the timeline. How many is beside the
+     date, so the gap carries no words. */
+  .share-card-thread-gap {
+    height: 26px;
+    margin-top: -8px;
+  }
+
+  .share-card-thread-gap::before {
+    display: none;
+  }
+
+  .share-card-thread-gap::after {
+    left: calc(var(--share-card-rail-x) - 1.5px);
+    width: 3px;
+    background: radial-gradient(
+        circle,
+        var(--share-card-rail-color) 1.25px,
+        transparent 1.5px
+      )
+      center top / 3px 6.5px repeat-y;
+  }
+
+  /* The post after in one line, its title if it has one: the Thread goes
+     on, so the rail runs out down the card. */
+  .share-card-context.is-next {
+    --share-card-dot-y: 32.5px;
+
+    padding-top: 20px;
+    padding-bottom: 18px;
+  }
+
+  .share-card-context.is-next
+    .share-card-context-title
+    + .share-card-context-body,
+  .share-card-context.is-next .share-card-context-source {
+    display: none;
+  }
+
+  .share-card-context.is-next::after {
+    bottom: 0;
+    background: linear-gradient(
+      to bottom,
+      var(--share-card-rail-color) calc(100% - 22px),
+      transparent
+    );
+  }
+
+  /* Whose site it is and how to get there, like the source line of a
+     reading app's quote card: the site on the left, the code on the right,
+     centred on one line. */
+  .share-card-foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--site-divider);
+  }
+
+  .share-card-avatar {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--avatar-radius);
+    object-fit: cover;
+    background: var(--site-subtle-bg);
+    color: var(--site-text-secondary);
+    font-family: var(--font-site-title);
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .share-card-source {
+    display: grid;
+    flex: 1;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .share-card-site {
+    font-family: var(--font-site-title);
+    font-size: 15.5px;
+    font-weight: var(--fw-medium);
+    line-height: 1.3;
+    color: var(--site-text-primary);
+  }
+
+  .share-card-address {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--site-text-secondary);
+  }
+
+  /* Scanners want dark modules on a light ground, in either mode, and a
+     quiet zone around them. 74 px here is 148 px in the image. */
+  .share-card-qr {
+    flex: none;
+    width: 74px;
+    height: 74px;
+    padding: 4px;
+    border-radius: 6px;
+    background: white;
+  }
+
+  .share-card-qr svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Set by the capture when the summary is still taller than one screen:
+     the body stops between blocks and its last lines fade into the paper. */
+  .share-card-body.is-cut {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .share-card-fade {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 96px;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--share-card-paper)
+    );
+  }
+
+  /* Where the card is laid out for the capture: in the page, so it takes the
+     page's theme and fonts, but far off screen. */
+  .share-card-host {
+    position: fixed;
+    top: 0;
+    left: -100000px;
+    pointer-events: none;
+  }
+
+  .share-dialog {
+    margin: 0;
+  }
+
+  .share-dialog > .share-dialog-panel {
+    max-width: 28rem;
+  }
+
+  .share-dialog-panel {
+    outline: none;
+  }
+
+  .share-dialog-panel > button[aria-label="Close"] {
+    cursor: pointer;
+  }
+
+  .share-dialog-preview {
+    display: grid;
+    max-height: min(62vh, 40rem);
+    overflow-y: auto;
+  }
+
+  .share-dialog-preview[data-status="error"] {
+    place-items: center;
+    gap: 0.75rem;
+    min-height: 12rem;
+  }
+
+  .share-dialog-status {
+    max-width: 30ch;
+    text-align: center;
+    color: var(--site-text-secondary);
+    font-size: var(--type-ui-hint);
+  }
+
+  /* The picture's frame. Until the card is laid out it holds a blank card
+     of the usual proportions; the laid-out card then shows faded, like a
+     print still developing, and the PNG brings it to full strength. The
+     outline separates the picture from a dialog of the same color. */
+  .share-dialog-print {
+    --share-dialog-sheen: rgb(255 255 255 / 0.4);
+
+    position: relative;
+    width: 100%;
+    aspect-ratio: 540 / 700;
+    overflow: hidden;
+    border-radius: var(--media-radius);
+    outline: 1px solid var(--site-column-outline);
+    outline-offset: -1px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme-mode="light"]) .share-dialog-print {
+      --share-dialog-sheen: rgb(255 255 255 / 0.07);
+    }
+  }
+
+  :root[data-theme-mode="dark"] .share-dialog-print {
+    --share-dialog-sheen: rgb(255 255 255 / 0.07);
+  }
+
+  /* Shown only if laying out takes a moment, so a quick open never flashes
+     it. */
+  .share-dialog-blank {
+    position: absolute;
+    inset: 0;
+    background: var(--share-card-mat);
+    animation: share-dialog-fade-in 0.3s ease 0.15s both;
+  }
+
+  .share-dialog-blank::before {
+    content: "";
+    position: absolute;
+    inset: 5.7% 6.3%;
+    border-radius: 10px;
+    background: var(--share-card-paper);
+  }
+
+  .share-dialog-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    opacity: 0.5;
+    animation: share-dialog-develop 0.25s ease both;
+  }
+
+  .share-dialog-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    animation: share-dialog-fix 0.35s ease both;
+  }
+
+  /* One slow band of light while the picture is painted. */
+  .share-dialog-print:is(
+      [data-status="loading"],
+      [data-status="developing"]
+    )::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 35%,
+      var(--share-dialog-sheen) 50%,
+      transparent 65%
+    );
+    background-size: 250% 100%;
+    animation: share-dialog-sheen 1.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes share-dialog-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes share-dialog-develop {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes share-dialog-fix {
+    from {
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes share-dialog-sheen {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .share-dialog-print::after {
+      animation: none;
+      background: none;
+    }
+  }
+
+  /* One line kept for the note, so the dialog does not jump when it
+     changes. */
+  .share-dialog-note {
+    min-height: 1lh;
+    margin-top: -0.5rem;
+    text-align: center;
+    color: var(--site-text-secondary);
+    font-size: var(--type-ui-hint);
+  }
+
+  /* A mouse has the buttons; the hint is for touch. */
+  @media (hover: hover) and (pointer: fine) {
+    .share-dialog-hint {
+      display: none;
+    }
+  }
+
+  .share-dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  /* Wider screens close from the corner. */
+  .share-dialog-close {
+    display: none;
+  }
+
+  /* A phone closes from the bottom, in reach of a thumb: the actions two to
+     a row, Close and Download last, an odd one out across the whole row. */
+  @media (max-width: 640px) {
+    .share-dialog > .share-dialog-panel {
+      max-width: calc(100% - 1.5rem);
+    }
+
+    .share-dialog-panel > button[aria-label="Close"] {
+      display: none;
+    }
+
+    .share-dialog .share-dialog-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .share-dialog-actions > :first-child:nth-last-child(odd) {
+      grid-column: 1 / -1;
+    }
+
+    .share-dialog .share-dialog-close {
+      display: inline-flex;
+    }
+  }
+}

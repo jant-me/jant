@@ -67,7 +67,7 @@ function paragraphs(count: number): string {
 }
 
 describe("/_/share-card/:postId", () => {
-  it("is the author's: a signed-out request finds nothing", async () => {
+  it("draws the card for a signed-out reader", async () => {
     const { app, services } = createPartialTestApp();
     const post = await services.posts.create({
       format: "note",
@@ -77,26 +77,52 @@ describe("/_/share-card/:postId", () => {
 
     const res = await app.request(`/_/share-card/${post.id}`);
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("data-share-card");
   });
 
-  it.each([
-    ["a draft", { status: "draft" as const }],
-    [
-      "a Private post",
-      { status: "published" as const, visibility: "private" as const },
-    ],
-  ])("refuses %s, whose address a reader cannot open", async (_, state) => {
-    const { app, services } = createPartialTestApp({ authenticated: true });
-    const post = await services.posts.create({
-      format: "note",
-      bodyMarkdown: "Hello",
-      ...state,
+  describe.each([
+    ["the author", { authenticated: true }],
+    ["a reader", { authenticated: false }],
+  ])("for %s", (_, options) => {
+    it.each([
+      ["a draft", { status: "draft" as const }],
+      [
+        "a Private post",
+        { status: "published" as const, visibility: "private" as const },
+      ],
+    ])("refuses %s, whose address a reader cannot open", async (_, state) => {
+      const { app, services } = createPartialTestApp(options);
+      const post = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Hello",
+        ...state,
+      });
+
+      const res = await app.request(`/_/share-card/${post.id}`);
+
+      expect(res.status).toBe(404);
     });
 
-    const res = await app.request(`/_/share-card/${post.id}`);
+    it("refuses a reply in a Private Thread", async () => {
+      const { app, services } = createPartialTestApp(options);
+      const root = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Root",
+        status: "published",
+        visibility: "private",
+      });
+      const reply = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Reply",
+        status: "published",
+        replyToId: root.id,
+      });
 
-    expect(res.status).toBe(404);
+      const res = await app.request(`/_/share-card/${reply.id}`);
+
+      expect(res.status).toBe(404);
+    });
   });
 
   it("shares a post Hidden from Latest, which still has an address", async () => {

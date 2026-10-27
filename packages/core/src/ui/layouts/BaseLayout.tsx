@@ -36,6 +36,7 @@ import {
   CLIENT_CJK_TC_CSS_FILE,
   CLIENT_CSS_FILE,
   CLIENT_JS_FILE,
+  CLIENT_SHARE_CSS_FILE,
   CORE_VERSION,
 } from "../../lib/version.js";
 import { IS_VITE_DEV } from "../../lib/build-env.js";
@@ -288,6 +289,11 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         ? assetPath("/src/style-author.css")
         : toPublicAssetPath(CLIENT_AUTHOR_CSS_FILE, assetBasePath)
       : null;
+  // "Share as image" is rare enough to stay off every page's critical path:
+  // the post menu links this when it opens, for a reader or the author.
+  const shareStylesheetPath = IS_VITE_DEV
+    ? assetPath("/src/style-share.css")
+    : toPublicAssetPath(CLIENT_SHARE_CSS_FILE, assetBasePath);
   const clientScriptPath = IS_VITE_DEV
     ? resolvedClientBundle === "full"
       ? assetPath("/src/client-auth.ts")
@@ -402,6 +408,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         data-view-lang={viewLang ?? undefined}
         data-asset-base-path={assetBasePath}
         data-media-base={mediaBase}
+        data-share-stylesheet={shareStylesheetPath}
       >
         <head>
           <meta charset="UTF-8" />

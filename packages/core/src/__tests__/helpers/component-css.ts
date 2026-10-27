@@ -15,6 +15,9 @@ const READER_SHEETS = ["ui.css", "components.css"] as const;
 /** Hand-written component CSS that only loads on an authenticated page. */
 const AUTHOR_SHEETS = ["ui-author.css", "components-author.css"] as const;
 
+/** "Share as image", linked by a post menu when it opens, for either audience. */
+const SHARE_SHEETS = ["share.css"] as const;
+
 function read(names: readonly string[]): string {
   return names
     .map((name) => readFileSync(resolve(STYLES_DIR, name), "utf8"))
@@ -26,16 +29,17 @@ function read(names: readonly string[]): string {
  *
  * `ui.css`/`components.css` carry what readers need; `ui-author.css` and
  * `components-author.css` carry the composer, editor, settings, config editor
- * and dash chrome that only load once someone is signed in. A test asserting
- * that a rule is declared cares that it exists at all, not which half it
- * landed in — so moving a rule between them must never break a test.
+ * and dash chrome that only load once someone is signed in; `share.css` is
+ * "Share as image", loaded when a post menu opens. A test asserting that a
+ * rule is declared cares that it exists at all, not which sheet it landed
+ * in — so moving a rule between them must never break a test.
  *
- * @returns The concatenated contents of all four stylesheets.
+ * @returns The concatenated contents of all five stylesheets.
  * @example
  * expect(readComponentCss()).toMatch(/\.compose-post-meta-panel\s*\{/);
  */
 export function readComponentCss(): string {
-  return read([...READER_SHEETS, ...AUTHOR_SHEETS]);
+  return read([...READER_SHEETS, ...AUTHOR_SHEETS, ...SHARE_SHEETS]);
 }
 
 /**
@@ -65,12 +69,23 @@ export function readAuthorCss(): string {
 }
 
 /**
+ * Only the "Share as image" sheet.
+ *
+ * @returns The contents of `share.css`.
+ * @example
+ * expect(readShareCss()).toMatch(/\.share-dialog\s*\{/);
+ */
+export function readShareCss(): string {
+  return read(SHARE_SHEETS);
+}
+
+/**
  * Every stylesheet Jant hand-writes, each paired with its filename.
  *
  * `readComponentCss()` and friends concatenate, which is right for asking
  * whether a rule exists. This one keeps the files apart so a failure can name
  * the file and line it found the problem on — `tokens.css` and `preset.css`
- * are in here too, because breakpoints live in all six.
+ * are in here too, because breakpoints live in all seven.
  *
  * @returns One entry per stylesheet, in load order.
  * @example
@@ -84,8 +99,12 @@ export function readAllStylesheets(): readonly {
 }[] {
   return [
     { name: "preset.css", path: resolve(process.cwd(), "src/preset.css") },
-    ...[...READER_SHEETS, ...AUTHOR_SHEETS, "tokens.css", "site-media.css"].map(
-      (name) => ({ name, path: resolve(STYLES_DIR, name) }),
-    ),
+    ...[
+      ...READER_SHEETS,
+      ...AUTHOR_SHEETS,
+      ...SHARE_SHEETS,
+      "tokens.css",
+      "site-media.css",
+    ].map((name) => ({ name, path: resolve(STYLES_DIR, name) })),
   ].map(({ name, path }) => ({ name, css: readFileSync(path, "utf8") }));
 }

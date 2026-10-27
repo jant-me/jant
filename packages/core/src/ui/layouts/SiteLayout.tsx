@@ -751,6 +751,7 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
 
       <jant-media-lightbox />
       <jant-text-preview />
+      {!isAuthenticated && <jant-share-menu />}
       {isAuthenticated && (
         <jant-post-menu
           languages={JSON.stringify(composeLanguages ?? []).replace(
