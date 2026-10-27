@@ -482,22 +482,38 @@
 
   .share-card-thread-item {
     --share-card-dot-y: 11px;
+    /* How far the rail stays clear of a dot, on either side. */
+    --share-card-dot-clearance: calc(var(--share-card-dot-size) / 2 + 4px);
 
     position: relative;
     padding-left: 26px;
   }
 
+  /* The rail breaks around the dot rather than running under a halo: the
+     capture can't use box-shadow (see `.share-card-host[data-capturing]`).
+     `--share-card-rail-dot-at` is where the dot sits on this rail. */
   .share-card-thread-item::after {
+    --share-card-rail-dot-at: var(--share-card-dot-y);
+
     content: "";
     position: absolute;
     top: 0;
     bottom: 0;
     left: calc(var(--share-card-rail-x) - var(--share-card-rail-width) / 2);
     width: var(--share-card-rail-width);
-    background: var(--share-card-rail-color);
+    background: linear-gradient(
+      to bottom,
+      var(--share-card-rail-color) 0
+        calc(var(--share-card-rail-dot-at) - var(--share-card-dot-clearance)),
+      transparent 0
+        calc(var(--share-card-rail-dot-at) + var(--share-card-dot-clearance)),
+      var(--share-card-rail-color) 0
+    );
   }
 
   .share-card-thread-item:first-child::after {
+    --share-card-rail-dot-at: 0px;
+
     top: var(--share-card-dot-y);
   }
 
@@ -515,25 +531,28 @@
     height: var(--share-card-dot-size);
     border-radius: 50%;
     background: var(--share-card-rail-color);
-    box-shadow: 0 0 0 4px var(--share-card-paper);
   }
 
   /* The shared post: the accent dot, ringed, as the timeline marks the post
-     a view is about. */
+     a view is about. The ring is a border, 2px clear of the dot. */
   .share-card-thread-current {
     --share-card-dot-y: 8.75px;
+    --share-card-dot-clearance: calc(var(--share-card-dot-size) / 2 + 6px);
   }
 
   .share-card-thread-current::before {
+    top: calc(var(--share-card-dot-y) - var(--share-card-dot-size) / 2 - 4px);
+    left: calc(var(--share-card-rail-x) - var(--share-card-dot-size) / 2 - 4px);
+    width: calc(var(--share-card-dot-size) + 8px);
+    height: calc(var(--share-card-dot-size) + 8px);
+    padding: 2px;
+    border: 2px solid var(--site-thread-dot-ring);
     background: color-mix(
       in srgb,
       var(--site-accent) 90%,
       var(--share-card-rail-color)
     );
-    box-shadow:
-      0 0 0 2px var(--share-card-paper),
-      0 0 0 4px var(--site-thread-dot-ring),
-      0 0 0 6px var(--share-card-paper);
+    background-clip: content-box;
   }
 
   .share-card-thread-current .share-card-images {
@@ -701,15 +720,6 @@
     -webkit-line-clamp: 2;
   }
 
-  .share-card-context.is-root::after {
-    top: 0;
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      var(--share-card-rail-color) 14px
-    );
-  }
-
   /* The posts between the first and the shared one, folded: the rail turns
      to a few dots, as at a gap in the timeline. How many is beside the
      date, so the gap carries no words. */
@@ -753,7 +763,11 @@
     bottom: 0;
     background: linear-gradient(
       to bottom,
-      var(--share-card-rail-color) calc(100% - 22px),
+      var(--share-card-rail-color) 0
+        calc(var(--share-card-rail-dot-at) - var(--share-card-dot-clearance)),
+      transparent 0
+        calc(var(--share-card-rail-dot-at) + var(--share-card-dot-clearance)),
+      var(--share-card-rail-color) 0 calc(100% - 22px),
       transparent
     );
   }
@@ -851,6 +865,18 @@
     top: 0;
     left: -100000px;
     pointer-events: none;
+  }
+
+  /* No shadows while snapdom paints the card. In Safari it draws a capture
+     holding any box-shadow or text-shadow at 1x and stretches it, so one
+     shadow anywhere — a theme's, a post's — softens the whole picture on an
+     iPhone. The paper's own shadow is painted back on the canvas
+     (`share-capture.ts`), where it is sharp at any scale. */
+  .share-card-host[data-capturing] *,
+  .share-card-host[data-capturing] *::before,
+  .share-card-host[data-capturing] *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
   }
 
   .share-dialog {

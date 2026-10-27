@@ -4,8 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@zumer/snapdom", () => ({ snapdom: vi.fn() }));
 
-const { __testOnly } = await import("../share-capture.js");
-const { cutToScreen, MAX_CARD_HEIGHT } = __testOnly;
+const { snapdom } = await import("@zumer/snapdom");
+const { __testOnly, prepareShareCard } = await import("../share-capture.js");
+const { cutToScreen, paintPaperShadow, parseBoxShadow, MAX_CARD_HEIGHT } =
+  __testOnly;
 
 const LINE_HEIGHT = 30;
 /** The body is 900 px and the card 300 px too tall: 600 px of body fit. */
@@ -130,5 +132,168 @@ describe("cutToScreen", () => {
     );
     cutToScreen(card);
     expect(cutHeight(card)).toBe("580px");
+  });
+});
+
+describe("parseBoxShadow", () => {
+  it("reads the layers getComputedStyle writes, color first", () => {
+    expect(
+      parseBoxShadow(
+        "rgba(0, 0, 0, 0.05) 0px 1px 2px 0px, rgba(0, 0, 0, 0.35) 0px 18px 40px -18px",
+      ),
+    ).toEqual([
+      { x: 0, y: 1, blur: 2, spread: 0, color: "rgba(0, 0, 0, 0.05)" },
+      { x: 0, y: 18, blur: 40, spread: -18, color: "rgba(0, 0, 0, 0.35)" },
+    ]);
+  });
+
+  it("reads a layer written with its color last", () => {
+    expect(parseBoxShadow("0 18px 40px -18px rgb(0 0 0 / 0.35)")).toEqual([
+      { x: 0, y: 18, blur: 40, spread: -18, color: "rgb(0 0 0 / 0.35)" },
+    ]);
+  });
+
+  it("has nothing to paint for none or an inset shadow", () => {
+    expect(parseBoxShadow("none")).toEqual([]);
+    expect(parseBoxShadow("rgb(0, 0, 0) 0px 0px 4px 0px inset")).toEqual([]);
+  });
+});
+
+/** A 2D context that keeps what was asked of it. */
+function recordingContext(width: number, height: number) {
+  const fills: Array<{
+    color: string;
+    blur: number;
+    offsetX: number;
+    offsetY: number;
+    rect: number[];
+  }> = [];
+  const clips: string[] = [];
+  let path: number[][] = [];
+  const context = {
+    canvas: { width, height },
+    shadowColor: "",
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+    fillStyle: "",
+    save: vi.fn(),
+    restore: vi.fn(),
+    beginPath: () => {
+      path = [];
+    },
+    rect: vi.fn(),
+    moveTo: (x: number, y: number) => path.push([x, y]),
+    arcTo: (x1: number, y1: number) => path.push([x1, y1]),
+    closePath: vi.fn(),
+    clip: (rule: string) => clips.push(rule),
+    fill() {
+      const xs = path.map(([x]) => x!);
+      const ys = path.map(([, y]) => y!);
+      fills.push({
+        color: this.shadowColor,
+        blur: this.shadowBlur,
+        offsetX: this.shadowOffsetX,
+        offsetY: this.shadowOffsetY,
+        rect: [
+          Math.min(...xs),
+          Math.min(...ys),
+          Math.max(...xs),
+          Math.max(...ys),
+        ],
+      });
+    },
+  };
+  return { context, fills, clips };
+}
+
+describe("paintPaperShadow", () => {
+  const shadow = {
+    x: 34,
+    y: 40,
+    width: 472,
+    height: 600,
+    radius: 16,
+    layers: [
+      { x: 0, y: 1, blur: 2, spread: 0, color: "rgba(0, 0, 0, 0.05)" },
+      { x: 0, y: 18, blur: 40, spread: -18, color: "rgba(0, 0, 0, 0.35)" },
+    ],
+  };
+
+  it("casts each layer where CSS would, at the image's scale, the first on top", () => {
+    const { context, fills } = recordingContext(1620, 2040);
+
+    paintPaperShadow(context as unknown as CanvasRenderingContext2D, shadow, 3);
+
+    expect(fills.map((fill) => fill.color)).toEqual([
+      "rgba(0, 0, 0, 0.35)",
+      "rgba(0, 0, 0, 0.05)",
+    ]);
+    const [deep, contact] = fills;
+    // Blur and offsets scale; the shape sits off the canvas and its shadow
+    // is moved back by the same distance.
+    expect(deep!.blur).toBe(120);
+    expect(deep!.offsetY).toBe(54);
+    expect(deep!.rect[0]! + deep!.offsetX).toBeCloseTo((34 + 18) * 3);
+    expect(deep!.rect[2]! + deep!.offsetX).toBeCloseTo((34 + 472 - 18) * 3);
+    expect(deep!.rect[2]!).toBeLessThan(0);
+    expect(contact!.blur).toBe(6);
+    expect(contact!.rect[0]! + contact!.offsetX).toBeCloseTo(34 * 3);
+  });
+
+  it("keeps the shadow off the paper", () => {
+    const { context, clips } = recordingContext(1620, 2040);
+
+    paintPaperShadow(context as unknown as CanvasRenderingContext2D, shadow, 3);
+
+    expect(clips).toEqual(["evenodd"]);
+    expect(context.save).toHaveBeenCalled();
+    expect(context.restore).toHaveBeenCalled();
+  });
+});
+
+describe("capture", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("paints with shadows off, then puts the paper's shadow back", async () => {
+    // No fonts to wait for, and no `ready` for the capture to patch.
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: [],
+    });
+    vi.stubGlobal("FontFaceSet", class {});
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: HTMLElement) {
+        return this.classList.contains("share-card-paper")
+          ? rect(40, 640)
+          : rect(0, 720);
+      },
+    );
+    const { context, fills } = recordingContext(1620, 2160);
+    const canvas = Object.assign(context.canvas, {
+      getContext: () => context,
+      toBlob: (done: (blob: Blob) => void) => done(new Blob(["png"])),
+    });
+    let capturing: boolean | undefined;
+    vi.mocked(snapdom).mockImplementation((async () => {
+      capturing = document
+        .querySelector(".share-card-host")
+        ?.hasAttribute("data-capturing");
+      return { toCanvas: async () => canvas };
+    }) as unknown as typeof snapdom);
+
+    const prepared = await prepareShareCard(
+      '<div data-share-card data-file-name="hello"><div class="share-card-paper" style="border-radius: 16px; box-shadow: rgba(0, 0, 0, 0.35) 0px 18px 40px -18px"></div></div>',
+    );
+    const image = await prepared.capture();
+
+    expect(capturing).toBe(true);
+    expect(fills).toHaveLength(1);
+    expect(fills[0]!.color).toBe("rgba(0, 0, 0, 0.35)");
+    expect(image.fileName).toBe("hello.png");
+    expect(document.querySelector(".share-card-host")).toBeNull();
   });
 });

@@ -1,11 +1,11 @@
 /**
- * Turns a share card into a PNG in the author's browser.
+ * Turns a share card into a PNG in the browser of whoever shares it.
  *
  * The server renders the card (`/_/share-card/{id}`); this lays it out off
  * screen with the page's own theme and fonts, waits for them, cuts the body
  * if the card is taller than one phone screen, and has snapdom paint it at
- * 3x. Two steps, so the dialog can show the laid-out card while the picture
- * is painted.
+ * 3x, with the paper's shadow painted on the canvas afterwards. Two steps,
+ * so the dialog can show the laid-out card while the picture is painted.
  */
 
 import { snapdom } from "@zumer/snapdom";
@@ -200,6 +200,151 @@ function cutToScreen(card: HTMLElement): void {
   body.appendChild(fade);
 }
 
+/** One layer of a CSS `box-shadow`, lengths in CSS px. */
+interface ShadowLayer {
+  x: number;
+  y: number;
+  blur: number;
+  spread: number;
+  color: string;
+}
+
+/** `text` split on `separator` where it is not inside parentheses. */
+function splitOutsideParens(text: string, separator: RegExp): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < text.length; index++) {
+    const char = text.charAt(index);
+    if (char === "(") depth++;
+    else if (char === ")") depth--;
+    else if (depth === 0 && separator.test(char)) {
+      parts.push(text.slice(start, index));
+      start = index + 1;
+    }
+  }
+  parts.push(text.slice(start));
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+/**
+ * The outer layers of a `box-shadow` value, as `getComputedStyle` writes it
+ * (color first, lengths in px) or as it is written in CSS (color anywhere).
+ * Inset layers are dropped: they paint inside the box, which the capture
+ * already holds.
+ */
+function parseBoxShadow(value: string): ShadowLayer[] {
+  if (!value || value === "none") return [];
+  return splitOutsideParens(value, /,/).flatMap((layer) => {
+    const tokens = splitOutsideParens(layer, /\s/);
+    if (tokens.includes("inset")) return [];
+    const isLength = (token: string) => /^-?[\d.]+(px)?$/.test(token);
+    const [x = 0, y = 0, blur = 0, spread = 0] = tokens
+      .filter(isLength)
+      .map((token) => Number.parseFloat(token));
+    const color = tokens.find((token) => !isLength(token));
+    return color ? [{ x, y, blur, spread, color }] : [];
+  });
+}
+
+/** The paper's box on the card, in CSS px, and the shadow it casts. */
+interface PaperShadow {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  radius: number;
+  layers: ShadowLayer[];
+}
+
+/** Read the paper's shadow while the page still draws it. */
+function readPaperShadow(card: HTMLElement): PaperShadow | null {
+  const paper = card.querySelector<HTMLElement>(".share-card-paper");
+  if (!paper) return null;
+  const style = getComputedStyle(paper);
+  const layers = parseBoxShadow(style.boxShadow);
+  if (layers.length === 0) return null;
+  const cardBox = card.getBoundingClientRect();
+  const box = paper.getBoundingClientRect();
+  return {
+    x: box.left - cardBox.left,
+    y: box.top - cardBox.top,
+    width: box.width,
+    height: box.height,
+    radius: Number.parseFloat(style.borderTopLeftRadius) || 0,
+    layers,
+  };
+}
+
+/** A rounded rectangle's path; `roundRect` is newer than this needs. */
+function roundedRectPath(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+): void {
+  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+  context.moveTo(x + r, y);
+  context.arcTo(x + width, y, x + width, y + height, r);
+  context.arcTo(x + width, y + height, x, y + height, r);
+  context.arcTo(x, y + height, x, y, r);
+  context.arcTo(x, y, x + width, y, r);
+  context.closePath();
+}
+
+/**
+ * Paint the paper's shadow onto the mat, outside the paper, as CSS paints an
+ * outer box-shadow. The capture leaves shadows out (see the
+ * `.share-card-host[data-capturing]` rule): in Safari snapdom draws any card
+ * holding one at 1x and stretches it to the scale asked for. A canvas
+ * shadow is sharp at any scale.
+ *
+ * Each layer is cast by a shape drawn off the canvas, its shadow offset back
+ * into place, so only the shadow lands; the clip keeps it off the paper.
+ */
+function paintPaperShadow(
+  context: CanvasRenderingContext2D,
+  shadow: PaperShadow,
+  scale: number,
+): void {
+  const { canvas } = context;
+  const away = canvas.width + (shadow.width + 200) * scale;
+  context.save();
+  context.beginPath();
+  context.rect(0, 0, canvas.width, canvas.height);
+  roundedRectPath(
+    context,
+    shadow.x * scale,
+    shadow.y * scale,
+    shadow.width * scale,
+    shadow.height * scale,
+    shadow.radius * scale,
+  );
+  context.clip("evenodd");
+  // CSS paints the first layer on top.
+  for (const layer of [...shadow.layers].reverse()) {
+    context.shadowColor = layer.color;
+    // Both are twice the Gaussian's standard deviation.
+    context.shadowBlur = layer.blur * scale;
+    context.shadowOffsetX = layer.x * scale + away;
+    context.shadowOffsetY = layer.y * scale;
+    context.fillStyle = "#000";
+    context.beginPath();
+    roundedRectPath(
+      context,
+      (shadow.x - layer.spread) * scale - away,
+      (shadow.y - layer.spread) * scale,
+      (shadow.width + layer.spread * 2) * scale,
+      (shadow.height + layer.spread * 2) * scale,
+      Math.max(0, shadow.radius + layer.spread) * scale,
+    );
+    context.fill();
+  }
+  context.restore();
+}
+
 function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -251,6 +396,8 @@ export async function prepareShareCard(
       dispose,
       async capture() {
         try {
+          const paperShadow = readPaperShadow(card);
+          host.dataset.capturing = "";
           const canvas = await withTimeout(
             withSettledFontsReady(async () => {
               const capture = await snapdom(card, {
@@ -263,6 +410,10 @@ export async function prepareShareCard(
             }),
             CAPTURE_TIMEOUT_MS,
           );
+          const context = canvas.getContext("2d");
+          if (paperShadow && context) {
+            paintPaperShadow(context, paperShadow, SCALE);
+          }
           const blob = await canvasToBlob(canvas);
           const { width, height } = canvas;
           canvas.width = 0;
@@ -286,5 +437,7 @@ export async function prepareShareCard(
 
 export const __testOnly = {
   cutToScreen,
+  paintPaperShadow,
+  parseBoxShadow,
   MAX_CARD_HEIGHT,
 };

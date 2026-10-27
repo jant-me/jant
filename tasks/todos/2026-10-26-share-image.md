@@ -265,6 +265,18 @@ takes one needs a real phone).
       prefix), once when the site's name already is it; the QR code
       still points at the post. Route tests for the address, a path
       prefix, and a name that is the domain.
+- [x] Pictures made on an iPhone came out soft (a reader's report), text
+      and images alike. snapdom draws a capture holding any box-shadow or
+      text-shadow at 1x in Safari and stretches it to the scale asked for,
+      and the paper's shadow and the Thread dots' halos were box-shadows.
+      The capture now turns shadows off (`.share-card-host[data-capturing]`)
+      and paints the paper's shadow back on the canvas
+      (`paintPaperShadow`, read from the paper's computed style, so dark
+      mode paints none); the rail breaks around each dot instead of running
+      under a halo, and the current dot's ring is a border. SSIM of the
+      card's copy against the source scaled to size, WebKit: one image
+      0.960 → 0.981, two 0.950 → 0.964, level with Chromium (0.982, 0.963).
+      Chromium card before/after 0.9994.
 - [ ] Owen tries it on his own site/devices.
 
 ## Results
