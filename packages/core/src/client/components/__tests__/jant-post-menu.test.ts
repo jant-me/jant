@@ -2,9 +2,16 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { showConfirmDialogMock, showToastMock } = vi.hoisted(() => ({
+const {
+  showConfirmDialogMock,
+  showToastMock,
+  openShareImageMock,
+  warmShareImageMock,
+} = vi.hoisted(() => ({
   showConfirmDialogMock: vi.fn(),
   showToastMock: vi.fn(),
+  openShareImageMock: vi.fn(),
+  warmShareImageMock: vi.fn(),
 }));
 
 // Paths are relative to the *component*, which lives one level up from this
@@ -25,6 +32,12 @@ vi.mock("../../confirm.js", () => ({
 
 vi.mock("../../toast.js", () => ({
   showToast: showToastMock,
+}));
+
+// The share dialog ships in its own bundle; the menu only hands it the post.
+vi.mock("../../share-launch.js", () => ({
+  openShareImage: openShareImageMock,
+  warmShareImage: warmShareImageMock,
 }));
 
 import { JantPostMenu, removeLeadingFeedDivider } from "../jant-post-menu.js";
@@ -154,6 +167,8 @@ describe("JantPostMenu", () => {
     setViewport(1024, 768);
     showConfirmDialogMock.mockReset();
     showToastMock.mockReset();
+    openShareImageMock.mockReset();
+    warmShareImageMock.mockReset();
     vi.stubGlobal(
       "fetch",
       vi.fn((input: unknown, init?: globalThis.RequestInit) => {
@@ -725,6 +740,56 @@ describe("JantPostMenu", () => {
 
     confirmation.resolve(false);
     await Promise.resolve();
+  });
+
+  describe("Share as image", () => {
+    it("hands the post to the share dialog and closes", async () => {
+      const { menu, trigger } = await createMenu();
+
+      click(trigger);
+      await menu.updateComplete;
+      const item = requireElement(
+        menu.querySelector<HTMLElement>("[data-post-menu-share-image]"),
+        "expected Share as image in the menu",
+      );
+      expect(item.textContent).toContain("Share as image");
+
+      click(item);
+      await menu.updateComplete;
+
+      expect(openShareImageMock).toHaveBeenCalledWith("post-1", trigger);
+      expect(menu.querySelector("[data-post-menu-share-image]")).toBeNull();
+    });
+
+    // So picking the item has no bundle left to wait for.
+    it("starts loading the share dialog when the menu opens", async () => {
+      const { menu, trigger } = await createMenu();
+
+      click(trigger);
+      await menu.updateComplete;
+
+      expect(warmShareImageMock).toHaveBeenCalledTimes(1);
+    });
+
+    // The image carries a QR code to the post; a reader cannot open a draft
+    // or a Private post at that address.
+    it.each([
+      ["a Private post", "data-post-visibility", "private"],
+      ["a draft", "data-post-draft", ""],
+    ])("is not offered for %s", async (_label, attribute, value) => {
+      const { menu, trigger } = await createMenu();
+      requireElement(
+        document.querySelector("article"),
+        "expected the post article",
+      ).setAttribute(attribute, value);
+
+      click(trigger);
+      await menu.updateComplete;
+
+      expect(menu.textContent).toContain("Edit");
+      expect(menu.querySelector("[data-post-menu-share-image]")).toBeNull();
+      expect(warmShareImageMock).not.toHaveBeenCalled();
+    });
   });
 
   describe("language panel", () => {

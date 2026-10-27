@@ -24,6 +24,8 @@ const AUTHOR_ONLY = [
   "confirm",
   "draft",
   "theme-preview",
+  // "Share as image": the dialog and the card it captures.
+  "share",
   // The floating compose button on phones, and the page modifier that keeps
   // room for it. Reader layout renders both, but only for a signed-in author.
   "site-mobile-compose",

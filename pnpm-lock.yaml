@@ -253,6 +253,9 @@ importers:
       '@types/yazl':
         specifier: ^3.3.1
         version: 3.3.1
+      '@zumer/snapdom':
+        specifier: ^3.4.0
+        version: 3.4.0
       basecoat-css:
         specifier: ^0.3.11
         version: 0.3.11
@@ -2476,6 +2479,9 @@ packages:
 
   '@vitest/utils@4.1.11':
     resolution: {integrity: sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==}
+
+  '@zumer/snapdom@3.4.0':
+    resolution: {integrity: sha512-V+hMcFtsZmFCiqzwZjTOFvEDtaz+Bt6Tp4qpftQPcxjIFdziYVXdpovs33mCxrFys0sixAeWc9q6QkSR4Vv8cQ==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -7098,6 +7104,8 @@ snapshots:
       '@vitest/pretty-format': 4.1.11
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.1
+
+  '@zumer/snapdom@3.4.0': {}
 
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:
