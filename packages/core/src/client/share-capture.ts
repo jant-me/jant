@@ -23,6 +23,14 @@ const MAX_CARD_HEIGHT = 1170;
 const SCALE = 3;
 /** Lines of a paragraph that may run under the fade at the cut. */
 const FADE_MIN_LINES = 3;
+/**
+ * Blocks a cut may end between, wherever they sit: a list or a quotation is
+ * cut between the paragraphs inside it, so a body that is one long list
+ * still shows how it starts.
+ */
+const CUT_BLOCKS = "p, h1, h2, h3, h4, h5, h6, pre, table";
+/** Blocks whose lines may run on under the fade. */
+const RUN_ON_BLOCKS = new Set(["P", "PRE"]);
 const FONTS_SETTLE_CAP_MS = 2_000;
 /** How long one of snapdom's reads of `fonts.ready` may wait. */
 const SNAPDOM_FONTS_CAP_MS = 1_000;
@@ -139,8 +147,9 @@ async function settle(card: HTMLElement): Promise<void> {
 /**
  * Cut the body so the card fits one screen. The summary already decided the
  * text; this only steps in when the summary is still too tall, as a long
- * untitled note can be. The cut lands between blocks: a paragraph may run on
- * under a fade, but the card never ends on a heading.
+ * untitled note can be, or a titled one whose first block is a long list.
+ * The cut lands between blocks ({@link CUT_BLOCKS}): a paragraph or code may
+ * run on under a fade, but the card never ends on a heading.
  */
 function cutToScreen(card: HTMLElement): void {
   const body = card.querySelector<HTMLElement>("[data-share-card-body]");
@@ -154,26 +163,37 @@ function cutToScreen(card: HTMLElement): void {
   // leave a card with nothing to read; let it run taller instead.
   if (budget < FADE_MIN_LINES * lineHeight) return;
 
-  // Positioned, so block offsets are measured from the body's own top.
-  body.classList.add("is-cut");
-  const blocks = Array.from(body.children) as HTMLElement[];
-  const visible = blocks.filter(
-    (block) => block.offsetTop + block.offsetHeight <= budget,
-  );
-  const next = blocks[visible.length];
+  const bodyTop = body.getBoundingClientRect().top;
+  const blocks = Array.from(body.querySelectorAll<HTMLElement>(CUT_BLOCKS))
+    .filter((block) => !block.parentElement?.closest("pre, table"))
+    .map((block) => {
+      const rect = block.getBoundingClientRect();
+      return {
+        tagName: block.tagName,
+        top: rect.top - bodyTop,
+        bottom: rect.bottom - bodyTop,
+      };
+    })
+    // Hidden ones, such as the footnotes, take no room.
+    .filter((block) => block.bottom > block.top);
+  const overflowing = blocks.findIndex((block) => block.bottom > budget);
+  const visible = overflowing === -1 ? blocks : blocks.slice(0, overflowing);
+  const next = overflowing === -1 ? undefined : blocks[overflowing];
 
   let cut: number;
   if (
-    next?.tagName === "P" &&
-    budget - next.offsetTop >= FADE_MIN_LINES * lineHeight
+    next &&
+    RUN_ON_BLOCKS.has(next.tagName) &&
+    budget - next.top >= FADE_MIN_LINES * lineHeight
   ) {
     cut = budget;
   } else {
     while (/^H[1-6]$/.test(visible.at(-1)?.tagName ?? "")) visible.pop();
-    const last = visible.at(-1);
-    cut = last ? last.offsetTop + last.offsetHeight : 0;
+    // A body that opens with a block taller than the screen shows its start.
+    cut = visible.at(-1)?.bottom ?? budget;
   }
 
+  body.classList.add("is-cut");
   body.style.maxHeight = `${Math.max(0, Math.floor(cut))}px`;
   const fade = document.createElement("div");
   fade.className = "share-card-fade";
@@ -263,3 +283,8 @@ export async function prepareShareCard(
     throw error;
   }
 }
+
+export const __testOnly = {
+  cutToScreen,
+  MAX_CARD_HEIGHT,
+};

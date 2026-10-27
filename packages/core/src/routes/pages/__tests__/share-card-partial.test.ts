@@ -265,6 +265,32 @@ describe("/_/share-card/:postId", () => {
     expect(html).toContain('class="share-card-more-images">+1<');
   });
 
+  it("gives a lone image its stored size, so the card keeps its shape", async () => {
+    const { app, services } = createPartialTestApp({ authenticated: true });
+    const post = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "One screenshot.",
+      status: "published",
+    });
+    await services.media.create({
+      postId: post.id,
+      filename: "chat.png",
+      originalName: "chat.png",
+      mimeType: "image/png",
+      size: 2048,
+      storageKey: `media/${DEFAULT_TEST_SITE_ID}/chat.png`,
+      width: 1620,
+      height: 680,
+    });
+
+    const html = await (await app.request(`/_/share-card/${post.id}`)).text();
+
+    expect(html).toContain('data-count="1"');
+    expect(html).toContain(
+      `<img src="/media/${DEFAULT_TEST_SITE_ID}/chat.png" alt="" width="1620" height="680"`,
+    );
+  });
+
   it("shows a video by its poster, marked as a video", async () => {
     const { app, services } = createPartialTestApp({ authenticated: true });
     const post = await services.posts.create({

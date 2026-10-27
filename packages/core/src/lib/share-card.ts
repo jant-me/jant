@@ -69,6 +69,12 @@ export interface ShareCardImage {
   url: string;
   /** A video's poster: the card marks it as one. */
   video: boolean;
+  /**
+   * Pixel size, when stored. A lone image keeps its own shape on the card,
+   * and the size lets the card lay it out before the image loads.
+   */
+  width?: number;
+  height?: number;
 }
 
 /**
@@ -214,6 +220,13 @@ function storagePath(storageKey: string, sitePathPrefix: string): string {
   return toPublicPath(`/${storageKey}`, sitePathPrefix);
 }
 
+/** The stored pixel size of an image or a video, when it has one. */
+function imageSize(item: Media): Pick<ShareCardImage, "width" | "height"> {
+  return item.width && item.height
+    ? { width: item.width, height: item.height }
+    : {};
+}
+
 function cardImages(
   media: Media[],
   previewImageKey: string | null,
@@ -225,11 +238,13 @@ function cardImages(
       visuals.push({
         url: storagePath(item.storageKey, sitePathPrefix),
         video: false,
+        ...imageSize(item),
       });
     } else if (item.mimeType.startsWith("video/") && item.posterKey) {
       visuals.push({
         url: storagePath(item.posterKey, sitePathPrefix),
         video: true,
+        ...imageSize(item),
       });
     }
   }

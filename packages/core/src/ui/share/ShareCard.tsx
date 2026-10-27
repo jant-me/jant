@@ -6,7 +6,8 @@
  * white of a chat or a feed. Images run across the top of the paper; below
  * them the date, the post set large in the site's fonts with each format's
  * own marks, the files a picture cannot show, and a footer that says whose
- * site it is and how to get there.
+ * site it is and how to get there. A lone image keeps its own shape, cut
+ * only past 4:5 tall; two or more share a grid of fixed frames.
  *
  * A post in a Thread sits on the Thread's rail, as the timeline shows a
  * Thread's newest post: the Thread's first post above it in up to three
@@ -81,7 +82,12 @@ const Images: FC<{ card: ShareCardView }> = ({ card }) => {
     <div class="share-card-images" data-count={String(card.images.length)}>
       {card.images.map((image, index) => (
         <div class="share-card-image">
-          <img src={image.url} alt="" />
+          <img
+            src={image.url}
+            alt=""
+            width={image.width}
+            height={image.height}
+          />
           {image.video && (
             <span class="share-card-play" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="currentColor">

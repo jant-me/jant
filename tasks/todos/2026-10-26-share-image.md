@@ -171,6 +171,35 @@ lines of context read as too busy):
       (minor) and a "Share a post as an image" section in
       `docs/writing-and-organizing.md` and its zh-Hans copy.
 - [x] Commit on `feat/share-image`; PR into `preview`.
+- [x] From Owen's site: a post whose body is one long list showed only its
+      title. The cut stepped over top-level blocks only and cut to 0 when
+      the first was not a paragraph (a list, a quotation, code). It now
+      cuts between the paragraphs inside lists and quotations, and shows
+      the start of a block taller than the screen. snapdom fixes each
+      item's height, so list spacing that collapsed out through an item's
+      edge was lost in the picture; it now stays inside the items. Tests in
+      `share-capture.test.ts`; captures in both engines.
+- [x] From Owen's iPhone: "Copy image" left a white block top left. The
+      toast container moves into the open dialog, where BaseCoat's
+      `.dialog > *` panel rule gave it full width and a -50% translate, so
+      the "Image copied." toast sat mostly off screen. `components.css`
+      undoes that rule for `.dialog > .toast-container`; it applied to
+      every BaseCoat dialog. Checked in WebKit and Chromium, mobile and
+      desktop.
+- [x] A lone image was framed 4:3 and cropped, which cut the sides off
+      a wide screenshot. It now keeps its own shape at full width, cut
+      from the bottom only past 4:5 tall; wide images are never cut. The
+      card carries the stored width and height so the layout is known
+      before the image loads; images without one take the loaded size.
+      Two or more keep the grid. Route test; captures of chat screenshot,
+      phone-height, 3:4, 4:3, square and a Thread reply in both engines.
+- [x] The corner close was out of a thumb's reach on a phone. At 640px and
+      below the dialog closes from a Close button at the bottom left, the
+      actions two to a row with Download bottom right, an odd one out
+      across the row; wider screens keep the corner close. Every action
+      has a Lucide icon (share, copy, download, x). Component test for the
+      bottom Close and Escape; screenshots of WebKit and Chromium phones,
+      dark mode, desktop.
 - [ ] Owen tries it on his own site/devices.
 
 ## Results

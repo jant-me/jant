@@ -7657,9 +7657,10 @@
     padding-top: 24px;
   }
 
-  /* Images run across the top of the paper. One keeps a landscape frame;
-     two stand side by side; three are one wide over two; four are two by
-     two, the last counting any more. */
+  /* Images run across the top of the paper. One keeps its own shape, as
+     the post shows it, cut from the bottom only when it is taller than 4:5
+     so the text still has room; two stand side by side; three are one wide
+     over two; four are two by two, the last counting any more. */
   .share-card-images {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -7668,6 +7669,7 @@
 
   .share-card-images[data-count="1"] {
     grid-template-columns: 1fr;
+    container-type: inline-size;
   }
 
   .share-card-image {
@@ -7678,7 +7680,14 @@
   }
 
   .share-card-images[data-count="1"] .share-card-image {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: auto;
+  }
+
+  /* Its width and height attributes, or the loaded image, give the shape. */
+  .share-card-images[data-count="1"] img {
+    height: auto;
+    max-height: 125cqi;
+    object-position: top;
   }
 
   .share-card-images[data-count="2"] .share-card-image {
@@ -7784,8 +7793,19 @@
     list-style: decimal;
   }
 
+  /* An item's spacing stays inside the list. snapdom fixes each item's
+     height in its copy, so a margin that collapses out through an item's
+     edge on the page would be gone from the picture. */
+  .share-card-body li > * {
+    margin-bottom: 8px;
+  }
+
+  .share-card-body li > :last-child {
+    margin-bottom: 0;
+  }
+
   .share-card-body li + li {
-    margin-top: 4px;
+    margin-top: 8px;
   }
 
   .share-card-body :is(h1, h2, h3, h4, h5, h6) {
@@ -8577,9 +8597,33 @@
     gap: 0.5rem;
   }
 
+  /* Wider screens close from the corner. */
+  .share-dialog-close {
+    display: none;
+  }
+
+  /* A phone closes from the bottom, in reach of a thumb: the actions two to
+     a row, Close and Download last, an odd one out across the whole row. */
   @media (max-width: 640px) {
     .share-dialog > .share-dialog-panel {
       max-width: calc(100% - 1.5rem);
+    }
+
+    .share-dialog-panel > button[aria-label="Close"] {
+      display: none;
+    }
+
+    .share-dialog .share-dialog-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .share-dialog-actions > :first-child:nth-last-child(odd) {
+      grid-column: 1 / -1;
+    }
+
+    .share-dialog .share-dialog-close {
+      display: inline-flex;
     }
   }
 }

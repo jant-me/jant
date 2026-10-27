@@ -70,6 +70,20 @@ svg[stroke-width].icon-fine {
       top: 1rem;
       right: 1rem;
     }
+
+    /* While a modal dialog is open, toast.ts mounts the container inside
+       it, where BaseCoat's `.dialog > *` styles it as the dialog's panel:
+       full width, translated to the centre, shadowed. */
+    .dialog > & {
+      width: auto;
+      max-width: none;
+      max-height: none;
+      translate: none;
+      scale: none;
+      border-radius: 0;
+      box-shadow: none;
+      transition: none;
+    }
   }
 
   .toast {
