@@ -71,6 +71,7 @@ import { announceInBackground } from "../discover-announce.js";
 import {
   DISCOVER_LANGUAGES,
   discoverIntroRuns,
+  getAuthorGroupUrl,
   getDiscoverPageUrls,
   isDiscoverLanguage,
   resolveDiscoverMode,
@@ -179,14 +180,27 @@ const DISCOVER_LANGUAGE_EXPRESSION = `${JSON.stringify(DISCOVER_LANGUAGES)}.incl
  * first one — the directory's name links to the directory for anyone who wants
  * more. Where to find the setting again is left to the screen's footnote, which
  * says it once for every answer on it.
+ *
+ * On a Chinese screen the help line goes one sentence further than the
+ * settings page's, to the Jant author group — a Chinese-language WeChat group
+ * for people who write on Jant. It picks up the community the sentence before
+ * it names. The sentence is written in Chinese here rather than kept in the
+ * catalog, since no other locale has a version of it, and it is left out when
+ * there is no directory to find the group's page from.
  */
 const DiscoverField: FC<{
   copy: DiscoverCopy;
   /** The directory's pages, or null when this deployment announces to none. */
   pages: DiscoverPageUrls | null;
+  /**
+   * The author group's page, on Chinese screens with a directory; null
+   * everywhere else, and the help line then ends where the settings page's
+   * opening does.
+   */
+  authorGroupUrl: string | null;
   /** Whether the language the form opens with is one the directory lists. */
   shown: boolean;
-}> = ({ copy, pages, shown }) => {
+}> = ({ copy, pages, authorGroupUrl, shown }) => {
   const runs = discoverIntroRuns(copy.about, copy, pages);
 
   return (
@@ -230,6 +244,20 @@ const DiscoverField: FC<{
             run.text
           ),
         )}
+        {authorGroupUrl ? (
+          <>
+            你也可以选择加入
+            <a
+              href={authorGroupUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline hover:text-foreground transition-colors"
+            >
+              Jant 作者群
+            </a>
+            。
+          </>
+        ) : null}
       </p>
     </div>
   );
@@ -454,6 +482,11 @@ export type SetupContentProps = {
        * deployment announces to no directory, and the line is then plain text.
        */
       discoverPages: DiscoverPageUrls | null;
+      /**
+       * The Jant author group's page, linked from the help line on Chinese
+       * screens. Null when this deployment announces to no directory.
+       */
+      authorGroupUrl: string | null;
     }
 );
 
@@ -489,6 +522,7 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
     discoverAvailable,
     discoverDefault,
     discoverPages,
+    authorGroupUrl,
   } = props;
 
   const searchLabel = i18n._(
@@ -511,6 +545,7 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
     <DiscoverField
       copy={getDiscoverCopy(i18n)}
       pages={discoverPages}
+      authorGroupUrl={i18n.locale === "zh-Hans" ? authorGroupUrl : null}
       shown={isDiscoverLanguage(contentLanguage)}
     />
   ) : null;
@@ -779,6 +814,7 @@ setupRoutes.get("/setup", async (c) => {
         // configuration, so this screen can never point at one directory while
         // the site announces to another.
         discoverPages={getDiscoverPageUrls(getDiscoverDirectoryBaseUrl(c.env))}
+        authorGroupUrl={getAuthorGroupUrl(getDiscoverDirectoryBaseUrl(c.env))}
         contentLanguage={
           // On a named site the control plane's guess is already stored, so
           // offering it back is offering the site's current language. On an

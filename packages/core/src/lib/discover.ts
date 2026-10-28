@@ -340,6 +340,37 @@ export function getDiscoverSubmitUrl(
   }
 }
 
+/**
+ * Where the Jant author group's WeChat QR code is, derived from the
+ * directory's base address.
+ *
+ * The group is a Chinese-language WeChat group for people who write on Jant,
+ * and its QR code lives on the contact page of the same control plane that
+ * runs the directory — so, like the submission form, it is found from the one
+ * address this deployment already has. The path is the Chinese page at its
+ * WeChat section, because only Chinese screens link to it.
+ *
+ * @param directoryBaseUrl - The directory this deployment belongs to, from
+ *   `getDiscoverDirectoryBaseUrl`
+ * @returns Absolute URL of the group's section, or `null` when there is no
+ *   directory
+ * @example
+ * ```ts
+ * getAuthorGroupUrl("https://jant.me/");
+ * // "https://jant.me/zh-hans/contact#wechat"
+ * ```
+ */
+export function getAuthorGroupUrl(
+  directoryBaseUrl: string | undefined | null,
+): string | null {
+  if (!directoryBaseUrl) return null;
+  try {
+    return new URL("/zh-hans/contact#wechat", directoryBaseUrl).toString();
+  } catch {
+    return null;
+  }
+}
+
 /** One run of a sentence, and where it links when it is a link. */
 export interface TextRun {
   text: string;
