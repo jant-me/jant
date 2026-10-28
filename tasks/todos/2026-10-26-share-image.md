@@ -63,8 +63,11 @@ B, a full-bleed magazine page):
   domain with the site's link icon and the title at 32 px; quote mark and
   quote text in the serif stack, sized by length (29 / 25 / 21 px), the
   source after a short rule, the author's comment quieter below.
-- "…" when the summary stops short of the post (hidden when the capture
-  already cut and faded the body).
+- When the summary stops short of the post, its last two lines fade into
+  the paper (`.share-card-body.has-more::after`, at most half the body, so a
+  one-line summary stays readable); a body the capture cut keeps only its
+  own fade. "…" remains for a post with no words to fade. Discover's card
+  does the same.
 - Files a picture cannot show — documents (PDF, ePub, …), recordings,
   attached texts, videos without a poster — listed under the text, up to
   three and "+N": a slip with the format in capitals (from the extension,

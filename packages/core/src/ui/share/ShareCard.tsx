@@ -116,10 +116,11 @@ const Avatar: FC<{ card: ShareCardView }> = ({ card }) => {
   ) : null;
 };
 
+/** The words; when the summary stops short of the post, its end fades. */
 const Body: FC<{ card: ShareCardView }> = ({ card }) =>
   card.bodyHtml ? (
     <div
-      class="share-card-body"
+      class={card.hasMore ? "share-card-body has-more" : "share-card-body"}
       data-share-card-body
       dangerouslySetInnerHTML={{ __html: card.bodyHtml }}
     />
@@ -178,7 +179,7 @@ const PostContent: FC<{ card: ShareCardView; imagesInside?: boolean }> = ({
 
       <Body card={card} />
 
-      {card.hasMore && (
+      {card.hasMore && !card.bodyHtml && (
         <div class="share-card-more" aria-hidden="true">
           …
         </div>

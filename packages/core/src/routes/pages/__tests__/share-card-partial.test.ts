@@ -167,11 +167,12 @@ describe("/_/share-card/:postId", () => {
 
     expect(html).toContain('data-layout="article"');
     expect(html).toContain('class="share-card-title">A Bicycle Café<');
-    // Titled posts take the article summary: five blocks, then a mark that
-    // there is more.
+    // Titled posts take the article summary: five blocks, the last fading
+    // to say there is more.
     expect(html).toContain("Paragraph 5.");
     expect(html).not.toContain("Paragraph 6.");
-    expect(html).toContain("share-card-more");
+    expect(html).toContain('class="share-card-body has-more"');
+    expect(html).not.toContain('class="share-card-more"');
   });
 
   it("stops where the author put the read-more break", async () => {
@@ -217,7 +218,9 @@ describe("/_/share-card/:postId", () => {
 
     const html = await (await app.request(`/_/share-card/${post.id}`)).text();
 
-    expect(html).not.toContain("share-card-more");
+    expect(html).toContain('class="share-card-body"');
+    expect(html).not.toContain("has-more");
+    expect(html).not.toContain('class="share-card-more"');
   });
 
   it("sets a short quote large, with who said it and where", async () => {

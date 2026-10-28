@@ -276,12 +276,33 @@
     display: none;
   }
 
-  /* The summary stops short of the post; the way on is the QR code. A body
-     the capture cut already fades out, which says the same. */
-  .share-card-body.is-cut + .share-card-more {
-    display: none;
+  /* The summary stops short of the post: its last two lines fade into the
+     paper, as at a cut, and the way on is the QR code. A short summary fades
+     its lower half, so a line or two stays readable. */
+  .share-card-body.has-more {
+    position: relative;
   }
 
+  .share-card-body.has-more::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: min(2lh, 50%);
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--share-card-paper)
+    );
+  }
+
+  /* A body the capture cut brings its own fade. */
+  .share-card-body.is-cut::after {
+    content: none;
+  }
+
+  /* The same, for a post with no words to fade. */
   .share-card-more {
     margin-top: 6px;
     font-family: var(--font-heading);
