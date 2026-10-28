@@ -8,7 +8,8 @@
 
 Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体之间：表达像发动态一样轻，内容又像博客一样归你自己。它有 Note、Link、Quote 三种基本格式，帖子可以串成 Thread，也可以归到 Collection 里。
 
-![Jant Home](https://jant-me-media.jant.me/assets/jant-home-800-0816.png)
+<img width="1386" height="1680" alt="image" src="https://github.com/user-attachments/assets/578c65c8-d357-426b-9211-92424afd1ec4" />
+
 
 名字来自 _Jantelagen_（詹代法则）——出自一部 1933 年的北欧讽刺小说，常被概括为"别炫耀、别攀比"。
 
