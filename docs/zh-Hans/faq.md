@@ -106,7 +106,7 @@ feeds。内容会立即显示在网页上，等待的只有 feed 分发。这段
 
 - [GitHub Issues](https://github.com/jant-me/jant/issues) —— bug 和功能请求
 - 邮件 `support#jant.me`（请把 `#` 换成 `@`）—— 托管账户问题
-- 微信 `heyitsowen`，添加时备注「加 Jant 用户群」—— 中文用户交流
+- Jant 作者群 —— 群内会讨论 Jant、写作和阅读等话题。添加微信 `heyitsowen`，备注「加 Jant 作者群」，二维码见[联系页面](https://jant.me/zh-hans/contact)
 
 ## AI agent 能发帖吗？
 
