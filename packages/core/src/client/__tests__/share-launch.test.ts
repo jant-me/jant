@@ -81,14 +81,55 @@ describe("openShareImage", () => {
     expect(dialog()?.open).toHaveBeenCalledTimes(2);
   });
 
-  it("reports a stylesheet that fails, and links it again next time", async () => {
+  it("tries a failed stylesheet once more before giving up", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { openShareImage } = await import("../share-launch.js");
+
+    const opening = openShareImage("post-1");
+    await vi.waitFor(() => expect(linked).toHaveLength(1));
+    linked[0]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(linked).toHaveLength(2));
+    expect(linked[1]!.getAttribute("href")).toBe(STYLESHEET);
+    linked[1]!.dispatchEvent(new Event("load"));
+    await opening;
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(showToastMock).not.toHaveBeenCalled();
+    expect(dialog()?.open).toHaveBeenCalledTimes(1);
+  });
+
+  it("tries a failed bundle once more before giving up", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    ensureShareMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+    const { openShareImage } = await import("../share-launch.js");
+
+    const opening = openShareImage("post-1");
+    await vi.waitFor(() => expect(linked).toHaveLength(1));
+    linked[0]!.dispatchEvent(new Event("load"));
+    await opening;
+
+    expect(ensureShareMock).toHaveBeenCalledTimes(2);
+    expect(linked).toHaveLength(1);
+    expect(showToastMock).not.toHaveBeenCalled();
+    expect(dialog()?.open).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a stylesheet that fails twice, and links it again next time", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { openShareImage } = await import("../share-launch.js");
 
     const failing = openShareImage("post-1");
     await vi.waitFor(() => expect(linked).toHaveLength(1));
     linked[0]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(linked).toHaveLength(2));
+    linked[1]!.dispatchEvent(new Event("error"));
     await failing;
 
+    expect(error).toHaveBeenCalledWith(
+      "[jant] share: could not load",
+      new Error(`Could not load ${STYLESHEET}`),
+    );
     expect(showToastMock).toHaveBeenCalledWith(
       "Could not open sharing. Check your connection and try again.",
       "error",
@@ -96,8 +137,8 @@ describe("openShareImage", () => {
     expect(dialog()).toBeNull();
 
     const retry = openShareImage("post-1");
-    await vi.waitFor(() => expect(linked).toHaveLength(2));
-    linked[1]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(linked).toHaveLength(3));
+    linked[2]!.dispatchEvent(new Event("load"));
     await retry;
 
     expect(dialog()?.open).toHaveBeenCalledTimes(1);

@@ -327,6 +327,19 @@ second 1620×2316, quote 1620×1836, last 1620×1272; Chromium 236 ms.
 Light and dark checked; the card's rail is a step stronger than the
 timeline's threadline, which all but vanished on dark paper.
 
+Load retry (a reader on www.owenyoung.com once got "Could not open
+sharing", not reproduced): with the bundle or the stylesheet dropped by a
+Playwright route, Chromium and WebKit both fetch a failed dynamic import
+again. Warm-up and first try dropped → the retry opens the image; three
+dropped → the toast, with the cause in the console.
+
+1:1 check: a 1410 px wide test chart (zone plate, 1 px stripes and
+checks, 9 px type) uploaded as is through the API. At 1410×939 the
+card's photo area matches the chart pixel for pixel in WebKit and
+Chromium. At 1410×940 (313.33 CSS px tall) snapdom lays the image out at
+313, so it is drawn 939 px tall and 1 px stripes go grey in places; left
+as is, since only an image exactly 1410 px wide shows it.
+
 Not verified: a real iPhone or Android phone (`/__dev/login` only answers
 on local hostnames, so a phone has to sign in with the demo account at the
 LAN address); WeChat in-app browser.

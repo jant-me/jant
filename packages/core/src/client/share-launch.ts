@@ -52,10 +52,43 @@ function ensureShareStyles(): Promise<void> {
   }));
 }
 
+/** Wait for the bundle and the stylesheet, and return what failed. */
+async function settleShareLoads(): Promise<unknown[]> {
+  const results = await Promise.allSettled([
+    ensureShare(),
+    ensureShareStyles(),
+  ]);
+  return results.flatMap((result) =>
+    result.status === "rejected" ? [result.reason] : [],
+  );
+}
+
+/**
+ * Load the share bundle and its styles, trying once more what fails: a
+ * dropped request is the usual cause, and both loads forget a failure. Both
+ * settle before the retry, so neither is still on its first try.
+ *
+ * @returns Whether both loaded
+ */
+async function loadShare(): Promise<boolean> {
+  let failures = await settleShareLoads();
+  if (failures.length > 0) {
+    // eslint-disable-next-line no-console -- the toast names no cause; the console keeps it
+    console.warn("[jant] share: loading failed, trying again", ...failures);
+    failures = await settleShareLoads();
+  }
+  if (failures.length > 0) {
+    // eslint-disable-next-line no-console -- the toast names no cause; the console keeps it
+    console.error("[jant] share: could not load", ...failures);
+    return false;
+  }
+  return true;
+}
+
 /**
  * Start loading the share bundle and its styles, so the dialog opens without
  * waiting for them. Out of the way of the menu's first frame; a failure is
- * left for {@link openShareImage} to report.
+ * left for {@link openShareImage} to retry and report.
  */
 export function warmShareImage(): void {
   setTimeout(() => {
@@ -84,9 +117,7 @@ export async function openShareImage(
     return card;
   };
 
-  try {
-    await Promise.all([ensureShare(), ensureShareStyles()]);
-  } catch {
+  if (!(await loadShare())) {
     showToast(
       "Could not open sharing. Check your connection and try again.",
       "error",
