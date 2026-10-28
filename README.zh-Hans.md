@@ -5,11 +5,12 @@
 > 在线演示：[demo.jant.me](https://demo.jant.me)（演示账号已自动填充，数据每日清空）
 >
 > 你也可以查看作者的博客作为参考：[www.owenyoung.com](https://www.owenyoung.com/)
+>
+> 可以加入 [Jant 作者群](https://jant.me/zh-hans/contact#wechat)，群内会讨论 Jant、写作和阅读等话题。
 
 Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体之间：表达像发动态一样轻，内容又像博客一样归你自己。它有 Note、Link、Quote 三种基本格式，帖子可以串成 Thread，也可以归到 Collection 里。
 
 <img width="1386" height="1680" alt="image" src="https://github.com/user-attachments/assets/578c65c8-d357-426b-9211-92424afd1ec4" />
-
 
 名字来自 _Jantelagen_（詹代法则）——出自一部 1933 年的北欧讽刺小说，常被概括为"别炫耀、别攀比"。
 
