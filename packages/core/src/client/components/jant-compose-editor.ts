@@ -1130,6 +1130,7 @@ export class JantComposeEditor extends LitElement {
       },
       imageNodeLabels: getInlineImageNodeLabels(this.labels),
       tableControlLabels: this.labels.tableControls,
+      highlightLabel: this.labels.highlight,
     });
     this._lastEditorSelection = this._readEditorSelection();
     // An editor built from existing content — after a format switch, or on a

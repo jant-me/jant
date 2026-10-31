@@ -36,6 +36,10 @@ The shared schema supports:
 - Paragraphs
 - Headings `#` through `###`
 - Bold, italic, strike, inline code
+- Highlighted text using `==text==`, stored as the `highlight` mark and rendered
+  as semantic `<mark>` HTML. Inline formatting can nest inside highlights; code
+  spans and fenced code keep literal delimiters. Hugo exports enable Goldmark’s
+  mark extension to preserve the same syntax.
 - Links
 - Bullet lists and ordered lists. Ordered-list markers are digits, as in
   CommonMark: `PS. note`, `Mr. Smith`, `a. item`, and `IV. part` are
@@ -322,3 +326,12 @@ When adding or changing Markdown behavior:
    import/export commands
 
 If a change does not update those layers together, the contract is incomplete.
+
+## Highlight Editing
+
+Typing `==text==` applies a highlight and removes the delimiters. The selection
+toolbar places Highlight beside Italic. Like Bold and Italic, applying Highlight
+collapses the selection to its end and leaves subsequent typing unhighlighted.
+Selecting highlighted text and pressing Highlight again removes it; Clear
+Formatting also removes highlights. Rich HTML paste accepts `<mark>` elements,
+and Markdown paste and full-document copy use the shared `==text==` syntax.

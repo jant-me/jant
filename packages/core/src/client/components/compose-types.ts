@@ -347,6 +347,7 @@ export interface ComposeLabels {
   editing: string;
   composeDialogLabel: string;
   slashHint: string;
+  highlight: string;
   tableControls: TableControlLabels;
   collectionFormLabels: CollectionFormLabels;
 }

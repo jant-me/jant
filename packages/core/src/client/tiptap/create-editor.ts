@@ -27,6 +27,7 @@ export interface CreateEditorOptions {
   onBlur?: () => void;
   onSelectionUpdate?: (selection: { from: number; to: number }) => void;
   toolbarMode?: FormattingToolbarMode;
+  highlightLabel?: string;
   pasteMedia?: PasteMediaOptions;
   rehostImages?: RehostImagesOptions;
   imageNodeLabels?: Partial<ImageNodeLabels>;
@@ -45,6 +46,7 @@ export function createTiptapEditor(options: CreateEditorOptions): Editor {
     extensions: createEditorExtensions({
       placeholder: options.placeholder,
       toolbarMode: options.toolbarMode,
+      highlightLabel: options.highlightLabel,
       pasteMedia: options.pasteMedia,
       rehostImages: options.rehostImages,
       imageNodeLabels: options.imageNodeLabels,

@@ -2970,6 +2970,7 @@ export class JantComposeDialog extends LitElement {
         content,
         toolbarMode: "compose",
         tableControlLabels: this.labels.tableControls,
+        highlightLabel: this.labels.highlight,
       });
       this._focusAttachedEditorBoundary(content);
     });

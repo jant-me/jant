@@ -888,6 +888,12 @@ export const ComposeForm: FC<ComposeFormProps> = ({
           "@context: First-use hint shown over the compose editor to surface the slash command menu",
       }),
     ),
+    highlight: i18n._(
+      msg({
+        message: "Highlight",
+        comment: "@context: Selection toolbar button that highlights text",
+      }),
+    ),
     tableControls: {
       toolbarLabel: i18n._(
         msg({

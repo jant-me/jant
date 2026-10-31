@@ -1177,6 +1177,11 @@ msgstr "Hide the original"
 msgid "Highest rated"
 msgstr "Highest rated"
 
+#. @context: Selection toolbar button that highlights text
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Highlight"
+msgstr "Highlight"
+
 #. @context: Description for the apple touch icon asset card
 #: src/ui/pages/BrandPage.tsx
 msgid "Home screen icon for iPhone and iPad shortcuts."

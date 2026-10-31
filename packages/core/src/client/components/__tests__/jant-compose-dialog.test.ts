@@ -297,6 +297,7 @@ const labels: ComposeLabels = {
   editing: "Editing",
   composeDialogLabel: "Compose",
   slashHint: "Type / for commands",
+  highlight: "Highlight",
   tableControls: {
     toolbarLabel: "Table controls",
     addRowAbove: "Add row above",

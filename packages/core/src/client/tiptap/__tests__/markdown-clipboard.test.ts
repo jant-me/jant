@@ -997,3 +997,18 @@ describe("MarkdownClipboard", () => {
     ).toBe("none");
   });
 });
+
+describe("highlight clipboard", () => {
+  it.each([
+    ["==重点==", "", ""],
+    ["重点", "<p><mark>重点</mark></p>", ""],
+    ["重点", "<p>重点</p>", "==重点=="],
+  ])("preserves highlight paste (%s, %s, %s)", (plain, html, markdown) => {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = createTiptapEditor({ element });
+    editors.push(editor);
+    dispatchMarkdownPaste(editor, plain, html, markdown);
+    expect(editor.getHTML()).toBe("<p><mark>重点</mark></p>");
+  });
+});

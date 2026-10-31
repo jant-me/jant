@@ -3,18 +3,22 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
+import type { EditorExtensionOptions } from "../extensions.js";
 import { createEditorExtensions } from "../extensions.js";
 import { clearFormatting, toggleMarkAndExit } from "../bubble-menu.js";
 
 const editors: Editor[] = [];
 
-function createEditor(content: string): Editor {
+function createEditor(
+  content: string,
+  options: EditorExtensionOptions = {},
+): Editor {
   const element = document.createElement("div");
   document.body.appendChild(element);
 
   const editor = new Editor({
     element,
-    extensions: createEditorExtensions(),
+    extensions: createEditorExtensions(options),
     content,
   });
 
@@ -107,4 +111,32 @@ describe("bubble menu actions on a document-wide selection", () => {
 
     expect(editor.getHTML()).toBe("<p>A heading</p><p>bold and italic</p>");
   });
+});
+
+describe("highlight toolbar", () => {
+  it.each(["compose", "default"] as const)(
+    "highlights through the %s toolbar and clears formatting",
+    (toolbarMode) => {
+      const editor = createEditor("<p>重点</p>", {
+        toolbarMode,
+        highlightLabel: "高亮",
+      });
+      editor.commands.setTextSelection({ from: 1, to: 3 });
+      const menu = getBubbleMenu(editor);
+      const button = menu.querySelector<HTMLButtonElement>(
+        'button[aria-label="高亮"]',
+      );
+      expect(button?.previousElementSibling?.getAttribute("title")).toBe(
+        "Italic",
+      );
+      button?.click();
+      expect(editor.getHTML()).toBe("<p><mark>重点</mark></p>");
+      expect(editor.state.selection.empty).toBe(true);
+      expect(editor.state.storedMarks ?? []).toHaveLength(0);
+      editor.commands.setTextSelection({ from: 1, to: 3 });
+      expect(button?.getAttribute("aria-pressed")).toBe("true");
+      clearFormatting(editor);
+      expect(editor.getHTML()).toBe("<p>重点</p>");
+    },
+  );
 });
