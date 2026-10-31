@@ -1877,6 +1877,8 @@ function buildHugoToml(config: SiteConfig): string {
     "  [markup.goldmark]",
     "    [markup.goldmark.renderer]",
     "      unsafe = true",
+    "    [markup.goldmark.extensions.extras.mark]",
+    "      enable = true",
     "",
     // Emit an Atom 2005 feed at the site root (/index.xml). Per-section
     // feeds (featured, archive, each collection) are opted in via each

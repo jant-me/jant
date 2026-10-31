@@ -31,6 +31,7 @@ const bubbleMenuKey = new PluginKey("bubbleMenu");
 // SVG icons (16×16, stroke-based)
 const ICONS = {
   bold: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H6V4h8a4 4 0 0 1 0 8"/></svg>`,
+  highlight: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 8-8 4 4-8 8-4-4Z"/><path d="m9 11-3 3 4 4 3-3M6 14l-3 7 7-3M3 21h7"/></svg>`,
   italic: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>`,
   h1: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="M17 12l3-2v10"/></svg>`,
   h2: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1"/></svg>`,
@@ -169,6 +170,7 @@ export function clearFormatting(editor: Editor): void {
 function getButtons(
   editor: Editor,
   toolbarMode: FormattingToolbarMode,
+  highlightLabel: string,
 ): BubbleBtn[] {
   if (toolbarMode === "compose") {
     return [
@@ -185,6 +187,13 @@ function getButtons(
         title: "Italic",
         action: () => toggleMarkAndExit(editor, "italic"),
         isActive: () => editor.isActive("italic"),
+      },
+      {
+        key: "highlight",
+        icon: ICONS.highlight,
+        title: highlightLabel,
+        action: () => toggleMarkAndExit(editor, "highlight"),
+        isActive: () => editor.isActive("highlight"),
       },
       {
         key: "sep",
@@ -230,6 +239,13 @@ function getButtons(
       title: "Italic",
       action: () => toggleMarkAndExit(editor, "italic"),
       isActive: () => editor.isActive("italic"),
+    },
+    {
+      key: "highlight",
+      icon: ICONS.highlight,
+      title: highlightLabel,
+      action: () => toggleMarkAndExit(editor, "highlight"),
+      isActive: () => editor.isActive("highlight"),
     },
     {
       key: "h1",
@@ -281,12 +297,14 @@ export const BubbleMenu = Extension.create({
   addOptions() {
     return {
       toolbarMode: "default" as FormattingToolbarMode,
+      highlightLabel: "Highlight",
     };
   },
 
   addProseMirrorPlugins() {
     const editor = this.editor;
     const toolbarMode = this.options.toolbarMode as FormattingToolbarMode;
+    const highlightLabel = this.options.highlightLabel;
     let el: HTMLElement | null = null;
     let buttons: BubbleBtn[] = [];
     const btnEls: Map<string, HTMLButtonElement> = new Map();
@@ -298,7 +316,7 @@ export const BubbleMenu = Extension.create({
       el.style.position = "fixed";
       el.style.display = "none";
 
-      buttons = getButtons(editor, toolbarMode);
+      buttons = getButtons(editor, toolbarMode, highlightLabel);
       for (const btn of buttons) {
         if (btn.key === "sep") {
           const sep = document.createElement("span");
@@ -310,11 +328,12 @@ export const BubbleMenu = Extension.create({
         b.type = "button";
         b.innerHTML = btn.icon;
         b.title = btn.title;
+        b.setAttribute("aria-label", btn.title);
         b.className = "tiptap-bubble-btn";
         b.addEventListener("mousedown", (e) => {
           e.preventDefault();
-          btn.action(editor.view);
         });
+        b.addEventListener("click", () => btn.action(editor.view));
         el.appendChild(b);
         btnEls.set(btn.key, b);
       }
@@ -372,7 +391,11 @@ export const BubbleMenu = Extension.create({
       for (const btn of buttons) {
         if (btn.key === "sep") continue;
         const b = btnEls.get(btn.key);
-        if (b) b.classList.toggle("is-active", btn.isActive(editor.view));
+        if (b) {
+          const active = btn.isActive(editor.view);
+          b.classList.toggle("is-active", active);
+          b.setAttribute("aria-pressed", String(active));
+        }
       }
     }
 

@@ -318,6 +318,7 @@ function renderDocumentContent(
 }
 
 const MARK_RENDERERS: Record<string, MarkRenderer> = {
+  highlight: (html) => `<mark>${html}</mark>`,
   bold: (html) => `<strong>${html}</strong>`,
   italic: (html) => `<em>${html}</em>`,
   strike: (html) => `<s>${html}</s>`,

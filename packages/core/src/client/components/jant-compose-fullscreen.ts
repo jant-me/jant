@@ -165,6 +165,7 @@ export class JantComposeFullscreen extends LitElement {
       },
       imageNodeLabels: getInlineImageNodeLabels(this.labels),
       tableControlLabels: this.labels.tableControls,
+      highlightLabel: this.labels.highlight,
     });
 
     const selection = this._selection;

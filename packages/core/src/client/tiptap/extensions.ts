@@ -38,6 +38,7 @@ import {
 export interface EditorExtensionOptions {
   placeholder?: string;
   toolbarMode?: FormattingToolbarMode;
+  highlightLabel?: string;
   pasteMedia?: PasteMediaOptions;
   rehostImages?: RehostImagesOptions;
   imageNodeLabels?: Partial<ImageNodeLabels>;
@@ -129,6 +130,9 @@ export function createEditorExtensions(
     RehostImages.configure(options.rehostImages ?? {}),
     BubbleMenu.configure({
       toolbarMode: options.toolbarMode ?? "default",
+      ...(options.highlightLabel
+        ? { highlightLabel: options.highlightLabel }
+        : {}),
     }),
     LinkToolbar,
     InsertParagraphAround,
