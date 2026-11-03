@@ -109,6 +109,15 @@ export interface RenderPublicPageOptions {
 }
 
 /**
+ * Pages whose content sets its own width, wider than the reading column, and
+ * so keep the wide frame where reader pages narrow theirs below 1024px.
+ */
+const WIDE_FRAME_PAGES: ReadonlySet<PageName> = new Set([
+  "settings",
+  "compose",
+]);
+
+/**
  * Render a public page with the standard layout stack.
  *
  * @param c - Hono context
@@ -178,6 +187,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
     siteFooterHtml: navData.siteFooterHtml,
     showHomeBranding,
     sidebar,
+    wideFrame: WIDE_FRAME_PAGES.has(page),
     uploadMaxFileSize: appConfig.uploadMaxFileSize,
     showComposeDialog,
     showHeader,

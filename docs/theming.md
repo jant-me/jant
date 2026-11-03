@@ -132,16 +132,17 @@ To use external font sources like Google Fonts, load the font files first via [c
 
 ## Layout variables
 
-| Variable                  | Default  | What it controls                                        |
-| ------------------------- | -------- | ------------------------------------------------------- |
-| `--layout-body-max-width` | `1088px` | Widest the page frame gets: header, content, and footer |
-| `--site-feed-rhythm`      | `4.4rem` | Space between posts in a list, and above the first one  |
-| `--layout-sidenote-width` | `50%`    | Wide-screen footnote rail width                         |
-| `--layout-sidenote-gap`   | `10%`    | Gap between prose and footnote rail                     |
+| Variable                   | Default  | What it controls                                                        |
+| -------------------------- | -------- | ----------------------------------------------------------------------- |
+| `--layout-body-max-width`  | `1088px` | Widest the page frame gets: header, content, and footer                 |
+| `--layout-reading-measure` | `35rem`  | Reading column width below `1024px`, where the page frame narrows to it |
+| `--site-feed-rhythm`       | `4.4rem` | Space between posts in a list, and above the first one                  |
+| `--layout-sidenote-width`  | `50%`    | Wide-screen footnote rail width                                         |
+| `--layout-sidenote-gap`    | `10%`    | Gap between prose and footnote rail                                     |
 
 ### Example: wider content area
 
-On a wide screen the reading column is a fixed share of the frame, so a wider frame gives it more room. Below `1024px` the column keeps a `35rem` measure whatever the frame.
+On a wide screen the reading column is a fixed share of the frame, so a wider frame gives it more room. Below `1024px` the frame narrows to the column and centers, and `--layout-reading-measure` sets the width of both.
 
 ```css
 :root {

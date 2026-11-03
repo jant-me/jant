@@ -634,6 +634,7 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   siteFooterHtml,
   showHomeBranding = false,
   sidebar,
+  wideFrame = false,
   uploadMaxFileSize,
   showComposeDialog = true,
   showHeader = true,
@@ -666,9 +667,13 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
     .join(" ");
   // The page, not the content, keeps room for the button: the footer and the
   // Jant credit come after the content, and they must end above it too.
-  const pageClass = showMobileComposeFab
-    ? "site-page site-page-mobile-compose-enabled"
-    : "site-page";
+  const pageClass = [
+    "site-page",
+    showMobileComposeFab ? "site-page-mobile-compose-enabled" : "",
+    wideFrame ? "site-page-wide" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div class={pageClass}>

@@ -145,4 +145,14 @@ describe("SiteLayout", () => {
       ).toBe(expected);
     },
   );
+
+  // Below 1024px a reader page's frame narrows to the reading column and
+  // centers. Settings and the full-page composer are wider than that column,
+  // so they opt out, and nothing else may.
+  it("keeps the wide frame only for pages that ask for it", () => {
+    expect(renderLayout({ wideFrame: true })).toContain(
+      'class="site-page site-page-wide"',
+    );
+    expect(renderLayout({})).not.toContain("site-page-wide");
+  });
 });

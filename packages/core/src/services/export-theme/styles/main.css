@@ -303,7 +303,9 @@ time {
  * max-width = body-max-width / 0.835 so the inner content area exactly
  * equals `--layout-body-max-width` on wide viewports. min() caps keep
  * padding from growing beyond 210px / 67px. Mobile widens to 5% / 5%
- * and the 55% content column collapses to 100% (via tokens.css).
+ * and the 55% content column collapses to 100% (via tokens.css). Below
+ * 1024px, where the sidenote gutter is gone, the frame narrows to the
+ * reading measure and centers, as on the main site.
  * ------------------------------------------------------------------------- */
 
 .site-page {
@@ -316,6 +318,8 @@ time {
 .site-page > main,
 .site-page > footer,
 .site-page > .home-branding-credit {
+  --site-frame-gutter-start: max(5%, 28px);
+  --site-frame-gutter-end: 5%;
   width: 100%;
   max-width: calc(var(--layout-body-max-width) / 0.835);
   padding-left: min(12.5%, 210px);
@@ -324,13 +328,17 @@ time {
   margin-right: auto;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   .site-page > header,
   .site-page > main,
   .site-page > footer,
   .site-page > .home-branding-credit {
-    padding-left: max(5%, 28px);
-    padding-right: 5%;
+    max-width: calc(
+      var(--layout-reading-measure) + var(--site-frame-gutter-start) +
+        var(--site-frame-gutter-end)
+    );
+    padding-left: var(--site-frame-gutter-start);
+    padding-right: var(--site-frame-gutter-end);
   }
 }
 
@@ -344,6 +352,8 @@ time {
  * ------------------------------------------------------------------------- */
 
 .site-header {
+  /* The nav collapses by this width (Tiered responsive collapse, below). */
+  container: site-header / inline-size;
   padding-top: 24px;
   background-color: var(--site-page-bg);
 }
@@ -600,14 +610,15 @@ time {
 
 /* --- Tiered responsive collapse ---------------------------------------- *
  *
- *   ≤960px — 5th+ inline link collapses into More (tier-lg)
- *   ≤780px — also 4th collapses (tier-md)
- *   ≤580px — also 3rd collapses (tier-sm)
+ * By the header's own width, as on the main site:
+ *   < 802px   — 5th+ inline link collapses into More (tier-lg)
+ *   < 652px   — also 4th collapses (tier-md)
+ *   < 522px   — also 3rd collapses (tier-sm)
  * The first two links always stay inline. No hamburger on static export —
  * at very narrow widths 2 inline links + More button is the floor.
  */
 
-@media (max-width: 960px) {
+@container site-header (width < 802px) {
   .site-header-link-collapse-lg {
     display: none;
   }
@@ -625,7 +636,7 @@ time {
   }
 }
 
-@media (max-width: 780px) {
+@container site-header (width < 652px) {
   .site-header-link-collapse-md {
     display: none;
   }
@@ -639,7 +650,7 @@ time {
   }
 }
 
-@media (max-width: 580px) {
+@container site-header (width < 522px) {
   .site-header-link-collapse-sm {
     display: none;
   }

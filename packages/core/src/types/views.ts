@@ -337,6 +337,12 @@ export interface SiteLayoutProps {
   siteFooterHtml?: string;
   showHomeBranding?: boolean;
   sidebar?: import("hono/jsx").Child;
+  /**
+   * Keep the wide page frame below 1024px, where reader pages narrow theirs
+   * to the reading column. For pages that size their own content: settings,
+   * the full-page composer.
+   */
+  wideFrame?: boolean;
   uploadMaxFileSize?: number;
   showComposeDialog?: boolean;
   showHeader?: boolean;
