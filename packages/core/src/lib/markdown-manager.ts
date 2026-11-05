@@ -1,5 +1,8 @@
 import {
   Extension,
+  Mark,
+  markInputRule,
+  markPasteRule,
   Node,
   getSchema,
   type AnyExtension,
@@ -452,6 +455,65 @@ const MarkdownItalic = Italic.extend({
 const MarkdownStrike = Strike.extend({
   renderMarkdown(node, helpers) {
     return renderEmphasis(node, helpers.renderChildren(node), "strike", "~~");
+  },
+});
+
+/** Shared highlight mark for editing, Markdown interchange, and rich HTML paste. */
+const MarkdownHighlight = Mark.create({
+  name: "highlight",
+
+  parseHTML() {
+    return [{ tag: "mark" }];
+  },
+
+  renderHTML() {
+    return ["mark", 0];
+  },
+
+  addInputRules() {
+    return [
+      markInputRule({
+        find: /(?:^|[^=])(==([^=\s](?:(?:=(?!=)|[^=\n])*?[^=\s])?)==)$/,
+        type: this.type,
+      }),
+    ];
+  },
+
+  addPasteRules() {
+    return [
+      markPasteRule({
+        find: /(?:^|[^=])(==([^=\s](?:(?:=(?!=)|[^=\n])*?[^=\s])?)==)(?![=])/g,
+        type: this.type,
+      }),
+    ];
+  },
+
+  markdownTokenName: "highlight",
+
+  parseMarkdown(token, helpers) {
+    return helpers.applyMark(
+      "highlight",
+      helpers.parseInline(token.tokens ?? []),
+    );
+  },
+
+  renderMarkdown(node, helpers) {
+    return `==${helpers.renderChildren(node)}==`;
+  },
+
+  markdownTokenizer: {
+    name: "highlight",
+    level: "inline",
+    start(src: string) {
+      return src.indexOf("==");
+    },
+    tokenize(src: string, _tokens, helpers) {
+      const match = /^==((?:\\[^\n]|=(?!=)|[^=\\\n])+?)==(?![=])/.exec(src);
+      if (!match) return undefined;
+      const [raw, text = ""] = match;
+      if (text.trim() !== text) return undefined;
+      return { type: "highlight", raw, tokens: helpers.inlineTokens(text) };
+    },
   },
 });
 
@@ -1172,6 +1234,7 @@ export function createMarkdownContentExtensions(
     MarkdownBold,
     MarkdownItalic,
     MarkdownStrike,
+    MarkdownHighlight,
     MarkdownHtmlEmphasis,
     CommonMarkOrderedList,
     SemanticLink.configure({
@@ -1382,10 +1445,41 @@ function expandCodeBlockFences(markdown: string): string {
   return markdown;
 }
 
+// The upstream serializer escapes CommonMark delimiters, but does not know
+// about Jant's == extension. Escape literal equals in text before mark wrappers
+// are added, so plain text never turns into a highlight on export or copy.
+class JantMarkdownManager extends MarkdownManager {
+  override serialize(doc: JSONContent): string {
+    // A per-document sentinel keeps literal equals separate from the delimiters
+    // written by renderMarkdown. Never change code or mutate the stored JSON.
+    const source = JSON.stringify(doc);
+    let sentinel = "JANTLITERALEQUALS";
+    while (source.includes(sentinel)) sentinel += "X";
+
+    const protect = (node: JSONContent, insideCode = false): JSONContent => {
+      const code =
+        insideCode ||
+        node.type === "codeBlock" ||
+        node.marks?.some((mark) => mark.type === "code");
+      return {
+        ...node,
+        ...(node.text && !code
+          ? { text: node.text.replace(/=/g, sentinel) }
+          : {}),
+        ...(node.content
+          ? { content: node.content.map((child) => protect(child, code)) }
+          : {}),
+      };
+    };
+
+    return super.serialize(protect(doc)).split(sentinel).join("\\=");
+  }
+}
+
 export function createMarkdownManager(
   extensions: Extensions = createMarkdownContentExtensions(),
 ): MarkdownManager {
-  return new MarkdownManager({
+  return new JantMarkdownManager({
     extensions,
     markedOptions: MARKDOWN_MARKED_OPTIONS,
   });

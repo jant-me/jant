@@ -536,6 +536,9 @@ describe("createExportService (Hugo)", () => {
     );
     const files = filesToMap(await service.generateHugoFiles());
     const toml = files.get("hugo.toml") as string;
+    expect(toml).toContain(
+      "[markup.goldmark.extensions.extras.mark]\n      enable = true",
+    );
     expect(toml).toBeDefined();
     expect(toml).toContain('baseURL = "https://my.example/"');
     expect(toml).toContain('title = "My Site"');

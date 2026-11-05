@@ -96,3 +96,32 @@ describe("toggleMarkAndExit", () => {
     expect(marksOfLastText(editor)).toEqual(["bold"]);
   });
 });
+
+describe("highlight editing", () => {
+  it("converts typed delimiters and exits the highlight", () => {
+    const editor = createEditor("<p></p>");
+    editor.commands.setTextSelection(1);
+    type(editor, "==重点==继续");
+    expect(editor.getJSON().content?.[0]?.content).toEqual([
+      { type: "text", text: "重点", marks: [{ type: "highlight" }] },
+      { type: "text", text: "继续" },
+    ]);
+  });
+
+  it("toggles selected highlighting and resumes plain typing", () => {
+    const editor = createEditor("<p>word</p>");
+    editor.commands.setTextSelection({ from: 1, to: 5 });
+    toggleMarkAndExit(editor, "highlight");
+    expect(editor.getHTML()).toBe("<p><mark>word</mark></p>");
+    type(editor, " next");
+    expect(marksOfLastText(editor)).toEqual([]);
+    editor.commands.setTextSelection({ from: 1, to: 5 });
+    toggleMarkAndExit(editor, "highlight");
+    expect(editor.getHTML()).toBe("<p>word next</p>");
+  });
+
+  it("accepts semantic mark HTML when reopening or pasting content", () => {
+    const editor = createEditor("<p><mark>重点</mark></p>");
+    expect(marksOfLastText(editor)).toEqual(["highlight"]);
+  });
+});
