@@ -628,6 +628,21 @@ export const CONFIG_FIELDS = {
     envOnly: true,
     envKeys: ["GITHUB_APP_WEBHOOK_SECRET"],
   },
+  /**
+   * The App's OAuth client credentials. With them, connecting an account
+   * signs the author in with GitHub to learn which installations they own.
+   * Required on a host-based deployment; recommended on a single-site one.
+   */
+  GITHUB_APP_CLIENT_ID: {
+    defaultValue: "",
+    envOnly: true,
+    envKeys: ["GITHUB_APP_CLIENT_ID"],
+  },
+  GITHUB_APP_CLIENT_SECRET: {
+    defaultValue: "",
+    envOnly: true,
+    envKeys: ["GITHUB_APP_CLIENT_SECRET"],
+  },
 
   // Telegram bot pool (env-only). When TELEGRAM_BOT_TOKENS is set the bot
   // tokens are platform-managed (hosted, or a single-site operator who opts

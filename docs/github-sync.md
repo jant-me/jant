@@ -49,10 +49,10 @@ Jant validates the token, saves the configuration, and creates the webhook on th
 Available when the deployment has a GitHub App configured. You never touch a long-lived token — Jant issues short-lived credentials on demand.
 
 1. Open **Settings > Site > GitHub Sync** in Jant.
-2. Click **Install GitHub App**. You're redirected to GitHub to pick which repositories the App can access.
-3. After installing, return to Jant, choose the repository to sync, and click **Connect**.
+2. Click **Install GitHub App**. On GitHub, authorize the App if asked, and pick which repositories it can access if it isn't installed on your account yet.
+3. Back in Jant, choose the repository to sync, and click **Connect**.
 
-A GitHub account holds one installation of the App, so connecting a second site to the same account skips the trip to GitHub: **Install GitHub App** opens the repository picker directly, listing the accounts you have already authorized. Each site syncs its own repository. To bring in a different account, use **Install on another account** in the picker.
+A GitHub account holds one installation of the App, and every site connected to that account shares it, whichever Jant account the site belongs to. Each site syncs its own repository. Once one of your sites is connected, **Install GitHub App** on your other sites opens the repository picker directly. To bring in a different account, use **Install on another account** in the picker.
 
 ## Full sync
 
@@ -177,28 +177,29 @@ This section is for administrators configuring a GitHub App on their own Jant de
 
 Set the following environment variables on the Jant deployment to enable the GitHub App connect flow:
 
-| Variable                    | Required | What it is                                                                                                                                                                                                                    |
-| --------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GITHUB_APP_ID`             | Yes      | Numeric App ID from the GitHub App settings page                                                                                                                                                                              |
-| `GITHUB_APP_PRIVATE_KEY`    | Yes      | PKCS#8 PEM private key generated in the GitHub App settings. `\n` escapes are expanded automatically, so you can store it on a single line                                                                                    |
-| `GITHUB_APP_SLUG`           | Yes      | App slug (the last segment of `github.com/apps/<slug>`). Used to build install URLs                                                                                                                                           |
-| `GITHUB_APP_WEBHOOK_SECRET` | No       | Shared secret for GitHub App webhooks. Used by two endpoints: the per-repo push webhook (takes precedence over the per-site secret) and the App-level webhook at `/api/github-sync/app-webhook` (handles installation events) |
+| Variable                    | Required | What it is                                                                                                                                                                                                                                                                                 |
+| --------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GITHUB_APP_ID`             | Yes      | Numeric App ID from the GitHub App settings page                                                                                                                                                                                                                                           |
+| `GITHUB_APP_PRIVATE_KEY`    | Yes      | PKCS#8 PEM private key generated in the GitHub App settings. `\n` escapes are expanded automatically, so you can store it on a single line                                                                                                                                                 |
+| `GITHUB_APP_SLUG`           | Yes      | App slug (the last segment of `github.com/apps/<slug>`). Used to build install URLs                                                                                                                                                                                                        |
+| `GITHUB_APP_CLIENT_ID`      | No       | Client ID from the GitHub App settings page, which differs from the App ID. Recommended: with `GITHUB_APP_CLIENT_SECRET`, Jant asks GitHub which accounts the author owns, so it can connect an account the App is already installed on, such as after moving the site to a new deployment |
+| `GITHUB_APP_CLIENT_SECRET`  | No       | Client secret generated in the GitHub App settings. Set it together with `GITHUB_APP_CLIENT_ID`                                                                                                                                                                                            |
+| `GITHUB_APP_WEBHOOK_SECRET` | No       | Shared secret for GitHub App webhooks. Used by two endpoints: the per-repo push webhook (takes precedence over the per-site secret) and the App-level webhook at `/api/github-sync/app-webhook` (handles installation events)                                                              |
 
 ### Create the GitHub App
 
 Go to **Settings > Developer settings > GitHub Apps > New GitHub App** (on either a user or organization).
 
-> **Setup URL vs Callback URL**: GitHub Apps have two confusingly similar fields. The install flow uses **Setup URL** — once the user finishes installing, GitHub sends the browser there with `installation_id` and `state`. **Callback URL** is for OAuth user-to-server identification ("Sign in with GitHub"), which Jant does not use. Always set **Setup URL**, leave Callback URL blank.
-
 1. **Homepage URL**: your Jant site
-2. **Setup URL (optional)**: `https://<your-jant-site>/settings/github-sync/app/callback`
-3. **Redirect on update**: checked
-4. **Callback URL**: leave blank
-5. **Webhook**: check **Active**, set the URL to `https://<your-jant-site>/api/github-sync/app-webhook`, and put the same value as `GITHUB_APP_WEBHOOK_SECRET` into **Secret**. This keeps Jant's installation state in sync when the App is uninstalled, suspended, or has repositories removed. Per-repo push webhooks are still registered automatically at the site host
-6. **Repository permissions**: `Contents: Read & write`, `Metadata: Read-only`, `Webhooks: Read & write`
-7. **Subscribe to events**: `Push`, `Installation`, `Installation repositories`
-8. **Where can this GitHub App be installed**: "Only on this account"
-9. Generate a private key (PKCS#8 PEM) and copy the App ID
+2. **Redirect URI**, under **Identifying and authorizing users** (click **Add redirect URI** if there is no field): `https://<your-jant-site>/settings/github-sync/app/callback`
+3. **Request user authorization (OAuth) during installation**: unchecked
+4. **Setup URL (optional)**: the same address as the Redirect URI
+5. **Redirect on update**: checked
+6. **Webhook**: check **Active**, set the URL to `https://<your-jant-site>/api/github-sync/app-webhook`, and put the same value as `GITHUB_APP_WEBHOOK_SECRET` into **Secret**. This keeps Jant's installation state in sync when the App is uninstalled, suspended, or has repositories removed. Per-repo push webhooks are still registered automatically at the site host
+7. **Repository permissions**: `Contents: Read & write`, `Metadata: Read-only`, `Webhooks: Read & write`
+8. **Subscribe to events**: `Push`, `Installation`, `Installation repositories`
+9. **Where can this GitHub App be installed**: "Only on this account"
+10. Generate a private key (PKCS#8 PEM) and a client secret, and copy the App ID and the client ID
 
 ## What's next
 

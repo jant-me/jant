@@ -455,7 +455,8 @@ token 调用站点，见 [命令行](cli.md#维护)。不设置时，`/api/inter
 
 ### GitHub App（可选）
 
-`GITHUB_APP_ID`、`GITHUB_APP_PRIVATE_KEY`、`GITHUB_APP_SLUG` 和
+`GITHUB_APP_ID`、`GITHUB_APP_PRIVATE_KEY`、`GITHUB_APP_SLUG`、
+`GITHUB_APP_CLIENT_ID`、`GITHUB_APP_CLIENT_SECRET` 和
 `GITHUB_APP_WEBHOOK_SECRET` 让 GitHub 同步通过你自己的 GitHub App 连接，
 不用个人访问令牌。见 [GitHub 同步](github-sync.md)。
 
