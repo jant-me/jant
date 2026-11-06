@@ -1,5 +1,53 @@
 # @jant/core
 
+## 1.2.0
+
+### Minor Changes
+
+- [`3009fff`](https://github.com/jant-me/jant/commit/3009fffda4e8cbc0dfb8695b08f8965aa94400a6) Thanks [@theowenyoung](https://github.com/theowenyoung)! - GitHub Sync can now check with GitHub which accounts the author owns before it connects through a GitHub App. With `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_CLIENT_SECRET` set, connecting has the author authorize the App on GitHub and binds only the installations GitHub says they own. It can also connect an account the App is already installed on, such as after moving the site to a new deployment, where GitHub's install page used to stop.
+
+  A deployment that serves several sites, such as the hosted service, now requires both variables. Until now Jant trusted the installation ID in the address GitHub sent the browser back to, so on such a deployment one account could bind another's installation by editing that address. On the hosted service, one GitHub account can now also serve sites that belong to different Jant accounts. A single-site deployment without the variables connects as before.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - Nothing to change on a single-site deployment. To turn on the check:
+    1. In the GitHub App settings, under **Identifying and authorizing users**, add `https://<your-jant-site>/settings/github-sync/app/callback` as a **Redirect URI**, and leave **Request user authorization (OAuth) during installation** unchecked.
+    2. Generate a client secret, and copy the client ID.
+    3. Set `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_CLIENT_SECRET` on the deployment.
+
+### Patch Changes
+
+- [`24b684f`](https://github.com/jant-me/jant/commit/24b684fb73888816fafd9447430cc7bf581ce9e7) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Below 1024px, where footnotes stop sitting in a side rail, the page centers on the reading column. Until now the column kept the wide-screen left margin and left the rest of the width empty on its right: on a 951px screen, such as an iPhone Duo opened flat, that was 119px on the left and 307px on the right. The header, posts, and footer now share one centered column, and everything in it stays aligned to its left edge. Settings and the full-page composer keep their full width.
+
+  Header links now move into **More** by the width of the header rather than the window. On a reader page below 1024px the header is as wide as the reading column, so from 781px to 1024px it shows three links where it showed four or more.
+
+  For themes: `--layout-reading-measure` (default `35rem`) sets the reading column's width below 1024px, and the page frame narrows to it. Settings and the full-page composer add `.site-page-wide` to `.site-page`.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`35bbd95`](https://github.com/jant-me/jant/commit/35bbd958082387acef39482d96ed11e0907c4a44) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Posts read as articles again. Titles and headings are semibold, the weight a heading needs to stand above bold body text; before, they were medium, which the CJK serif faces have no face for, so a Chinese heading came out in Regular and lighter than the `<strong>` runs under it. Body text is 18px on desktop, up from 16.8px, with titles and headings scaling with it. A heading sits closer to the text it introduces than to the paragraph before it. On a post's page the date sits a clear step below the title, a size larger, with more room before the body. A page in Chinese, Japanese or Korean gets a taller line height for body and headings, since those glyphs fill the line where Latin lowercase does not.
+
+  A titled post's timeline excerpt is now its lead: it stops ahead of the first heading, instead of running on into a section and showing its title with one orphaned paragraph. Headings a post opens with are kept. The character budget counts a Han, kana or hangul character as two, so a Chinese teaser takes the room an English one does rather than twice it. A heading inside an excerpt is set as a heading, above body size, not at body size in the medium weight.
+
+  Simplified and Traditional Chinese serif stacks now put the Noto Serif face the site ships ahead of SimSun and PMingLiU, which have one weight and render headings in synthetic bold on Windows.
+
+  For themes: `--type-heading-weight` and `--type-display-weight` default to `var(--fw-semibold)`, `--type-heading-leading` to `1.2`, and `--type-content-scale` to `0.86`. The Tufte font theme sets both weights back to `var(--fw-regular)`. A CJK page sets `--type-body-leading: 1.75` and `--type-heading-leading: 1.3` on `:root` ahead of the theme style, so a font theme or custom CSS that sets either still wins.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`7c39d43`](https://github.com/jant-me/jant/commit/7c39d43a9c4d2960748cafcaf3587df07dd9b339) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A titled post's excerpt in the timeline keeps one image. Until now the excerpt dropped every image in the body, even one placed before a `<!--more-->` break, so an article that opens with a picture showed only its title and text. The first image ahead of the cut now stays in its place; images further down are left for the post's page, and the card shows **Continue** when it leaves one out. Before a `<!--more-->` break, every image is kept. A post with an image or video attachment keeps a text-only excerpt, since the card already shows those attachments below it.
+
+  Untitled notes, the Atom feed's `<summary>`, the Hugo export, and share cards are unchanged.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
 ## 1.1.0
 
 ### Minor Changes
