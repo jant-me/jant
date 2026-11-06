@@ -970,3 +970,130 @@ describe("extractSummaryHtml", () => {
     expect(result!.html).not.toContain("<img");
   });
 });
+
+describe("extractSummaryHtml with includeImages", () => {
+  type Node = Record<string, unknown>;
+  const p = (text: string): Node => ({
+    type: "paragraph",
+    content: [{ type: "text", text }],
+  });
+  const img = (name: string): Node => ({
+    type: "image",
+    attrs: { src: `https://example.com/${name}.png` },
+  });
+  const fig = (name: string) =>
+    `<figure><img src="https://example.com/${name}.png"></figure>`;
+  const docOf = (...content: Node[]) =>
+    JSON.stringify({ type: "doc", content });
+  const withImages = (
+    body: string,
+    maxBlocks = 5,
+    maxChars = 500,
+    minHiddenChars = 0,
+  ) =>
+    extractSummaryHtml(
+      body,
+      maxBlocks,
+      maxChars,
+      minHiddenChars,
+      {},
+      {
+        includeImages: true,
+      },
+    );
+
+  it("keeps a leading image in place", () => {
+    const result = withImages(docOf(img("a"), p("Intro"), p("Rest")));
+    expect(result).toEqual({
+      html: `${fig("a")}<p>Intro</p><p>Rest</p>`,
+      hasMore: false,
+      breakAtIndex: 3,
+    });
+  });
+
+  it("keeps only the first image and reports the rest as more", () => {
+    const result = withImages(
+      docOf(p("Intro"), img("a"), p("Middle"), img("b"), p("End")),
+    );
+    expect(result!.html).toBe(`<p>Intro</p>${fig("a")}<p>Middle</p><p>End</p>`);
+    expect(result!.hasMore).toBe(true);
+  });
+
+  it("keeps an image that sits between the last kept block and the cut", () => {
+    const result = withImages(
+      docOf(p("A".repeat(450)), img("a"), p("B".repeat(100))),
+    );
+    expect(result!.html).toBe(`<p>${"A".repeat(450)}</p>${fig("a")}`);
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(2);
+  });
+
+  it("leaves out an image after the cut", () => {
+    const result = withImages(
+      docOf(p("A".repeat(450)), p("B".repeat(100)), img("a")),
+    );
+    expect(result!.html).toBe(`<p>${"A".repeat(450)}</p>`);
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(1);
+  });
+
+  it("does not count the image toward the block or character limit", () => {
+    const result = withImages(
+      docOf(img("a"), p("One"), p("Two"), p("Three")),
+      2,
+    );
+    expect(result!.html).toBe(`${fig("a")}<p>One</p><p>Two</p>`);
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(3);
+  });
+
+  it("reports more when the only thing left out is a trailing image", () => {
+    const result = withImages(docOf(p("Short"), img("a"), img("b")));
+    expect(result!.html).toBe(`<p>Short</p>${fig("a")}`);
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(2);
+  });
+
+  it("keeps every image before a moreBreak", () => {
+    const result = withImages(
+      docOf(img("a"), p("Intro"), img("b"), { type: "moreBreak" }, img("c")),
+    );
+    expect(result).toEqual({
+      html: `${fig("a")}<p>Intro</p>${fig("b")}`,
+      hasMore: true,
+      breakAtIndex: 3,
+    });
+  });
+
+  it("returns the first image for a body of images alone", () => {
+    expect(withImages(docOf(img("a")))).toEqual({
+      html: fig("a"),
+      hasMore: false,
+      breakAtIndex: 1,
+    });
+    expect(withImages(docOf(img("a"), img("b")))!.hasMore).toBe(true);
+  });
+
+  it("keeps a trailing image once tolerance takes in the whole tail", () => {
+    const result = withImages(
+      docOf(p("A".repeat(600)), p("B".repeat(150)), img("a")),
+      10,
+      500,
+      200,
+    );
+    expect(result!.html).toContain(fig("a"));
+    expect(result!.hasMore).toBe(false);
+    expect(result!.breakAtIndex).toBe(3);
+  });
+
+  it("leaves images out by default, before a moreBreak too", () => {
+    const auto = extractSummaryHtml(docOf(img("a"), p("Intro")));
+    expect(auto!.html).toBe("<p>Intro</p>");
+    expect(auto!.hasMore).toBe(false);
+
+    const manual = extractSummaryHtml(
+      docOf(img("a"), p("Intro"), { type: "moreBreak" }, p("Rest")),
+    );
+    expect(manual!.html).toBe("<p>Intro</p>");
+  });
+});
