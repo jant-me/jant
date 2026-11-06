@@ -591,10 +591,10 @@ describe("timeline cards", () => {
       "[data-post]:not(.post-detail) [data-post-body].prose",
     );
     expect(presetCss).toMatch(
-      /:where\(h1,\s*h2\)\s*\{[\s\S]*font-size:\s*calc\(var\(--type-content-body\) \* 1\.12\);/,
+      /:where\(h1,\s*h2\)\s*\{[\s\S]*font-size:\s*calc\(var\(--type-content-body\) \* 1\.2\);/,
     );
     expect(presetCss).toMatch(
-      /:where\(h3,\s*h4\)\s*\{[\s\S]*font-size:\s*var\(--type-content-body\);/,
+      /:where\(h3,\s*h4\)\s*\{[\s\S]*font-size:\s*calc\(var\(--type-content-body\) \* 1\.08\);/,
     );
     expect(presetCss).toMatch(
       /:where\(h5,\s*h6\)\s*\{[\s\S]*font-size:\s*var\(--type-secondary\);/,
@@ -737,10 +737,10 @@ describe("timeline cards", () => {
     const css = readComponentCss();
 
     expect(css).toMatch(
-      /\.post-header-block\s*\{[\s\S]*margin-bottom:\s*1\.7rem;/,
+      /\.post-header-block\s*\{[^}]*margin-bottom:\s*1\.7rem;/,
     );
     expect(css).toMatch(
-      /\.post-header-block-detail\s*\{[\s\S]*gap:\s*0\.7rem;/,
+      /\.post-header-block-detail\s*\{[^}]*gap:\s*0\.9rem;[^}]*margin-bottom:\s*2\.2rem;/,
     );
   });
 
@@ -748,7 +748,7 @@ describe("timeline cards", () => {
     const css = readComponentCss();
 
     expect(css).toMatch(
-      /\.post-header-meta-link\s*\{[^}]*font-size:\s*var\(--type-ui-hint\);/,
+      /\.post-header-meta-link\s*\{[^}]*font-size:\s*var\(--type-ui-meta\);/,
     );
     expect(css).toMatch(
       /\.post-footer-detail\s*\{[^}]*margin-top:\s*24px;[^}]*font-size:\s*var\(--type-ui-hint\);[^}]*color:\s*var\(--site-text-secondary\);/,

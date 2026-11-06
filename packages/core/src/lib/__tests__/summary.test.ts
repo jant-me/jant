@@ -3,6 +3,7 @@ import {
   extractBodyText,
   extractSummary,
   extractSummaryHtml,
+  textWidth,
 } from "../summary.js";
 
 describe("extractBodyText", () => {
@@ -968,6 +969,129 @@ describe("extractSummaryHtml", () => {
     expect(result!.hasMore).toBe(false);
     expect(result!.html).toContain("B".repeat(150));
     expect(result!.html).not.toContain("<img");
+  });
+});
+
+describe("extractSummaryHtml lead", () => {
+  const paragraph = (text: string) => ({
+    type: "paragraph",
+    content: [{ type: "text", text }],
+  });
+  const heading = (text: string) => ({
+    type: "heading",
+    attrs: { level: 3 },
+    content: [{ type: "text", text }],
+  });
+  const LEAD = { stopAtHeading: true };
+
+  it("stops ahead of a heading once it holds a text block", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [
+        paragraph("Intro"),
+        paragraph("The core points are:"),
+        heading("1. Breadth"),
+        paragraph("First section"),
+      ],
+    });
+    const result = extractSummaryHtml(doc, 5, 500, 0, {}, LEAD);
+    expect(result!.html).toContain("Intro");
+    expect(result!.html).toContain("The core points are:");
+    expect(result!.html).not.toContain("1. Breadth");
+    expect(result!.html).not.toContain("First section");
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(2);
+  });
+
+  it("keeps the headings a post opens with", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [
+        heading("Part one"),
+        heading("Chapter 1"),
+        paragraph("Body"),
+        heading("Chapter 2"),
+        paragraph("More"),
+      ],
+    });
+    const result = extractSummaryHtml(doc, 5, 500, 0, {}, LEAD);
+    expect(result!.html).toContain("Part one");
+    expect(result!.html).toContain("Chapter 1");
+    expect(result!.html).toContain("Body");
+    expect(result!.html).not.toContain("Chapter 2");
+    expect(result!.hasMore).toBe(true);
+  });
+
+  it("never cuts a lead with no heading in it", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [paragraph("One"), paragraph("Two"), paragraph("Three")],
+    });
+    const result = extractSummaryHtml(doc, 5, 500, 0, {}, LEAD);
+    expect(result!.hasMore).toBe(false);
+  });
+
+  it("stops at a heading before the tolerance can take in the tail", () => {
+    // The tail after the heading is short, but a heading is a structural
+    // cut, not a limit the tolerance is there to soften.
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [paragraph("Intro"), heading("Section"), paragraph("Short")],
+    });
+    const result = extractSummaryHtml(doc, 10, 1500, 200, {}, LEAD);
+    expect(result!.html).toContain("Intro");
+    expect(result!.html).not.toContain("Section");
+    expect(result!.hasMore).toBe(true);
+  });
+
+  it("runs past a heading when the option is off, as a note's cap does", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [paragraph("Intro"), heading("Section"), paragraph("Short")],
+    });
+    const result = extractSummaryHtml(doc, 10, 1500, 200);
+    expect(result!.html).toContain("Section");
+    expect(result!.hasMore).toBe(false);
+  });
+
+  it("counts East Asian wide characters twice toward the character limit", () => {
+    // 150 Han characters take the room 300 Latin ones do, so one such
+    // paragraph fits a 500 budget where three Latin ones of 150 do.
+    const han = "文".repeat(150);
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [paragraph(han), paragraph(han), paragraph(han)],
+    });
+    const result = extractSummaryHtml(doc, 5, 500, 0, {}, LEAD);
+    expect(result!.html.match(/<p>/g)).toHaveLength(1);
+    expect(result!.hasMore).toBe(true);
+
+    const latin = JSON.stringify({
+      type: "doc",
+      content: [
+        paragraph("a".repeat(150)),
+        paragraph("a".repeat(150)),
+        paragraph("a".repeat(150)),
+      ],
+    });
+    expect(extractSummaryHtml(latin, 5, 500)!.html.match(/<p>/g)).toHaveLength(
+      3,
+    );
+  });
+});
+
+describe("textWidth", () => {
+  it("counts Latin characters once and wide characters twice", () => {
+    expect(textWidth("hello")).toBe(5);
+    expect(textWidth("你好")).toBe(4);
+    expect(textWidth("你好 world")).toBe(10);
+    expect(textWidth("「全角」，。")).toBe(12);
+    expect(textWidth("ひらがな한글")).toBe(12);
+  });
+
+  it("counts an astral character once", () => {
+    expect(textWidth("😀")).toBe(1);
+    expect(textWidth("𠀀")).toBe(2);
   });
 });
 

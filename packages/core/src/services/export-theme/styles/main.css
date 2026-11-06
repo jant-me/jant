@@ -91,17 +91,24 @@ h1 {
 
 h2 {
   font-size: var(--type-content-title);
-  margin: 2.1rem 0 1.4rem;
+  margin: 2.6rem 0 0.9rem;
 }
 
 h3 {
   font-size: var(--type-content-subtitle);
-  margin: 2rem 0 1.4rem;
+  margin: 2.2rem 0 0.75rem;
 }
 
 h4 {
   font-size: var(--type-content-body);
-  font-weight: var(--fw-medium);
+  margin: 1.8rem 0 0.6rem;
+}
+
+/* The block after a heading gives up its own top margin, so the heading's
+   bottom margin is the whole gap; otherwise a paragraph's 1.4rem wins the
+   margin collapse and the heading floats 1.4rem from both neighbours. */
+:is(h1, h2, h3, h4, h5, h6) + * {
+  margin-top: 0;
 }
 
 h5,
@@ -890,18 +897,18 @@ hr.feed-divider {
 
 .post-card > .post-card-summary :is(h1, h2),
 .post-card > .post-card-quote-commentary :is(h1, h2) {
-  font-size: calc(var(--type-content-body) * 1.12);
-  font-weight: var(--fw-medium);
-  margin-top: 1.45rem;
-  margin-bottom: 0.55rem;
+  font-size: calc(var(--type-content-body) * 1.2);
+  font-weight: var(--type-heading-weight);
+  margin-top: 1.6rem;
+  margin-bottom: 0.6rem;
 }
 
 .post-card > .post-card-summary :is(h3, h4),
 .post-card > .post-card-quote-commentary :is(h3, h4) {
-  font-size: var(--type-content-body);
-  font-weight: var(--fw-medium);
-  margin-top: 1.2rem;
-  margin-bottom: 0.45rem;
+  font-size: calc(var(--type-content-body) * 1.08);
+  font-weight: var(--type-heading-weight);
+  margin-top: 1.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .post-card > .post-card-summary :is(h5, h6),

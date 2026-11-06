@@ -301,7 +301,10 @@ export function toPostView(
       isArticle ? ARTICLE_SUMMARY_MAX_CHARS : NOTE_SUMMARY_MAX_CHARS,
       isArticle ? 0 : NOTE_SUMMARY_MIN_HIDDEN_CHARS,
       { namespace: id },
-      { includeImages: isArticle && !hasVisualAttachment },
+      {
+        includeImages: isArticle && !hasVisualAttachment,
+        stopAtHeading: isArticle,
+      },
     );
     if (result && isArticle) {
       summaryHtml = result.html;
