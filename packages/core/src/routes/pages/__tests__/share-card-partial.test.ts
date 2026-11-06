@@ -3,7 +3,9 @@ import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { DEFAULT_TEST_SITE_ID } from "../../../__tests__/helpers/db.js";
 import { partialPageRoutes } from "../partials.js";
 
-function createPartialTestApp(options: { authenticated?: boolean } = {}) {
+function createPartialTestApp(
+  options: Parameters<typeof createTestApp>[0] = {},
+) {
   const testApp = createTestApp(options);
   testApp.app.route("/", partialPageRoutes);
   return testApp;
@@ -65,7 +67,7 @@ function paragraphs(count: number): string {
 }
 
 describe("/_/share-card/:postId", () => {
-  it("is the author's: a signed-out request finds nothing", async () => {
+  it("draws the card for a signed-out reader", async () => {
     const { app, services } = createPartialTestApp();
     const post = await services.posts.create({
       format: "note",
@@ -75,26 +77,52 @@ describe("/_/share-card/:postId", () => {
 
     const res = await app.request(`/_/share-card/${post.id}`);
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("data-share-card");
   });
 
-  it.each([
-    ["a draft", { status: "draft" as const }],
-    [
-      "a Private post",
-      { status: "published" as const, visibility: "private" as const },
-    ],
-  ])("refuses %s, whose address a reader cannot open", async (_, state) => {
-    const { app, services } = createPartialTestApp({ authenticated: true });
-    const post = await services.posts.create({
-      format: "note",
-      bodyMarkdown: "Hello",
-      ...state,
+  describe.each([
+    ["the author", { authenticated: true }],
+    ["a reader", { authenticated: false }],
+  ])("for %s", (_, options) => {
+    it.each([
+      ["a draft", { status: "draft" as const }],
+      [
+        "a Private post",
+        { status: "published" as const, visibility: "private" as const },
+      ],
+    ])("refuses %s, whose address a reader cannot open", async (_, state) => {
+      const { app, services } = createPartialTestApp(options);
+      const post = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Hello",
+        ...state,
+      });
+
+      const res = await app.request(`/_/share-card/${post.id}`);
+
+      expect(res.status).toBe(404);
     });
 
-    const res = await app.request(`/_/share-card/${post.id}`);
+    it("refuses a reply in a Private Thread", async () => {
+      const { app, services } = createPartialTestApp(options);
+      const root = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Root",
+        status: "published",
+        visibility: "private",
+      });
+      const reply = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Reply",
+        status: "published",
+        replyToId: root.id,
+      });
 
-    expect(res.status).toBe(404);
+      const res = await app.request(`/_/share-card/${reply.id}`);
+
+      expect(res.status).toBe(404);
+    });
   });
 
   it("shares a post Hidden from Latest, which still has an address", async () => {
@@ -139,11 +167,12 @@ describe("/_/share-card/:postId", () => {
 
     expect(html).toContain('data-layout="article"');
     expect(html).toContain('class="share-card-title">A Bicycle Café<');
-    // Titled posts take the article summary: five blocks, then a mark that
-    // there is more.
+    // Titled posts take the article summary: five blocks, the last fading
+    // to say there is more.
     expect(html).toContain("Paragraph 5.");
     expect(html).not.toContain("Paragraph 6.");
-    expect(html).toContain("share-card-more");
+    expect(html).toContain('class="share-card-body has-more"');
+    expect(html).not.toContain('class="share-card-more"');
   });
 
   it("stops where the author put the read-more break", async () => {
@@ -189,7 +218,9 @@ describe("/_/share-card/:postId", () => {
 
     const html = await (await app.request(`/_/share-card/${post.id}`)).text();
 
-    expect(html).not.toContain("share-card-more");
+    expect(html).toContain('class="share-card-body"');
+    expect(html).not.toContain("has-more");
+    expect(html).not.toContain('class="share-card-more"');
   });
 
   it("sets a short quote large, with who said it and where", async () => {
@@ -263,6 +294,32 @@ describe("/_/share-card/:postId", () => {
     }
     expect(html).toContain('data-count="4"');
     expect(html).toContain('class="share-card-more-images">+1<');
+  });
+
+  it("gives a lone image its stored size, so the card keeps its shape", async () => {
+    const { app, services } = createPartialTestApp({ authenticated: true });
+    const post = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "One screenshot.",
+      status: "published",
+    });
+    await services.media.create({
+      postId: post.id,
+      filename: "chat.png",
+      originalName: "chat.png",
+      mimeType: "image/png",
+      size: 2048,
+      storageKey: `media/${DEFAULT_TEST_SITE_ID}/chat.png`,
+      width: 1620,
+      height: 680,
+    });
+
+    const html = await (await app.request(`/_/share-card/${post.id}`)).text();
+
+    expect(html).toContain('data-count="1"');
+    expect(html).toContain(
+      `<img src="/media/${DEFAULT_TEST_SITE_ID}/chat.png" alt="" width="1620" height="680"`,
+    );
   });
 
   it("shows a video by its poster, marked as a video", async () => {
@@ -655,19 +712,56 @@ describe("/_/share-card/:postId", () => {
     });
   });
 
-  it("points its QR code and address at the post", async () => {
+  it("points its QR code at the post and names the site's address", async () => {
     const { app, services } = createPartialTestApp({ authenticated: true });
     const post = await services.posts.create({
       format: "note",
       bodyMarkdown: "Hello",
-      slug: "hello-card",
+      slug: "a-slug-too-long-to-type-from-a-picture",
       status: "published",
     });
 
     const html = await (await app.request(`/_/share-card/${post.id}`)).text();
 
-    expect(html).toMatch(/class="share-card-url">[^<]*\/hello-card</);
+    // The slug is the QR code's to carry.
+    expect(html).toContain('class="share-card-address">localhost:3000<');
     expect(html).toMatch(/class="share-card-qr"><svg[^>]*viewBox=/);
-    expect(html).toContain('data-file-name="hello-card"');
+    expect(html).toContain(
+      'data-file-name="a-slug-too-long-to-type-from-a-picture"',
+    );
+  });
+
+  it("names a site under a path prefix by its home address", async () => {
+    const { app, services } = createPartialTestApp({
+      authenticated: true,
+      sitePathPrefix: "/blog",
+    });
+    const post = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Hello",
+      status: "published",
+    });
+
+    const html = await (await app.request(`/_/share-card/${post.id}`)).text();
+
+    expect(html).toContain('class="share-card-address">localhost:3000/blog<');
+  });
+
+  it("names the address once when the site's name already is it", async () => {
+    const { app, services } = createPartialTestApp({
+      authenticated: true,
+      env: { SITE_ORIGIN: "https://www.example.com" },
+    });
+    await services.settings.set("SITE_NAME", "Example.com");
+    const post = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Hello",
+      status: "published",
+    });
+
+    const html = await (await app.request(`/_/share-card/${post.id}`)).text();
+
+    expect(html).toContain('class="share-card-site">Example.com<');
+    expect(html).not.toContain("share-card-address");
   });
 });

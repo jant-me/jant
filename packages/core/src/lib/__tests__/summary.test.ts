@@ -3,6 +3,7 @@ import {
   extractBodyText,
   extractSummary,
   extractSummaryHtml,
+  textWidth,
 } from "../summary.js";
 
 describe("extractBodyText", () => {
@@ -968,5 +969,255 @@ describe("extractSummaryHtml", () => {
     expect(result!.hasMore).toBe(false);
     expect(result!.html).toContain("B".repeat(150));
     expect(result!.html).not.toContain("<img");
+  });
+});
+
+describe("extractSummaryHtml lead", () => {
+  const paragraph = (text: string) => ({
+    type: "paragraph",
+    content: [{ type: "text", text }],
+  });
+  const heading = (text: string) => ({
+    type: "heading",
+    attrs: { level: 3 },
+    content: [{ type: "text", text }],
+  });
+  const LEAD = { stopAtHeading: true };
+
+  it("stops ahead of a heading once it holds a text block", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [
+        paragraph("Intro"),
+        paragraph("The core points are:"),
+        heading("1. Breadth"),
+        paragraph("First section"),
+      ],
+    });
+    const result = extractSummaryHtml(doc, 5, 500, 0, {}, LEAD);
+    expect(result!.html).toContain("Intro");
+    expect(result!.html).toContain("The core points are:");
+    expect(result!.html).not.toContain("1. Breadth");
+    expect(result!.html).not.toContain("First section");
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(2);
+  });
+
+  it("keeps the headings a post opens with", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [
+        heading("Part one"),
+        heading("Chapter 1"),
+        paragraph("Body"),
+        heading("Chapter 2"),
+        paragraph("More"),
+      ],
+    });
+    const result = extractSummaryHtml(doc, 5, 500, 0, {}, LEAD);
+    expect(result!.html).toContain("Part one");
+    expect(result!.html).toContain("Chapter 1");
+    expect(result!.html).toContain("Body");
+    expect(result!.html).not.toContain("Chapter 2");
+    expect(result!.hasMore).toBe(true);
+  });
+
+  it("never cuts a lead with no heading in it", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [paragraph("One"), paragraph("Two"), paragraph("Three")],
+    });
+    const result = extractSummaryHtml(doc, 5, 500, 0, {}, LEAD);
+    expect(result!.hasMore).toBe(false);
+  });
+
+  it("stops at a heading before the tolerance can take in the tail", () => {
+    // The tail after the heading is short, but a heading is a structural
+    // cut, not a limit the tolerance is there to soften.
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [paragraph("Intro"), heading("Section"), paragraph("Short")],
+    });
+    const result = extractSummaryHtml(doc, 10, 1500, 200, {}, LEAD);
+    expect(result!.html).toContain("Intro");
+    expect(result!.html).not.toContain("Section");
+    expect(result!.hasMore).toBe(true);
+  });
+
+  it("runs past a heading when the option is off, as a note's cap does", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [paragraph("Intro"), heading("Section"), paragraph("Short")],
+    });
+    const result = extractSummaryHtml(doc, 10, 1500, 200);
+    expect(result!.html).toContain("Section");
+    expect(result!.hasMore).toBe(false);
+  });
+
+  it("counts East Asian wide characters twice toward the character limit", () => {
+    // 150 Han characters take the room 300 Latin ones do, so one such
+    // paragraph fits a 500 budget where three Latin ones of 150 do.
+    const han = "文".repeat(150);
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [paragraph(han), paragraph(han), paragraph(han)],
+    });
+    const result = extractSummaryHtml(doc, 5, 500, 0, {}, LEAD);
+    expect(result!.html.match(/<p>/g)).toHaveLength(1);
+    expect(result!.hasMore).toBe(true);
+
+    const latin = JSON.stringify({
+      type: "doc",
+      content: [
+        paragraph("a".repeat(150)),
+        paragraph("a".repeat(150)),
+        paragraph("a".repeat(150)),
+      ],
+    });
+    expect(extractSummaryHtml(latin, 5, 500)!.html.match(/<p>/g)).toHaveLength(
+      3,
+    );
+  });
+});
+
+describe("textWidth", () => {
+  it("counts Latin characters once and wide characters twice", () => {
+    expect(textWidth("hello")).toBe(5);
+    expect(textWidth("你好")).toBe(4);
+    expect(textWidth("你好 world")).toBe(10);
+    expect(textWidth("「全角」，。")).toBe(12);
+    expect(textWidth("ひらがな한글")).toBe(12);
+  });
+
+  it("counts an astral character once", () => {
+    expect(textWidth("😀")).toBe(1);
+    expect(textWidth("𠀀")).toBe(2);
+  });
+});
+
+describe("extractSummaryHtml with includeImages", () => {
+  type Node = Record<string, unknown>;
+  const p = (text: string): Node => ({
+    type: "paragraph",
+    content: [{ type: "text", text }],
+  });
+  const img = (name: string): Node => ({
+    type: "image",
+    attrs: { src: `https://example.com/${name}.png` },
+  });
+  const fig = (name: string) =>
+    `<figure><img src="https://example.com/${name}.png"></figure>`;
+  const docOf = (...content: Node[]) =>
+    JSON.stringify({ type: "doc", content });
+  const withImages = (
+    body: string,
+    maxBlocks = 5,
+    maxChars = 500,
+    minHiddenChars = 0,
+  ) =>
+    extractSummaryHtml(
+      body,
+      maxBlocks,
+      maxChars,
+      minHiddenChars,
+      {},
+      {
+        includeImages: true,
+      },
+    );
+
+  it("keeps a leading image in place", () => {
+    const result = withImages(docOf(img("a"), p("Intro"), p("Rest")));
+    expect(result).toEqual({
+      html: `${fig("a")}<p>Intro</p><p>Rest</p>`,
+      hasMore: false,
+      breakAtIndex: 3,
+    });
+  });
+
+  it("keeps only the first image and reports the rest as more", () => {
+    const result = withImages(
+      docOf(p("Intro"), img("a"), p("Middle"), img("b"), p("End")),
+    );
+    expect(result!.html).toBe(`<p>Intro</p>${fig("a")}<p>Middle</p><p>End</p>`);
+    expect(result!.hasMore).toBe(true);
+  });
+
+  it("keeps an image that sits between the last kept block and the cut", () => {
+    const result = withImages(
+      docOf(p("A".repeat(450)), img("a"), p("B".repeat(100))),
+    );
+    expect(result!.html).toBe(`<p>${"A".repeat(450)}</p>${fig("a")}`);
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(2);
+  });
+
+  it("leaves out an image after the cut", () => {
+    const result = withImages(
+      docOf(p("A".repeat(450)), p("B".repeat(100)), img("a")),
+    );
+    expect(result!.html).toBe(`<p>${"A".repeat(450)}</p>`);
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(1);
+  });
+
+  it("does not count the image toward the block or character limit", () => {
+    const result = withImages(
+      docOf(img("a"), p("One"), p("Two"), p("Three")),
+      2,
+    );
+    expect(result!.html).toBe(`${fig("a")}<p>One</p><p>Two</p>`);
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(3);
+  });
+
+  it("reports more when the only thing left out is a trailing image", () => {
+    const result = withImages(docOf(p("Short"), img("a"), img("b")));
+    expect(result!.html).toBe(`<p>Short</p>${fig("a")}`);
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(2);
+  });
+
+  it("keeps every image before a moreBreak", () => {
+    const result = withImages(
+      docOf(img("a"), p("Intro"), img("b"), { type: "moreBreak" }, img("c")),
+    );
+    expect(result).toEqual({
+      html: `${fig("a")}<p>Intro</p>${fig("b")}`,
+      hasMore: true,
+      breakAtIndex: 3,
+    });
+  });
+
+  it("returns the first image for a body of images alone", () => {
+    expect(withImages(docOf(img("a")))).toEqual({
+      html: fig("a"),
+      hasMore: false,
+      breakAtIndex: 1,
+    });
+    expect(withImages(docOf(img("a"), img("b")))!.hasMore).toBe(true);
+  });
+
+  it("keeps a trailing image once tolerance takes in the whole tail", () => {
+    const result = withImages(
+      docOf(p("A".repeat(600)), p("B".repeat(150)), img("a")),
+      10,
+      500,
+      200,
+    );
+    expect(result!.html).toContain(fig("a"));
+    expect(result!.hasMore).toBe(false);
+    expect(result!.breakAtIndex).toBe(3);
+  });
+
+  it("leaves images out by default, before a moreBreak too", () => {
+    const auto = extractSummaryHtml(docOf(img("a"), p("Intro")));
+    expect(auto!.html).toBe("<p>Intro</p>");
+    expect(auto!.hasMore).toBe(false);
+
+    const manual = extractSummaryHtml(
+      docOf(img("a"), p("Intro"), { type: "moreBreak" }, p("Rest")),
+    );
+    expect(manual!.html).toBe("<p>Intro</p>");
   });
 });

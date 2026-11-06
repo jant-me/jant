@@ -67,6 +67,7 @@ export const unbuiltClientAssetDefine = {
   __CLIENT_COMPOSE_PRELOAD__: JSON.stringify([]),
   __CLIENT_CSS_FILE__: JSON.stringify("/_assets/client.css"),
   __CLIENT_AUTHOR_CSS_FILE__: JSON.stringify("/_assets/client-author.css"),
+  __CLIENT_SHARE_CSS_FILE__: JSON.stringify("/_assets/client-share.css"),
   __CLIENT_CJK_CSS_FILE__: JSON.stringify("/_assets/client-cjk.css"),
   __CLIENT_CJK_TC_CSS_FILE__: JSON.stringify("/_assets/client-cjk-tc.css"),
   __CLIENT_CJK_JP_CSS_FILE__: JSON.stringify("/_assets/client-cjk-jp.css"),
@@ -86,6 +87,8 @@ export const CLIENT_TARGET = "es2022" as const;
  *   `client-share.js`, loaded by the shell on demand (see
  *   `src/client/lazy-entries.ts`)
  * - `client.css` for the shared site styles
+ * - `client-share.css`, the "Share as image" dialog and card, linked by
+ *   `share-launch.ts` when a post menu that offers sharing opens
  * - `client-author.css`, the composer/settings/editor styles, linked only on
  *   authenticated pages
  * - `client-cjk.css` for optional Simplified Chinese font assets
@@ -106,6 +109,7 @@ export const clientBuildOptions = {
       "client-share": resolve(dir, "src/client-share.ts"),
       style: resolve(dir, "src/style.css"),
       "style-author": resolve(dir, "src/style-author.css"),
+      "style-share": resolve(dir, "src/style-share.css"),
       "style-cjk": resolve(dir, "src/style-cjk.css"),
       "style-cjk-tc": resolve(dir, "src/style-cjk-tc.css"),
       "style-cjk-jp": resolve(dir, "src/style-cjk-jp.css"),
@@ -136,6 +140,8 @@ export const clientBuildOptions = {
             return `${ASSET_BASE_SEGMENT}/client-[hash].css`;
           case "style-author.css":
             return `${ASSET_BASE_SEGMENT}/client-author-[hash].css`;
+          case "style-share.css":
+            return `${ASSET_BASE_SEGMENT}/client-share-[hash].css`;
           case "style-cjk.css":
             return `${ASSET_BASE_SEGMENT}/client-cjk-[hash].css`;
           case "style-cjk-tc.css":
@@ -343,7 +349,7 @@ const ENTRY_BUDGETS_GZIP: Record<string, number> = {
   // Measured 2026-09: 251 KB, mostly the shared editor chunk plus Sortable.
   "client-manage": 290 * 1024,
   // Measured 2026-10: 103 KB, nearly all of it snapdom 3.4.0. Loaded only
-  // when an author opens a post menu that offers "Share as image".
+  // when a post menu that offers "Share as image" opens.
   "client-share": 118 * 1024,
 };
 

@@ -91,17 +91,24 @@ h1 {
 
 h2 {
   font-size: var(--type-content-title);
-  margin: 2.1rem 0 1.4rem;
+  margin: 2.6rem 0 0.9rem;
 }
 
 h3 {
   font-size: var(--type-content-subtitle);
-  margin: 2rem 0 1.4rem;
+  margin: 2.2rem 0 0.75rem;
 }
 
 h4 {
   font-size: var(--type-content-body);
-  font-weight: var(--fw-medium);
+  margin: 1.8rem 0 0.6rem;
+}
+
+/* The block after a heading gives up its own top margin, so the heading's
+   bottom margin is the whole gap; otherwise a paragraph's 1.4rem wins the
+   margin collapse and the heading floats 1.4rem from both neighbours. */
+:is(h1, h2, h3, h4, h5, h6) + * {
+  margin-top: 0;
 }
 
 h5,
@@ -303,7 +310,9 @@ time {
  * max-width = body-max-width / 0.835 so the inner content area exactly
  * equals `--layout-body-max-width` on wide viewports. min() caps keep
  * padding from growing beyond 210px / 67px. Mobile widens to 5% / 5%
- * and the 55% content column collapses to 100% (via tokens.css).
+ * and the 55% content column collapses to 100% (via tokens.css). Below
+ * 1024px, where the sidenote gutter is gone, the frame narrows to the
+ * reading measure and centers, as on the main site.
  * ------------------------------------------------------------------------- */
 
 .site-page {
@@ -316,6 +325,8 @@ time {
 .site-page > main,
 .site-page > footer,
 .site-page > .home-branding-credit {
+  --site-frame-gutter-start: max(5%, 28px);
+  --site-frame-gutter-end: 5%;
   width: 100%;
   max-width: calc(var(--layout-body-max-width) / 0.835);
   padding-left: min(12.5%, 210px);
@@ -324,13 +335,17 @@ time {
   margin-right: auto;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   .site-page > header,
   .site-page > main,
   .site-page > footer,
   .site-page > .home-branding-credit {
-    padding-left: max(5%, 28px);
-    padding-right: 5%;
+    max-width: calc(
+      var(--layout-reading-measure) + var(--site-frame-gutter-start) +
+        var(--site-frame-gutter-end)
+    );
+    padding-left: var(--site-frame-gutter-start);
+    padding-right: var(--site-frame-gutter-end);
   }
 }
 
@@ -344,6 +359,8 @@ time {
  * ------------------------------------------------------------------------- */
 
 .site-header {
+  /* The nav collapses by this width (Tiered responsive collapse, below). */
+  container: site-header / inline-size;
   padding-top: 24px;
   background-color: var(--site-page-bg);
 }
@@ -600,14 +617,15 @@ time {
 
 /* --- Tiered responsive collapse ---------------------------------------- *
  *
- *   ≤960px — 5th+ inline link collapses into More (tier-lg)
- *   ≤780px — also 4th collapses (tier-md)
- *   ≤580px — also 3rd collapses (tier-sm)
+ * By the header's own width, as on the main site:
+ *   < 802px   — 5th+ inline link collapses into More (tier-lg)
+ *   < 652px   — also 4th collapses (tier-md)
+ *   < 522px   — also 3rd collapses (tier-sm)
  * The first two links always stay inline. No hamburger on static export —
  * at very narrow widths 2 inline links + More button is the floor.
  */
 
-@media (max-width: 960px) {
+@container site-header (width < 802px) {
   .site-header-link-collapse-lg {
     display: none;
   }
@@ -625,7 +643,7 @@ time {
   }
 }
 
-@media (max-width: 780px) {
+@container site-header (width < 652px) {
   .site-header-link-collapse-md {
     display: none;
   }
@@ -639,7 +657,7 @@ time {
   }
 }
 
-@media (max-width: 580px) {
+@container site-header (width < 522px) {
   .site-header-link-collapse-sm {
     display: none;
   }
@@ -879,18 +897,18 @@ hr.feed-divider {
 
 .post-card > .post-card-summary :is(h1, h2),
 .post-card > .post-card-quote-commentary :is(h1, h2) {
-  font-size: calc(var(--type-content-body) * 1.12);
-  font-weight: var(--fw-medium);
-  margin-top: 1.45rem;
-  margin-bottom: 0.55rem;
+  font-size: calc(var(--type-content-body) * 1.2);
+  font-weight: var(--type-heading-weight);
+  margin-top: 1.6rem;
+  margin-bottom: 0.6rem;
 }
 
 .post-card > .post-card-summary :is(h3, h4),
 .post-card > .post-card-quote-commentary :is(h3, h4) {
-  font-size: var(--type-content-body);
-  font-weight: var(--fw-medium);
-  margin-top: 1.2rem;
-  margin-bottom: 0.45rem;
+  font-size: calc(var(--type-content-body) * 1.08);
+  font-weight: var(--type-heading-weight);
+  margin-top: 1.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .post-card > .post-card-summary :is(h5, h6),

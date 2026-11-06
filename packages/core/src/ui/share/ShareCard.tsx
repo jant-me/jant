@@ -6,7 +6,8 @@
  * white of a chat or a feed. Images run across the top of the paper; below
  * them the date, the post set large in the site's fonts with each format's
  * own marks, the files a picture cannot show, and a footer that says whose
- * site it is and how to get there.
+ * site it is and how to get there. A lone image keeps its own shape, cut
+ * only past 4:5 tall; two or more share a grid of fixed frames.
  *
  * A post in a Thread sits on the Thread's rail, as the timeline shows a
  * Thread's newest post: the Thread's first post above it in up to three
@@ -81,7 +82,12 @@ const Images: FC<{ card: ShareCardView }> = ({ card }) => {
     <div class="share-card-images" data-count={String(card.images.length)}>
       {card.images.map((image, index) => (
         <div class="share-card-image">
-          <img src={image.url} alt="" />
+          <img
+            src={image.url}
+            alt=""
+            width={image.width}
+            height={image.height}
+          />
           {image.video && (
             <span class="share-card-play" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="currentColor">
@@ -110,10 +116,11 @@ const Avatar: FC<{ card: ShareCardView }> = ({ card }) => {
   ) : null;
 };
 
+/** The words; when the summary stops short of the post, its end fades. */
 const Body: FC<{ card: ShareCardView }> = ({ card }) =>
   card.bodyHtml ? (
     <div
-      class="share-card-body"
+      class={card.hasMore ? "share-card-body has-more" : "share-card-body"}
       data-share-card-body
       dangerouslySetInnerHTML={{ __html: card.bodyHtml }}
     />
@@ -172,7 +179,7 @@ const PostContent: FC<{ card: ShareCardView; imagesInside?: boolean }> = ({
 
       <Body card={card} />
 
-      {card.hasMore && (
+      {card.hasMore && !card.bodyHtml && (
         <div class="share-card-more" aria-hidden="true">
           …
         </div>
@@ -276,7 +283,9 @@ export const ShareCard: FC<{ card: ShareCardView }> = ({ card }) => (
           <Avatar card={card} />
           <div class="share-card-source">
             <span class="share-card-site">{card.siteName}</span>
-            <span class="share-card-url">{card.displayUrl}</span>
+            {card.siteAddress && (
+              <span class="share-card-address">{card.siteAddress}</span>
+            )}
           </div>
           <span
             class="share-card-qr"

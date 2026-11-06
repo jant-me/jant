@@ -11,8 +11,11 @@ to save or share (WeChat Moments is the case that drove it).
 
 ## Decisions
 
-- Author-only, from the post menu only. No text-selection entry, no
-  reader-facing share button.
+- Readers share too (reversed from v1, which was author-only): the post's
+  "More" menu, on the timeline and the post page, holds Copy link and Share
+  as image for a reader; the author's menu gains Copy link above Share as
+  image. WeChat Moments, the case that drove the feature, is mostly readers
+  passing a post on. No text-selection entry.
 - Generated in the author's browser with snapdom; the server renders the
   card's HTML. Workers never rasterize (10 ms CPU on Free, CJK fonts too
   big to bundle, Satori can't read the theme CSS).
@@ -60,16 +63,20 @@ B, a full-bleed magazine page):
   domain with the site's link icon and the title at 32 px; quote mark and
   quote text in the serif stack, sized by length (29 / 25 / 21 px), the
   source after a short rule, the author's comment quieter below.
-- "…" when the summary stops short of the post (hidden when the capture
-  already cut and faded the body).
+- When the summary stops short of the post, its last two lines fade into
+  the paper (`.share-card-body.has-more::after`, at most half the body, so a
+  one-line summary stays readable); a body the capture cut keeps only its
+  own fade. "…" remains for a post with no words to fade. Discover's card
+  does the same.
 - Files a picture cannot show — documents (PDF, ePub, …), recordings,
   attached texts, videos without a poster — listed under the text, up to
   three and "+N": a slip with the format in capitals (from the extension,
   or the MIME type), the name (an attached text's opening words, set in the
   serif), and its size, duration or character count as the site formats
   them. Without this a post whose point is a PDF lost it on the card.
-- Footer: avatar, site name in the site-title font over the address, QR on
-  the right (74 px, 222 in the image), centred under a hairline.
+- Footer: avatar, site name in the site-title font over the site's
+  address (host and path prefix, left out when the name already is it),
+  QR to the post on the right (74 px, 222 in the image), centred under a hairline.
 
 Text still follows the timeline's summary rules (note limits for untitled
 notes, article limits otherwise, read-more break first); the one-screen
@@ -115,12 +122,68 @@ lines of context read as too busy):
   them. The QR code opens the shared post, which the post page shows in
   its Thread.
 
+## Readers
+
+A signed-out reader gets the same ⋯ in each post's footer, wherever the
+author's sits (`hideActions` decides both), with two items: Copy link and
+Share as image. Owen weighed a ⋯ on every timeline post against keeping the
+reader's timeline bare (mocked both) and chose the menu everywhere.
+
+- Strings stay English, like the rest of the reader chrome: the public
+  catalog is English-only by design (`lingui.config.ts`, mise
+  `i18n-translate`), and the dialog and author menu already hardcode theirs.
+- The share card and dialog styles leave `client-author.css` for a sheet of
+  their own, `client-share.css`, linked by `share-launch.ts` when a menu
+  that offers sharing opens. Readers need them, and they are too rarely used
+  for the render-blocking `client.css`. `<html data-share-stylesheet>`
+  carries its hashed path, the way `data-asset-base-path` carries the base.
+- `/_/share-card/:id` answers signed-out requests; `canShareAsImage` (on the
+  Thread's visibility) still refuses drafts and Private posts.
+- Copy link writes the post's own permalink (the footer's `u-url`, made
+  absolute), not the page's address; on a Thread page each post copies its
+  own. Shown for every post that is not a draft.
+
+- [x] Route: signed-out requests answered; tests for a reader, a draft, a
+      Private post, a reply in a Private Thread.
+- [x] Styles: `styles/share.css` + `style-share.css` entry, hashed name
+      through the manifest define like `client-author.css`, html attribute,
+      lazy link in `share-launch.ts`; audience test checks the author sheet
+      holds no share rules.
+- [x] Footer: reader trigger (`data-share-menu-trigger`) when the author's
+      would show; `<jant-share-menu>` mounted for signed-out pages. The
+      permalink rides on the article (`data-post-permalink`), since a
+      titled post's page hides the footer date.
+- [x] `jant-share-menu` (client.js): open/toggle, backdrop click, Escape,
+      focus, Copy link, Share as image; placement, icons and copy in
+      `client/post-menu-shared.ts`, which both menus use.
+- [x] Author menu: Copy link above Share as image; not on drafts, shown on
+      Private posts (the author can open those).
+- [x] Tests: footer, reader menu, author menu, stylesheet loading, layout
+      attribute.
+- [x] Docs: writing-and-organizing (en, zh-Hans).
+- [x] Browsers: reader and author, WebKit phone and Chromium desktop;
+      production build serves `client-share.css`.
+- [x] Checks and budgets.
+
+Results: WebKit phone (reader) and Chromium desktop (reader, author) on the
+seeded site: the menu lists Copy link and Share as image (the author's adds
+Copy link above Share as image), Copy link writes
+`http://localhost:19020/shape-thread-2` (read back from the clipboard in
+Chromium) and toasts "Link copied.", focus returns to the ⋯, the dialog
+opens styled by the linked `/src/style-share.css`, Escape closes menu and
+dialog; no console errors. `pnpm build`: `client-share-BNqD2izX.css`
+(3.4 KB gz) emitted and named in the server bundle; client.js 37.9 → 40.3
+KB gz of 48, client-auth 62.1 → 63.4 of 72, client.css unchanged at 48.0.
+check-tests 5402 passed, check-lint clean. Not verified: WeChat's in-app
+browser (the dialog's image is a `blob:` URL; whether its long-press save
+takes one needs a real phone).
+
 ## Plan
 
 - [x] `lib/share-card.ts`: `assembleShareCard` loads the post, its media
       and alias; `buildShareCardView` picks the layout per format, cuts the
       summary (`extractSummaryHtml`, note or article limits), picks images,
-      builds the absolute permalink, display URL and QR SVG (`uqr`).
+      builds the absolute permalink, site address and QR SVG (`uqr`).
 - [x] `ui/share/ShareCard.tsx`: one component for the four layouts; the
       quote card moves the site to the footer. Quote mark drawn inline (a
       sprite `<use>` would come out empty in the capture).
@@ -171,6 +234,52 @@ lines of context read as too busy):
       (minor) and a "Share a post as an image" section in
       `docs/writing-and-organizing.md` and its zh-Hans copy.
 - [x] Commit on `feat/share-image`; PR into `preview`.
+- [x] From Owen's site: a post whose body is one long list showed only its
+      title. The cut stepped over top-level blocks only and cut to 0 when
+      the first was not a paragraph (a list, a quotation, code). It now
+      cuts between the paragraphs inside lists and quotations, and shows
+      the start of a block taller than the screen. snapdom fixes each
+      item's height, so list spacing that collapsed out through an item's
+      edge was lost in the picture; it now stays inside the items. Tests in
+      `share-capture.test.ts`; captures in both engines.
+- [x] From Owen's iPhone: "Copy image" left a white block top left. The
+      toast container moves into the open dialog, where BaseCoat's
+      `.dialog > *` panel rule gave it full width and a -50% translate, so
+      the "Image copied." toast sat mostly off screen. `components.css`
+      undoes that rule for `.dialog > .toast-container`; it applied to
+      every BaseCoat dialog. Checked in WebKit and Chromium, mobile and
+      desktop.
+- [x] A lone image was framed 4:3 and cropped, which cut the sides off
+      a wide screenshot. It now keeps its own shape at full width, cut
+      from the bottom only past 4:5 tall; wide images are never cut. The
+      card carries the stored width and height so the layout is known
+      before the image loads; images without one take the loaded size.
+      Two or more keep the grid. Route test; captures of chat screenshot,
+      phone-height, 3:4, 4:3, square and a Thread reply in both engines.
+- [x] The corner close was out of a thumb's reach on a phone. At 640px and
+      below the dialog closes from a Close button at the bottom left, the
+      actions two to a row with Download bottom right, an odd one out
+      across the row; wider screens keep the corner close. Every action
+      has a Lucide icon (share, copy, download, x). Component test for the
+      bottom Close and Escape; screenshots of WebKit and Chromium phones,
+      dark mode, desktop.
+- [x] A long slug wrapped the footer's address onto two or three lines.
+      The footer names the site's address instead (host and path
+      prefix), once when the site's name already is it; the QR code
+      still points at the post. Route tests for the address, a path
+      prefix, and a name that is the domain.
+- [x] Pictures made on an iPhone came out soft (a reader's report), text
+      and images alike. snapdom draws a capture holding any box-shadow or
+      text-shadow at 1x in Safari and stretches it to the scale asked for,
+      and the paper's shadow and the Thread dots' halos were box-shadows.
+      The capture now turns shadows off (`.share-card-host[data-capturing]`)
+      and paints the paper's shadow back on the canvas
+      (`paintPaperShadow`, read from the paper's computed style, so dark
+      mode paints none); the rail breaks around each dot instead of running
+      under a halo, and the current dot's ring is a border. SSIM of the
+      card's copy against the source scaled to size, WebKit: one image
+      0.960 → 0.981, two 0.950 → 0.964, level with Chromium (0.982, 0.963).
+      Chromium card before/after 0.9994.
 - [ ] Owen tries it on his own site/devices.
 
 ## Results
@@ -181,16 +290,16 @@ five photos, long untitled note, Private note, English article.
 
 Third round (paper on a mat), WebKit phone viewport / Chromium desktop:
 
-| Post | Card | WebKit | Chromium |
-|---|---|---|---|
-| note + photo | 1080×1456 | 206 ms | 205 ms |
-| article + 2 photos | 1080×2320 | 233 ms | 211 ms |
-| link | 1080×882 | 126 ms | 104 ms |
-| quote | 1080×1074 | 127 ms | 110 ms |
-| note + 5 photos (2×2, "+1") | 1080×1572 | 208 ms | 206 ms |
-| long note (cut, fade) | 1080×2154 | 127 ms | 113 ms |
-| English article | 1080×1108 | 125 ms | 107 ms |
-| Private note | no menu item | — | — |
+| Post                        | Card         | WebKit | Chromium |
+| --------------------------- | ------------ | ------ | -------- |
+| note + photo                | 1080×1456    | 206 ms | 205 ms   |
+| article + 2 photos          | 1080×2320    | 233 ms | 211 ms   |
+| link                        | 1080×882     | 126 ms | 104 ms   |
+| quote                       | 1080×1074    | 127 ms | 110 ms   |
+| note + 5 photos (2×2, "+1") | 1080×1572    | 208 ms | 206 ms   |
+| long note (cut, fade)       | 1080×2154    | 127 ms | 113 ms   |
+| English article             | 1080×1108    | 125 ms | 107 ms   |
+| Private note                | no menu item | —      | —        |
 
 Checked in Paper, Clay, Sage, Ember and Ink, light and dark.
 
@@ -200,15 +309,15 @@ mode renders a dark card with the QR on its white block.
 
 Fourth round, zh-Hans site, 3x, from the click (menu open 300 ms first):
 
-| Post | Image | WebKit card / image | Chromium card / image |
-|---|---|---|---|
-| quote with emoji | 1620×1452 | 90 / 299 ms (was 4864) | 73 / 139 ms |
-| note + photo | 1620×2208 | 93 / 255 ms | 65 / 179 ms |
-| article + 2 photos | 1620×3186 | 86 / 280 ms | 64 / 235 ms |
-| quote | 1620×1617 | 89 / 173 ms | 65 / 120 ms |
-| link | 1620×1338 | 81 / 178 ms | — |
-| long note (cut) | 1620×3423 | 87 / 223 ms | — |
-| files | 1620×1611 | 94 / 197 ms | — |
+| Post               | Image     | WebKit card / image    | Chromium card / image |
+| ------------------ | --------- | ---------------------- | --------------------- |
+| quote with emoji   | 1620×1452 | 90 / 299 ms (was 4864) | 73 / 139 ms           |
+| note + photo       | 1620×2208 | 93 / 255 ms            | 65 / 179 ms           |
+| article + 2 photos | 1620×3186 | 86 / 280 ms            | 64 / 235 ms           |
+| quote              | 1620×1617 | 89 / 173 ms            | 65 / 120 ms           |
+| link               | 1620×1338 | 81 / 178 ms            | —                     |
+| long note (cut)    | 1620×3423 | 87 / 223 ms            | —                     |
+| files              | 1620×1611 | 94 / 197 ms            | —                     |
 
 The same posts at 2x took 204–294 ms in WebKit. Chromium at 4x CPU
 throttling (a mid-range phone): card 285 ms, image 599 ms. Dark mode
@@ -220,6 +329,19 @@ three-post Thread): middle post with photos 1620×2556 in 331–339 ms,
 second 1620×2316, quote 1620×1836, last 1620×1272; Chromium 236 ms.
 Light and dark checked; the card's rail is a step stronger than the
 timeline's threadline, which all but vanished on dark paper.
+
+Load retry (a reader on www.owenyoung.com once got "Could not open
+sharing", not reproduced): with the bundle or the stylesheet dropped by a
+Playwright route, Chromium and WebKit both fetch a failed dynamic import
+again. Warm-up and first try dropped → the retry opens the image; three
+dropped → the toast, with the cause in the console.
+
+1:1 check: a 1410 px wide test chart (zone plate, 1 px stripes and
+checks, 9 px type) uploaded as is through the API. At 1410×939 the
+card's photo area matches the chart pixel for pixel in WebKit and
+Chromium. At 1410×940 (313.33 CSS px tall) snapdom lays the image out at
+313, so it is drawn 939 px tall and 1 px stripes go grey in places; left
+as is, since only an image exactly 1410 px wide shows it.
 
 Not verified: a real iPhone or Android phone (`/__dev/login` only answers
 on local hostnames, so a phone has to sign in with the demo account at the

@@ -36,6 +36,7 @@ import {
   CLIENT_CJK_TC_CSS_FILE,
   CLIENT_CSS_FILE,
   CLIENT_JS_FILE,
+  CLIENT_SHARE_CSS_FILE,
   CORE_VERSION,
 } from "../../lib/version.js";
 import { IS_VITE_DEV } from "../../lib/build-env.js";
@@ -288,6 +289,11 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         ? assetPath("/src/style-author.css")
         : toPublicAssetPath(CLIENT_AUTHOR_CSS_FILE, assetBasePath)
       : null;
+  // "Share as image" is rare enough to stay off every page's critical path:
+  // the post menu links this when it opens, for a reader or the author.
+  const shareStylesheetPath = IS_VITE_DEV
+    ? assetPath("/src/style-share.css")
+    : toPublicAssetPath(CLIENT_SHARE_CSS_FILE, assetBasePath);
   const clientScriptPath = IS_VITE_DEV
     ? resolvedClientBundle === "full"
       ? assetPath("/src/client-auth.ts")
@@ -402,6 +408,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         data-view-lang={viewLang ?? undefined}
         data-asset-base-path={assetBasePath}
         data-media-base={mediaBase}
+        data-share-stylesheet={shareStylesheetPath}
       >
         <head>
           <meta charset="UTF-8" />
@@ -580,10 +587,12 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
             <link rel="stylesheet" href={authorStylesheetPath} />
           )}
           {/* Critical inline style: prevent mobile nav jitter by applying
-              responsive header layout before external CSS/JS loads */}
+              responsive header layout before external CSS/JS loads. The nav
+              tiers query the header's width, as in ui.css, so the container
+              is declared here too. */}
           <style
             dangerouslySetInnerHTML={{
-              __html: `.site-header-search-link,.site-header-hamburger,.site-header-more-responsive-only,.site-header-more-link-responsive,.site-header-more-divider-responsive{display:none!important}@media(max-width:1200px){.site-header-search-form{display:none!important}.site-header-search-link{display:inline-flex!important}}@media(max-width:960px){.site-header-link-collapse-lg{display:none!important}.site-header-more-responsive-only.site-header-more-tier-lg{display:inline-flex!important}.site-header-more-link-show-lg{display:flex!important}.site-header-more-divider-show-lg{display:block!important}}@media(max-width:780px){.site-header-link-collapse-md{display:none!important}.site-header-more-responsive-only.site-header-more-tier-md{display:inline-flex!important}.site-header-more-link-show-md{display:flex!important}.site-header-more-divider-show-md{display:block!important}}@media(max-width:580px){.site-header-link-collapse-sm{display:none!important}.site-header-more-responsive-only.site-header-more-tier-sm{display:inline-flex!important}.site-header-more-link-show-sm{display:flex!important}.site-header-more-divider-show-sm{display:block!important}}@media(max-width:480px){.site-header-nav,.site-header-more{display:none!important}.site-header-search-slot{display:flex!important}.site-header-hamburger{display:flex!important}.site-header-right{margin-left:.35rem}}`,
+              __html: `.site-header{container:site-header/inline-size}.site-header-search-link,.site-header-hamburger,.site-header-more-responsive-only,.site-header-more-link-responsive,.site-header-more-divider-responsive{display:none!important}@media(max-width:1200px){.site-header-search-form{display:none!important}.site-header-search-link{display:inline-flex!important}}@container site-header (width<802px){.site-header-link-collapse-lg{display:none!important}.site-header-more-responsive-only.site-header-more-tier-lg{display:inline-flex!important}.site-header-more-link-show-lg{display:flex!important}.site-header-more-divider-show-lg{display:block!important}}@container site-header (width<652px){.site-header-link-collapse-md{display:none!important}.site-header-more-responsive-only.site-header-more-tier-md{display:inline-flex!important}.site-header-more-link-show-md{display:flex!important}.site-header-more-divider-show-md{display:block!important}}@container site-header (width<522px){.site-header-link-collapse-sm{display:none!important}.site-header-more-responsive-only.site-header-more-tier-sm{display:inline-flex!important}.site-header-more-link-show-sm{display:flex!important}.site-header-more-divider-show-sm{display:block!important}}@media(max-width:480px){.site-header-nav,.site-header-more{display:none!important}.site-header-search-slot{display:flex!important}.site-header-hamburger{display:flex!important}.site-header-right{margin-left:.35rem}}`,
             }}
           />
           {/* Emitted before the theme style so a font theme that names its own

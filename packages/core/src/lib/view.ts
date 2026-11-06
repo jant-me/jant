@@ -46,6 +46,7 @@ import {
   NOTE_SUMMARY_MIN_HIDDEN_CHARS,
 } from "./summary.js";
 import { renderTiptapDocumentAroundBoundary } from "./tiptap-render.js";
+import { toMediaKind } from "./upload.js";
 import { highlightText } from "./search-snippet.js";
 import { getPostPath, isFullUrl, toPublicPath, toSameSitePath } from "./url.js";
 
@@ -275,7 +276,10 @@ export function toPostView(
   //
   // - Titled (article-style) posts get an excerpt teaser (`summaryHtml`) and a
   //   "Continue" link to the full page; a `#continue` anchor is spliced into the
-  //   body for scroll targeting on that page.
+  //   body for scroll targeting on that page. The teaser keeps one inline image
+  //   from ahead of the cut, unless the post has an image or video attachment:
+  //   the card shows that gallery below the teaser, and one card carries one
+  //   set of pictures.
   // - Untitled notes render their body in full and expand in place. When the
   //   body is long enough to truncate (larger limit + tolerance guard) we splice
   //   a `data-note-break` marker at the boundary so the feed can clamp the tail
@@ -287,12 +291,20 @@ export function toPostView(
   let bodyHtmlWithAnchor = post.bodyHtml;
   if (post.body) {
     const isArticle = !!post.title;
+    const hasVisualAttachment = post.mediaAttachments.some((m) => {
+      const kind = toMediaKind(m.mimeType);
+      return kind === "image" || kind === "video";
+    });
     const result = extractSummaryHtml(
       post.body,
       isArticle ? ARTICLE_SUMMARY_MAX_BLOCKS : NOTE_SUMMARY_MAX_BLOCKS,
       isArticle ? ARTICLE_SUMMARY_MAX_CHARS : NOTE_SUMMARY_MAX_CHARS,
       isArticle ? 0 : NOTE_SUMMARY_MIN_HIDDEN_CHARS,
       { namespace: id },
+      {
+        includeImages: isArticle && !hasVisualAttachment,
+        stopAtHeading: isArticle,
+      },
     );
     if (result && isArticle) {
       summaryHtml = result.html;

@@ -2,7 +2,7 @@
  * Signed state for the GitHub App install flow.
  *
  * When Jant Core runs behind a hosted control plane (multi-host / multi-site),
- * the GitHub App's Callback URL must point at one fixed URL — typically the
+ * the GitHub App's Setup URL and redirect URI must point at one fixed URL — typically the
  * control plane, which then dispatches the browser back to the correct site.
  *
  * The `state` query parameter that rides through that round-trip must tell

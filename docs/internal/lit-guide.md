@@ -65,6 +65,7 @@ first-page-view bundle (`enforceClientBundleBudget` in `vite.shared.ts`).
 | `src/client-compose.ts`  | the composer first opens, or at once on the compose page                               | the editor, TipTap, uploads, slash commands                                                                |
 | `src/client-settings.ts` | a settings element is on the page                                                      | settings pages                                                                                             |
 | `src/client-manage.ts`   | the navigation manager, collection directory, or a collection page menu is on the page | management surfaces                                                                                        |
+| `src/client-share.ts`    | a post menu that offers "Share as image" opens, the author's or a reader's             | the share dialog and snapdom; its styles are `client-share.css`, which `share-launch.ts` links             |
 
 Rules that follow from the split:
 

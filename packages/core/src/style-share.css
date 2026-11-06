@@ -1,0 +1,16 @@
+/**
+ * Share stylesheet: the "Share as image" dialog and the card it captures.
+ *
+ * Linked on demand by `client/share-launch.ts`, never from the page head:
+ * `<html data-share-stylesheet>` names it, and a post menu that offers
+ * sharing loads it when it opens.
+ *
+ * Like `style-author.css`, no `@import "tailwindcss"`: `client.css` is
+ * already on the page with the layers and every design token these rules
+ * reference. The layer order below is the one `client.css` establishes, so
+ * `@layer components` here joins the existing components layer.
+ */
+
+@layer properties, theme, base, components, utilities;
+
+@import "./styles/share.css";

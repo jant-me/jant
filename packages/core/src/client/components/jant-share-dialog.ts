@@ -14,7 +14,7 @@
  * Light DOM only — BaseCoat and the author stylesheet apply directly.
  */
 
-import { LitElement, html, nothing } from "lit";
+import { LitElement, html, nothing, svg } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import {
   prepareShareCard,
@@ -48,6 +48,27 @@ function canCopyImage(): boolean {
     typeof navigator.clipboard?.write === "function"
   );
 }
+
+/** A Lucide icon for a button, in the post menu's stroke. */
+function icon(paths: ReturnType<typeof svg>) {
+  return html`<svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    ${paths}
+  </svg>`;
+}
+
+const ICON_SHARE = svg`<path d="M12 2v13" /><path d="m16 6-4-4-4 4" /><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />`;
+const ICON_COPY = svg`<rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />`;
+const ICON_DOWNLOAD = svg`<path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" />`;
+const ICON_CLOSE = svg`<path d="M18 6 6 18" /><path d="m6 6 12 12" />`;
 
 /** Resolves once the image at `url` is decoded and can show at once. */
 async function decoded(url: string): Promise<void> {
@@ -293,6 +314,10 @@ export class JantShareDialog extends LitElement {
     }
   }
 
+  /**
+   * On a phone the actions sit two to a row and the dialog closes from the
+   * bottom one, in reach of a thumb; the corner close is for wider screens.
+   */
   #renderActions() {
     if (this._status === "error") return nothing;
     const ready = this._status === "ready";
@@ -306,7 +331,7 @@ export class JantShareDialog extends LitElement {
                 ?disabled=${!ready}
                 @click=${() => void this.#share()}
               >
-                Share…
+                ${icon(ICON_SHARE)} Share…
               </button>`
             : nothing
         }
@@ -318,17 +343,24 @@ export class JantShareDialog extends LitElement {
                 ?disabled=${!ready}
                 @click=${() => void this.#copy()}
               >
-                Copy image
+                ${icon(ICON_COPY)} Copy image
               </button>`
             : nothing
         }
+        <button
+          type="button"
+          class="btn-outline share-dialog-close"
+          @click=${() => this.#close()}
+        >
+          ${icon(ICON_CLOSE)} Close
+        </button>
         <button
           type="button"
           class="btn"
           ?disabled=${!ready}
           @click=${() => this.#download()}
         >
-          Download
+          ${icon(ICON_DOWNLOAD)} Download
         </button>
       </footer>
     `;

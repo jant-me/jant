@@ -495,7 +495,8 @@ version control.
 
 ### GitHub App (optional)
 
-`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`, and
+`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`,
+`GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and
 `GITHUB_APP_WEBHOOK_SECRET` connect GitHub Sync through your own GitHub App
 instead of a personal access token. See [GitHub Sync](github-sync.md).
 

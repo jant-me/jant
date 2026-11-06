@@ -13,6 +13,7 @@ import type {
   PostFooterDisplayOptions,
 } from "../../types.js";
 import { useLingui } from "../../i18n/context.js";
+import { canShareAsImage } from "../../lib/share-card.js";
 import { sanitizeUrl } from "../../lib/url.js";
 import { useViewer } from "../../lib/viewer-context.js";
 import { Icon } from "./Icon.js";
@@ -153,9 +154,15 @@ export const PostPublishedLink: FC<PostPublishedLinkProps> = ({
   );
 };
 
-export const PostMenuTriggerButton: FC<{ className?: string }> = ({
-  className = "post-menu-trigger",
-}) => {
+/**
+ * The post's "More" button. The author's opens `jant-post-menu`; a reader's
+ * (`reader`) opens `jant-share-menu`, which holds Copy link and Share as
+ * image.
+ */
+export const PostMenuTriggerButton: FC<{
+  className?: string;
+  reader?: boolean;
+}> = ({ className = "post-menu-trigger", reader = false }) => {
   const { i18n } = useLingui();
 
   return (
@@ -170,7 +177,9 @@ export const PostMenuTriggerButton: FC<{ className?: string }> = ({
         }),
       )}
       aria-expanded="false"
-      data-post-menu-trigger
+      {...(reader
+        ? { "data-share-menu-trigger": true }
+        : { "data-post-menu-trigger": true })}
     >
       <Icon name="post-menu-dots" size={15} />
     </button>
@@ -281,6 +290,13 @@ export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
             </button>
           )}
           <PostMenuTriggerButton />
+        </div>
+      )}
+      {/* A reader's menu sits where the author's does, with what a reader can
+          do with a post: copy its link, share it as an image. */}
+      {!hideActions && !isAuthor && canShareAsImage(post) && (
+        <div class="post-menu-actions">
+          <PostMenuTriggerButton reader />
         </div>
       )}
     </footer>

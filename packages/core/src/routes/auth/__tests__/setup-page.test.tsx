@@ -13,6 +13,7 @@ import { renderToString } from "hono/jsx/dom/server";
 import { describe, expect, it } from "vitest";
 import { I18nProvider } from "../../../i18n/context.js";
 import { createI18n } from "../../../i18n/i18n.js";
+import type { Locale } from "../../../i18n/locales.js";
 import {
   isDiscoverLanguage,
   type DiscoverPageUrls,
@@ -29,6 +30,8 @@ const PAGES: DiscoverPageUrls = {
   quotes: "https://jant.me/quotes",
   rules: "https://jant.me/discover/about",
 };
+
+const AUTHOR_GROUP_URL = "https://jant.me/zh-hans/contact#wechat";
 
 /** The Discover field's opening tag, which carries whether it is on screen. */
 function discoverFieldTag(html: string): string {
@@ -47,8 +50,8 @@ function unescapeAttribute(value: string): string {
     .replace(/&amp;/g, "&");
 }
 
-function render(props: SetupProps): string {
-  const i18n = createI18n("en");
+function render(props: SetupProps, locale: Locale = "en"): string {
+  const i18n = createI18n(locale);
   const c = {
     get: (key: string) => (key === "i18n" ? i18n : undefined),
   } as unknown as Context;
@@ -66,6 +69,7 @@ describe("SetupContent — hosted site", () => {
     discoverAvailable: true,
     discoverDefault: true,
     discoverPages: PAGES,
+    authorGroupUrl: AUTHOR_GROUP_URL,
   };
 
   it("names the step and the site in one line", () => {
@@ -129,6 +133,7 @@ describe("SetupContent — the Discover question", () => {
     discoverAvailable: true,
     discoverDefault: false,
     discoverPages: PAGES,
+    authorGroupUrl: AUTHOR_GROUP_URL,
   };
 
   it("starts clear where the deployment lists nothing by default", () => {
@@ -252,6 +257,35 @@ describe("SetupContent — the Discover question", () => {
     expect(html).not.toContain("→");
     expect(html).toContain(`${copy.about}</p>`);
   });
+
+  // The group talks in Chinese, so only a Chinese screen points to it, as one
+  // more sentence after the directory's — the community that sentence names.
+  it("points a Chinese screen to the Jant author group", () => {
+    const copy = getDiscoverCopy(createI18n("zh-Hans"));
+    const html = render({ ...base, discoverPages: null }, "zh-Hans");
+
+    expect(html).toContain(
+      `${copy.about}你也可以选择加入<a href="${AUTHOR_GROUP_URL}" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground transition-colors">Jant 作者群</a>。</p>`,
+    );
+  });
+
+  it("says nothing about the group on an English screen", () => {
+    const html = render(base);
+
+    expect(html).not.toContain("作者群");
+    expect(html).not.toContain(AUTHOR_GROUP_URL);
+  });
+
+  // The group's page is found from the directory's address; with no directory
+  // there is nowhere to send anyone.
+  it("leaves the group out where there is no directory", () => {
+    const html = render(
+      { ...base, discoverPages: null, authorGroupUrl: null },
+      "zh-Hans",
+    );
+
+    expect(html).not.toContain("作者群");
+  });
 });
 
 /**
@@ -267,6 +301,7 @@ describe("SetupContent — the note that nothing is final", () => {
     discoverAvailable: true,
     discoverDefault: false,
     discoverPages: null,
+    authorGroupUrl: null,
   };
   const note = "You can change all of this later in Settings.";
 
@@ -351,6 +386,7 @@ describe("SetupContent — self-hosted, second screen", () => {
     discoverAvailable: true,
     discoverDefault: false,
     discoverPages: PAGES,
+    authorGroupUrl: AUTHOR_GROUP_URL,
   };
 
   it("counts itself as the last step and names no site yet", () => {

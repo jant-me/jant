@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   discoverIntroRuns,
+  getAuthorGroupUrl,
   getDiscoverFeedPath,
   getDiscoverPageUrls,
   getDiscoverSubmitUrl,
@@ -291,6 +292,26 @@ describe("getDiscoverSubmitUrl", () => {
     expect(getDiscoverSubmitUrl(undefined)).toBeNull();
     expect(getDiscoverSubmitUrl("")).toBeNull();
     expect(getDiscoverSubmitUrl("not a url")).toBeNull();
+  });
+});
+
+describe("getAuthorGroupUrl", () => {
+  it("finds the group's QR code on the directory's Chinese contact page", () => {
+    expect(getAuthorGroupUrl("https://jant.me/api/discover/ping")).toBe(
+      "https://jant.me/zh-hans/contact#wechat",
+    );
+  });
+
+  it("follows a directory of your own", () => {
+    expect(
+      getAuthorGroupUrl("https://directory.example/api/discover/ping"),
+    ).toBe("https://directory.example/zh-hans/contact#wechat");
+  });
+
+  it("has nothing to offer when no directory is configured", () => {
+    expect(getAuthorGroupUrl(undefined)).toBeNull();
+    expect(getAuthorGroupUrl("")).toBeNull();
+    expect(getAuthorGroupUrl("not a url")).toBeNull();
   });
 });
 

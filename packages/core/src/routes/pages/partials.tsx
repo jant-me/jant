@@ -138,13 +138,12 @@ partialPageRoutes.get("/_/post-preview/:postId", async (c) => {
 });
 
 /**
- * The card "Share as image" captures. Author-only: the dialog that asks for
- * it opens from the post menu, and the card is not a reader's page. Icons
- * are drawn inline because the capture copies the card without the page's
- * icon sprite.
+ * The card "Share as image" captures, for the author and readers alike: it
+ * shows only what the post's own address already does, and
+ * `assembleShareCard` refuses drafts and Private posts. Icons are drawn
+ * inline because the capture copies the card without the page's icon sprite.
  */
 partialPageRoutes.get("/_/share-card/:postId", async (c) => {
-  if (!c.var.isAuthenticated) return c.notFound();
   const postId = parseIdParam(c.req.param("postId"), ID_PREFIX.post);
   const card = await assembleShareCard(c, postId);
   if (!card) return c.notFound();

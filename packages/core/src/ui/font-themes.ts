@@ -33,12 +33,20 @@ export interface FontTheme {
   description: MessageDescriptor;
 }
 
+/*
+ * Serif stacks lead on the system face with real weights, then the vendored
+ * Noto Serif (loaded by the profile stylesheet) and its installed siblings,
+ * and only then SimSun / PMingLiU. Those two ship one weight: a heading set
+ * in them is synthetic bold, smeared at every size, which is what every
+ * Windows reader of a serif-headed site used to get because they sat ahead
+ * of the face the site ships.
+ */
 const HANS_CJK_SERIF_FALLBACK =
-  '"Songti SC", STSong, SimSun, "Noto Serif SC", "Noto Serif CJK SC", "Songti TC", PMingLiU, MingLiU, "Noto Serif TC", "Noto Serif CJK TC"';
+  '"Songti SC", "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", STSong, SimSun, "Songti TC", "Noto Serif TC", "Noto Serif CJK TC", "Source Han Serif TC", PMingLiU, MingLiU';
 const HANS_CJK_SANS_FALLBACK =
   '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", "PingFang TC", "Hiragino Sans CNS", "Microsoft JhengHei", "Noto Sans TC", "Noto Sans CJK TC"';
 const HANT_CJK_SERIF_FALLBACK =
-  '"Songti TC", PMingLiU, MingLiU, "Noto Serif TC", "Noto Serif CJK TC", "Songti SC", STSong, SimSun, "Noto Serif SC", "Noto Serif CJK SC"';
+  '"Songti TC", "Noto Serif TC", "Noto Serif CJK TC", "Source Han Serif TC", PMingLiU, MingLiU, "Songti SC", "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", STSong, SimSun';
 const HANT_CJK_SANS_FALLBACK =
   '"PingFang TC", "Hiragino Sans CNS", "Microsoft JhengHei", "Noto Sans TC", "Noto Sans CJK TC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC"';
 const JP_CJK_SERIF_FALLBACK =
@@ -148,18 +156,33 @@ export function resolveCjkFontProfile(
   return language ? getCjkFontFromLanguageTag(language) : undefined;
 }
 
+/*
+ * Reading rhythm for a CJK page. Han, kana and hangul glyphs fill the em box
+ * where Latin lowercase sits at the x-height, so the Latin leadings in
+ * tokens.css pack CJK lines visibly tighter: 1.7 reads as 1.5 does in Latin.
+ * The surfaces Chinese readers hold up as well set — sspai, WeChat articles —
+ * run 1.75 to 1.8, and a multi-line Chinese title at 1.2 has its rows touching.
+ */
+const CJK_READING_RHYTHM = {
+  "--type-body-leading": "1.75",
+  "--type-heading-leading": "1.3",
+};
+
 /**
- * Build serif and sans fallback variables for the resolved language profile.
+ * Build the CSS variables a page in a CJK language needs: the serif and sans
+ * fallback stacks for its script, and the reading rhythm its glyphs call for.
  *
  * Empty for a language with no profile: `tokens.css` already carries a real
- * script-neutral stack in both variables, so there is nothing to override.
+ * script-neutral stack in both variables and the Latin leadings, so there is
+ * nothing to override. `BaseLayout` writes these on `:root` ahead of the theme
+ * style, so a font theme or custom CSS that sets a leading still wins.
  *
  * @param language - BCP 47 content language tag
  * @returns CSS variables consumed by every font theme, empty when the token
  *   defaults already apply
  * @example
  * getCjkFontCssVariables("zh-Hans")
- * // => { "--font-cjk-serif-fallback": '"Songti SC", ...', ... }
+ * // => { "--font-cjk-serif-fallback": '"Songti SC", ...', ..., "--type-body-leading": "1.8", ... }
  */
 export function getCjkFontCssVariables(
   language?: string,
@@ -169,21 +192,25 @@ export function getCjkFontCssVariables(
       return {
         "--font-cjk-serif-fallback": HANS_CJK_SERIF_FALLBACK,
         "--font-cjk-sans-fallback": HANS_CJK_SANS_FALLBACK,
+        ...CJK_READING_RHYTHM,
       };
     case "zh-Hant":
       return {
         "--font-cjk-serif-fallback": HANT_CJK_SERIF_FALLBACK,
         "--font-cjk-sans-fallback": HANT_CJK_SANS_FALLBACK,
+        ...CJK_READING_RHYTHM,
       };
     case "ja":
       return {
         "--font-cjk-serif-fallback": JP_CJK_SERIF_FALLBACK,
         "--font-cjk-sans-fallback": JP_CJK_SANS_FALLBACK,
+        ...CJK_READING_RHYTHM,
       };
     case "ko":
       return {
         "--font-cjk-serif-fallback": KO_CJK_SERIF_FALLBACK,
         "--font-cjk-sans-fallback": KO_CJK_SANS_FALLBACK,
+        ...CJK_READING_RHYTHM,
       };
     default:
       return {};
@@ -227,7 +254,13 @@ export const BUILTIN_FONT_THEMES: FontTheme[] = [
     },
     headingFontFamily: TUFTE_SERIF,
     bodyFontFamily: TUFTE_SERIF,
-    cssVariables: {},
+    cssVariables: {
+      // Tufte CSS sets its headings in the regular weight and lets size and
+      // space carry the hierarchy; the semibold default would hand it
+      // Palatino Bold.
+      "--type-heading-weight": "var(--fw-regular)",
+      "--type-display-weight": "var(--fw-regular)",
+    },
     description: {
       id: "Palatino-based old-style serif matching Tufte CSS proportions",
       message: "Palatino-based old-style serif matching Tufte CSS proportions",

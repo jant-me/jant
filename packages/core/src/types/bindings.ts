@@ -80,6 +80,8 @@ export interface Bindings {
   GITHUB_APP_PRIVATE_KEY?: EnvBindingValue;
   GITHUB_APP_SLUG?: EnvBindingValue;
   GITHUB_APP_WEBHOOK_SECRET?: EnvBindingValue;
+  GITHUB_APP_CLIENT_ID?: EnvBindingValue;
+  GITHUB_APP_CLIENT_SECRET?: EnvBindingValue;
   // Rate limits
   RATE_LIMIT_ENABLED?: EnvBindingValue;
   RATE_LIMIT_SEARCH_PER_MIN?: EnvBindingValue;

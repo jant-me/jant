@@ -1269,3 +1269,8 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   every later merge argues it again; a better design goes to `main` as its own
   change. Before deleting an existing export, trace why it exists
   (`git log -S`) and who calls it, sibling repos included, and say so.
+- The Chrome that Claude in Chrome connects to may be on another machine
+  than the one running Claude Code; it cannot open this box's localhost. For
+  local visual checks drive the Playwright headless Chromium already in
+  `~/Library/Caches/ms-playwright` over CDP (screenshots per element, phone
+  and dark emulation) instead of switching browsers or chasing `127.0.0.1`.

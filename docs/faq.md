@@ -107,6 +107,7 @@ Yes. Set `SITE_PATH_PREFIX=/blog`. On Cloudflare you also need to point Workers 
 
 - [GitHub Issues](https://github.com/jant-me/jant/issues) — bugs and feature requests
 - Email `support#jant.me` (replace `#` with `@`) — hosted account questions
+- Jant author group on WeChat — members discuss Jant, writing, reading, and more, in Chinese. The QR code is on the [contact page](https://jant.me/contact)
 
 ## Can AI agents publish posts?
 

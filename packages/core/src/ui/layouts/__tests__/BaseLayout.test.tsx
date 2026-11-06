@@ -394,6 +394,31 @@ describe("BaseLayout", () => {
     expect(render(true)).toContain(`href="/blog/_assets/client.css"`);
   });
 
+  it("names the share stylesheet for a post menu to link, without linking it", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const render = (isAuthenticated: boolean) =>
+      renderToString(
+        BaseLayout({
+          title: "Jant",
+          c: createContext("featured", {
+            sitePathPrefix: "/blog",
+            siteUrl: "https://example.com/blog",
+            assetBasePath: "/blog/_assets",
+          }),
+          ...(isAuthenticated ? { isAuthenticated } : {}),
+          children: "Test",
+        }),
+      );
+
+    // A reader shares too, so both audiences get it, and neither waits on it.
+    for (const html of [render(false), render(true)]) {
+      expect(html).toContain(
+        'data-share-stylesheet="/blog/_assets/client-share.css"',
+      );
+      expect(html).not.toContain('href="/blog/_assets/client-share.css"');
+    }
+  });
+
   it("uses the public asset base path from appConfig in production", async () => {
     const { BaseLayout } = await loadBaseLayout();
     const html = renderToString(
@@ -626,12 +651,14 @@ describe("BaseLayout", () => {
     expect(html).toContain(".site-header-search-link");
     expect(html).toContain("@media(max-width:1200px)");
     expect(html).toContain(".site-header-search-form{display:none!important}");
-    // Tiered nav collapse: 4 inline ≤960px, 3 inline ≤780px, 2 inline ≤580px
-    expect(html).toContain("@media(max-width:960px)");
+    // Tiered nav collapse by the header's own width: 4 inline below 802px,
+    // 3 below 652px, 2 below 522px
+    expect(html).toContain(".site-header{container:site-header/inline-size}");
+    expect(html).toContain("@container site-header (width<802px)");
     expect(html).toContain(".site-header-link-collapse-lg");
-    expect(html).toContain("@media(max-width:780px)");
+    expect(html).toContain("@container site-header (width<652px)");
     expect(html).toContain(".site-header-link-collapse-md");
-    expect(html).toContain("@media(max-width:580px)");
+    expect(html).toContain("@container site-header (width<522px)");
     expect(html).toContain(".site-header-link-collapse-sm");
     expect(html).toContain(
       "@media(max-width:480px){.site-header-nav,.site-header-more{display:none!important}.site-header-search-slot{display:flex!important}",

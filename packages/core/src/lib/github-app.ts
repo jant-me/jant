@@ -13,9 +13,10 @@
  * way a PAT is — the downstream client is auth-agnostic.
  */
 
-import type { GitHubAppEnvConfig } from "./env.js";
+import type { GitHubAppEnvConfig, GitHubAppOAuthConfig } from "./env.js";
 
 const GITHUB_API = "https://api.github.com";
+const GITHUB_OAUTH = "https://github.com/login/oauth";
 
 // ---------------------------------------------------------------------------
 // Installation token cache
@@ -484,4 +485,185 @@ export async function searchInstallationRepos(
     })),
     totalCount: data.total_count,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Who owns an installation (OAuth web flow)
+// ---------------------------------------------------------------------------
+//
+// An installation id is not a secret and proves nothing: GitHub's Setup URL
+// hands it over as a query parameter, so anyone can type another account's
+// id into that URL. The only thing that ties an installation to the person
+// in the browser is GitHub's answer to "which installations can this user
+// reach", which takes a user access token — hence the web flow below.
+
+/**
+ * Create a PKCE verifier and its S256 challenge for one authorization.
+ *
+ * @returns The verifier to keep until the callback, and the challenge to
+ *   send to GitHub.
+ * @example
+ * const { verifier, challenge } = await createPkcePair();
+ */
+export async function createPkcePair(): Promise<{
+  verifier: string;
+  challenge: string;
+}> {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const verifier = base64UrlEncode(bytes);
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(verifier),
+  );
+  return { verifier, challenge: base64UrlEncode(digest) };
+}
+
+/**
+ * Build the URL that asks GitHub to sign the author in for this App.
+ *
+ * No `redirect_uri`: GitHub then uses the first redirect URI in the App's
+ * settings, which on a hosted deployment is the control plane's dispatcher
+ * — the one URL that can route the browser back to any site.
+ *
+ * @param clientId - The App's OAuth client ID (not its App ID).
+ * @param state - CSRF token, also kept in a cookie for the callback.
+ * @param codeChallenge - PKCE challenge from `createPkcePair`.
+ * @returns The authorize URL.
+ * @example
+ * buildAuthorizeUrl("Iv1.abc", state, challenge);
+ * // "https://github.com/login/oauth/authorize?client_id=Iv1.abc&state=…"
+ */
+export function buildAuthorizeUrl(
+  clientId: string,
+  state: string,
+  codeChallenge: string,
+): string {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
+  });
+  return `${GITHUB_OAUTH}/authorize?${params.toString()}`;
+}
+
+/** An installation of this App that the signed-in GitHub user owns. */
+export interface OwnedInstallation {
+  installationId: string;
+  account: InstallationAccount;
+}
+
+/**
+ * Exchange the code from GitHub's callback for a user access token, and list
+ * the installations of this App that user owns.
+ *
+ * "Owns" is narrower than what `GET /user/installations` returns. GitHub
+ * lists a personal account's installation for every collaborator on one of
+ * its repositories, and binding it would hand that collaborator every
+ * repository the installation covers — so a personal installation counts
+ * only for the account itself. An organization's installation counts for
+ * the members GitHub lists it for, which is the access GitHub itself gives
+ * them. Enterprise installations carry no login and are left out.
+ *
+ * The token is used for these two reads and then dropped; nothing stores it.
+ *
+ * @param oauth - The App's client credentials.
+ * @param code - The `code` query parameter from the callback.
+ * @param codeVerifier - The PKCE verifier kept since the authorize redirect.
+ * @returns The owned installations, possibly none.
+ * @example
+ * const owned = await listOwnedInstallations(app.oauth, code, verifier);
+ */
+export async function listOwnedInstallations(
+  oauth: GitHubAppOAuthConfig,
+  code: string,
+  codeVerifier: string,
+): Promise<OwnedInstallation[]> {
+  const token = await exchangeUserCode(oauth, code, codeVerifier);
+  const user = (await fetchUserJson(token, "/user")) as { id: number };
+
+  const owned: OwnedInstallation[] = [];
+  for (let page = 1; ; page++) {
+    const data = (await fetchUserJson(
+      token,
+      `/user/installations?per_page=100&page=${page}`,
+    )) as {
+      installations: Array<{
+        id: number;
+        account: {
+          id?: number;
+          login?: string;
+          type?: string;
+          avatar_url?: string;
+        } | null;
+      }>;
+    };
+    for (const installation of data.installations) {
+      const account = installation.account;
+      if (!account?.login) continue;
+      const isOwner =
+        account.type === "Organization" ||
+        (account.type === "User" && account.id === user.id);
+      if (!isOwner) continue;
+      owned.push({
+        installationId: String(installation.id),
+        account: {
+          login: account.login,
+          type: account.type === "Organization" ? "Organization" : "User",
+          avatarUrl: account.avatar_url ?? "",
+        },
+      });
+    }
+    if (data.installations.length < 100) break;
+  }
+  return owned;
+}
+
+async function exchangeUserCode(
+  oauth: GitHubAppOAuthConfig,
+  code: string,
+  codeVerifier: string,
+): Promise<string> {
+  const res = await fetch(`${GITHUB_OAUTH}/access_token`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "jant-github-sync",
+    },
+    body: new URLSearchParams({
+      client_id: oauth.clientId,
+      client_secret: oauth.clientSecret,
+      code,
+      code_verifier: codeVerifier,
+    }).toString(),
+  });
+  // GitHub answers a bad or expired code with 200 and an `error` field.
+  const data = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    error?: string;
+  };
+  if (!res.ok || !data.access_token) {
+    throw new Error(
+      `GitHub OAuth code exchange failed (${res.status}): ${data.error ?? "no access token"}`,
+    );
+  }
+  return data.access_token;
+}
+
+async function fetchUserJson(token: string, path: string): Promise<unknown> {
+  const res = await fetch(`${GITHUB_API}${path}`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "User-Agent": "jant-github-sync",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`GitHub ${path} failed (${res.status}): ${body}`);
+  }
+  return res.json();
 }
