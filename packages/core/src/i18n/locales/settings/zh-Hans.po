@@ -33,10 +33,20 @@ msgstr "{count, plural, other {还有 # 篇{language}帖子。先修改它们的
 msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 msgstr "{count, plural, other {还有 # 篇{language}帖子，但列表里没有这个语言。把它加回列表，或先修改这些帖子的语言。}}"
 
+#. @context: Total line on the stats page; {days} is 7, 30 or 90
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{count, plural, one {# view} other {# views}} in the last {days} days"
+msgstr "{count, plural, other {最近 {days} 天 # 次浏览}}"
+
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
 msgstr "{count} 个设置已显示"
+
+#. @context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{day}: {count, plural, one {# view} other {# views}}"
+msgstr "{count, plural, other {{day}：# 次浏览}}"
 
 #. @context: Body of the dialog confirming removal of the last additional language
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -52,6 +62,11 @@ msgstr "{name} 是 Jant 社区人工维护的目录，旨在帮助用户发现�
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
 msgstr "根地址（/、/feed、/archive）将改为提供「{next}」的内容，「{previous}」移至 {prefix}。帖子地址不会改变，但订阅了 /feed 的读者从此收到的是「{next}」的帖子。"
+
+#. @context: One option of the window switch on the stats page; {window} is 7, 30 or 90
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{window} days"
+msgstr "{window} 天"
 
 #. @context: Custom CSS textarea placeholder
 #: src/ui/dash/appearance/AdvancedContent.tsx
@@ -456,6 +471,7 @@ msgstr "平静自然，看着舒服。"
 #. @context: Button to cancel form
 #. @context: Button to cancel settings changes
 #. @context: Button to cancel unsaved changes and revert to original values
+#. @context: Cancel button in the confirm dialog
 #. @context: Dialog cancel button
 #. @context: GitHub sync picker — cancel action
 #: src/routes/dash/custom-urls.tsx
@@ -470,6 +486,7 @@ msgstr "平静自然，看着舒服。"
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/SessionsContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Cancel"
 msgstr "取消"
@@ -789,6 +806,16 @@ msgstr "无法加载页面。请稍后再试。"
 msgid "Couldn't save. Try again in a moment."
 msgstr "保存失败。请稍后再试。"
 
+#. @context: Checkbox label on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Count page views"
+msgstr "统计页面浏览"
+
+#. @context: Help text under the stats checkbox; {days} is the retention window
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Counts are kept for {days} days and store nothing about any reader. Turning this off deletes them."
+msgstr "计数保留 {days} 天，不记录任何读者信息。关闭后会删除全部计数。"
+
 #. @context: Ember color theme preview help line
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Cozy and bold among the warm tones."
@@ -1026,6 +1053,11 @@ msgstr "设计"
 #: src/routes/dash/custom-urls.tsx
 msgid "Destination"
 msgstr "目标地址"
+
+#. @context: Row on the stats page for views with no referrer: typed addresses, apps, feed readers
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Direct"
+msgstr "直接访问"
 
 #. @context: Button to disconnect GitHub repository on GitHub Sync settings
 #. @context: Button to disconnect Telegram
@@ -1836,6 +1868,12 @@ msgstr "笔记"
 msgid "Nothing at {address}. Check it, or search by title."
 msgstr "在 {address} 没有任何内容。检查它，或按标题搜索。"
 
+#. @context: Empty state of a list on the stats page when the window has no views
+#. @context: Empty state of a list on the stats page when the window has no views
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Nothing counted yet."
+msgstr "这段时间还没有浏览。"
+
 #. @context: Config Editor empty search state
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Nothing matches this search. Try a different name or description."
@@ -1901,6 +1939,11 @@ msgstr "或手动提交地址"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Orange-tinted background. The warmest palette."
 msgstr "带橘调的底色。最暖的一套。"
+
+#. @context: Row on the stats page for every referrer past the ten listed
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Other"
+msgstr "其他"
 
 #. @context: Label for the list of non-primary languages
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -2032,6 +2075,11 @@ msgstr "所有帖子的地址都不会改变，也可以随时再关闭。"
 msgid "Post notes by messaging a Telegram bot"
 msgstr "通过向 Telegram 机器人发送消息来发布笔记"
 
+#. @context: Heading of the most-viewed posts on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Posts"
+msgstr "帖子"
+
 #. @context: Badge on the language served at the root address
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Primary"
@@ -2112,6 +2160,11 @@ msgstr "重定向类型"
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Redirects, vanity paths, and URL control"
 msgstr "重定向、个性化路径和 URL 控制"
+
+#. @context: Heading of the referrer list on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Referrers"
+msgstr "来源"
 
 #. @context: GitHub sync picker — tooltip for the refresh button next to the search input
 #: src/routes/dash/settings.tsx
@@ -2497,6 +2550,30 @@ msgstr "有内容填写不正确，检查后重试。"
 msgid "Start writing"
 msgstr "开始写作"
 
+#. @context: Breadcrumb label
+#. @context: Settings item — view stats
+#. @context: Stats page title
+#: src/routes/dash/settings.tsx
+#: src/ui/dash/settings/SettingsRootContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Stats"
+msgstr "统计"
+
+#. @context: Stats page body when counting is turned off
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Stats are off. Turn them on below to start counting."
+msgstr "统计已关闭。在下方打开后开始计数。"
+
+#. @context: Note under the stats checkbox when demo restrictions apply
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Stats settings are locked in demo mode."
+msgstr "演示模式下不能更改统计设置。"
+
+#. @context: Error shown when changing the stats setting is blocked in demo mode
+#: src/routes/dash/settings.tsx
+msgid "Stats settings are locked in demo mode. Every visitor shares the demo site."
+msgstr "演示模式下不能更改统计设置。演示站点由所有访客共用。"
+
 #. @context: How far along first-run setup is, shown beside the screen's name on a self-hosted install
 #: src/routes/auth/setup.tsx
 msgid "Step {current} of {total}"
@@ -2808,11 +2885,21 @@ msgstr "调整你的网站的外观、阅读体验和运行方式。"
 msgid "Turn off"
 msgstr "关闭"
 
+#. @context: Confirm button for turning off stats
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Turn Off"
+msgstr "关闭"
+
 #. @context: Title of the dialog confirming removal of the last additional language
 #. @context: Title of the disable-multilingual dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Turn off multilingual content?"
 msgstr "关闭多语言？"
+
+#. @context: Confirmation before turning off stats, which deletes the counts
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Turn off stats and delete every count? This can't be undone."
+msgstr "关闭统计并删除全部计数？此操作无法撤销。"
 
 #. @context: Link in the multilingual section that opens the setup dialog
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -2853,6 +2940,12 @@ msgstr "排版选项与阅读质感"
 #: src/ui/dash/settings/SessionsContent.tsx
 msgid "Unknown device"
 msgstr "未知设备"
+
+#. @context: Stand-in title for a post with no title on the stats page
+#. @context: Stand-in title for a post with no title on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Untitled"
+msgstr "无标题"
 
 #. @context: Settings item description for password change
 #: src/ui/dash/settings/AccountMenuContent.tsx
@@ -2938,6 +3031,16 @@ msgstr "查看"
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "View these posts"
 msgstr "查看这些帖子"
+
+#. @context: Settings item description for stats
+#: src/ui/dash/settings/SettingsRootContent.tsx
+msgid "Views by day, most-read posts, and referrers"
+msgstr "每日浏览量、读得最多的帖子和来源"
+
+#. @context: Accessible name of the bar chart on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Views per day"
+msgstr "每日浏览量"
 
 #. @context: Prefix before Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -3038,6 +3141,11 @@ msgstr "/archive 打开时用哪种版式。读者可以在页面上自行切换
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Which post stream the canonical /feed URL returns."
 msgstr "规范的 /feed URL 返回哪个帖子流。"
+
+#. @context: Accessible name of the 7/30/90-day switch on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Window"
+msgstr "时间范围"
 
 #. @context: Parchment color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx

@@ -310,6 +310,9 @@ async function renderPost(
     canonicalAlias?: string | null;
   } = {},
 ) {
+  // A preview is the author looking at their own draft, not a page read.
+  if (!options.isPreview) c.set("viewTarget", { kind: "post", id: post.id });
+
   // The chrome, the thread, and the translation links each need only the
   // post, so they load together. The chrome is scoped to the post's
   // language: a Japanese post's logo and nav lead into /ja, since the post

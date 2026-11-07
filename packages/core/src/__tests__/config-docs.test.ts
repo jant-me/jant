@@ -176,9 +176,11 @@ describe("configuration docs", () => {
           ) ?? "";
       const table = section.split(/^### /m)[0] ?? "";
       // DISCOVER is set on the General page but kept out of the Config Editor,
-      // so "never chosen" can stay distinct from "off".
+      // so "never chosen" can stay distinct from "off". STATS_ENABLED is set
+      // on the Stats page, which deletes the counts on the way off; the
+      // Config Editor could not.
       expect(readTableKeys(table).sort()).toEqual(
-        [...editableSettingKeys, "DISCOVER"].sort(),
+        [...editableSettingKeys, "DISCOVER", "STATS_ENABLED"].sort(),
       );
     });
 

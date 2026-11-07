@@ -85,6 +85,7 @@ export async function renderCollectionPage(
   slugExpressionOrSelection: string | ResolvedCollectionSelection,
   pagePathOverride?: string,
 ): Promise<Response | null> {
+  c.set("viewTarget", { kind: "path" });
   const page = parsePageNumber(c.req.query("page"));
   const paginatedPageTitle = formatPageLabel(page);
   const isAuthenticated = c.var.isAuthenticated;

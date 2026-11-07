@@ -98,6 +98,8 @@ Using the canonical path for `page.identifier` instead of `location.pathname` le
 
 ## Site analytics
 
+Jant counts page views on its own; see [Stats](stats.md). An external service adds what Jant does not keep: unique visitors, countries, devices.
+
 Analytics scripts are usually load-time sensitive — put them in **Site Header**.
 
 **Plausible**:

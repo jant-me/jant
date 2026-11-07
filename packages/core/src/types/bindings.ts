@@ -110,6 +110,9 @@ export interface Bindings {
   SUMMARY_MAX_CHARS?: EnvBindingValue;
   // Slug generation
   SLUG_ID_LENGTH?: EnvBindingValue;
+  // View stats
+  STATS_ENABLED?: EnvBindingValue;
+  STATS_DAILY_LIMIT?: EnvBindingValue;
   // RSS feed
   RSS_FEED_LIMIT?: EnvBindingValue;
   RSS_PUBLISH_DELAY_SECONDS?: EnvBindingValue;

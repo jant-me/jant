@@ -80,6 +80,10 @@ export const SNAPSHOT_EXCLUDED_TABLES = [
   // in-flight uploads, and the recycle-window ledger for deleted objects.
   "upload_session",
   "storage_purge",
+  // View counts. Ninety days of per-day counters about one deployment's
+  // readers, not content: an export is a site's writing, and a restore must
+  // not bring another site's traffic along.
+  "view_count",
 ];
 
 /**
@@ -154,6 +158,9 @@ export const SNAPSHOT_EXCLUDED_SETTING_KEYS = [
   // and the announcement state below it belongs to the announcing instance.
   "DISCOVER",
   "DISCOVER_ANNOUNCE_STATE",
+  // Whether this deployment counts its readers. The counts themselves are an
+  // excluded table (`view_count`), and the switch goes with them.
+  "STATS_ENABLED",
   // Local UI state: which affordances this author has already been shown, and
   // how far setup got.
   "DISCOVERY_COMPOSE_OPEN_SHORTCUT_AT",
