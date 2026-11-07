@@ -79,6 +79,7 @@ import { defaultCacheControl, noStore } from "./middleware/cache-control.js";
 import { requireOnboarding } from "./middleware/onboarding.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { prefetchSettings, withConfig } from "./middleware/config.js";
+import { viewCounter } from "./middleware/view-counter.js";
 import { secureHeadersMiddleware } from "./middleware/secure-headers.js";
 import { apiCors } from "./middleware/cors.js";
 import { rejectCrossOriginWrites } from "./middleware/cross-origin.js";
@@ -548,6 +549,11 @@ export function createApp(): HonoApp {
   // Config + i18n — loads settings, resolves config/theme
   app.use("*", withConfig());
   app.use("*", i18nMiddleware());
+
+  // Page views, counted after the response from the page routes below that
+  // name what they rendered (`c.var.viewTarget`). Needs the config above for
+  // the site's time zone and the stats switch.
+  app.use("*", viewCounter());
 
   // --- Routes that need config ---
 

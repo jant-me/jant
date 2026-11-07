@@ -55,6 +55,7 @@ import {
   type GitHubAppInstallationsService,
 } from "./github-app-installations.js";
 import { createTelegramService, type TelegramService } from "./telegram.js";
+import { createStatsService, type StatsService } from "./stats.js";
 import type { HostedControlPlaneClient } from "../lib/hosted-control-plane.js";
 import type { EnsureSingleSiteOptions } from "./site.js";
 
@@ -82,6 +83,7 @@ export interface Services {
   githubAppInstallations: GitHubAppInstallationsService;
   telegram: TelegramService;
   textAttachments: TextAttachmentService;
+  stats: StatsService;
 }
 
 export function createServices(
@@ -197,10 +199,23 @@ export function createServices(
       databaseSchema,
     ),
     telegram: createTelegramService(db, siteId, databaseSchema),
+    stats: createStatsService(db, siteId, databaseSchema, dialect, {
+      settings,
+    }),
   };
 }
 
 export type { SettingsService } from "./settings.js";
+export type {
+  StatsService,
+  StatsOverview,
+  StatsPostDetail,
+  StatsPostRow,
+  StatsReferrerRow,
+  StatsReferrers,
+  StatsSeriesPoint,
+  StatsWindow,
+} from "./stats.js";
 export type { SiteService } from "./site.js";
 export type { PathService } from "./path.js";
 export type { PostService, PostFilters, PostDeleteDeps } from "./post.js";

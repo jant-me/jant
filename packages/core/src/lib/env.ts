@@ -86,6 +86,7 @@ export const ENV_RULES = {
   RATE_LIMIT_SEARCH_PER_MIN: { kind: "integer", min: 0 },
   UPLOAD_MAX_FILE_SIZE_MB: { kind: "integer", min: 1 },
   SLUG_ID_LENGTH: { kind: "integer", min: 3, max: 32 },
+  STATS_DAILY_LIMIT: { kind: "integer", min: 0 },
   STORAGE_DRIVER: { kind: "enum", options: STORAGE_DRIVERS },
   SITE_RESOLUTION_MODE: {
     kind: "enum",

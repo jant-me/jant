@@ -1,0 +1,208 @@
+import { describe, expect, it } from "vitest";
+import {
+  dayKeysEndingAt,
+  formatDayKey,
+  isBotUserAgent,
+  isDayKey,
+  referrerHost,
+  shiftDayKey,
+  shouldCountView,
+  viewPathKey,
+} from "../view-counting.js";
+
+const BROWSER_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15";
+
+/** A browser's top-level navigation, as every current engine sends it. */
+function navigation(overrides: Record<string, string | null> = {}): Headers {
+  const headers = new Headers({
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "cross-site",
+    "user-agent": BROWSER_UA,
+  });
+  for (const [name, value] of Object.entries(overrides)) {
+    if (value === null) headers.delete(name);
+    else headers.set(name, value);
+  }
+  return headers;
+}
+
+function candidate(
+  overrides: Partial<Parameters<typeof shouldCountView>[0]> = {},
+) {
+  return {
+    method: "GET",
+    status: 200,
+    contentType: "text/html; charset=UTF-8",
+    isAuthenticated: false,
+    headers: navigation(),
+    ...overrides,
+  };
+}
+
+describe("shouldCountView", () => {
+  it("counts a reader's navigation to an HTML page", () => {
+    expect(shouldCountView(candidate())).toBe(true);
+  });
+
+  it("counts nothing but a successful GET of HTML", () => {
+    expect(shouldCountView(candidate({ method: "HEAD" }))).toBe(false);
+    expect(shouldCountView(candidate({ method: "POST" }))).toBe(false);
+    expect(shouldCountView(candidate({ status: 404 }))).toBe(false);
+    expect(shouldCountView(candidate({ status: 301 }))).toBe(false);
+    expect(
+      shouldCountView(candidate({ contentType: "application/atom+xml" })),
+    ).toBe(false);
+    expect(shouldCountView(candidate({ contentType: null }))).toBe(false);
+  });
+
+  it("never counts the signed-in author", () => {
+    expect(shouldCountView(candidate({ isAuthenticated: true }))).toBe(false);
+  });
+
+  // The whole reason the Sec-Fetch headers are required: curl, HTTP libraries
+  // and most crawlers send neither, and a browser's navigation sends both.
+  it("requires a top-level navigation's Sec-Fetch headers", () => {
+    expect(
+      shouldCountView(
+        candidate({ headers: navigation({ "sec-fetch-dest": null }) }),
+      ),
+    ).toBe(false);
+    expect(
+      shouldCountView(
+        candidate({ headers: navigation({ "sec-fetch-mode": "cors" }) }),
+      ),
+    ).toBe(false);
+    expect(
+      shouldCountView(
+        candidate({ headers: navigation({ "sec-fetch-dest": "iframe" }) }),
+      ),
+    ).toBe(false);
+  });
+
+  it("skips speculative loads", () => {
+    for (const hint of [
+      { "sec-purpose": "prefetch" },
+      { "sec-purpose": "prefetch;prerender" },
+      { purpose: "prefetch" },
+      { "x-purpose": "preview" },
+      { "x-moz": "prefetch" },
+    ]) {
+      expect(
+        shouldCountView(candidate({ headers: navigation(hint) })),
+        JSON.stringify(hint),
+      ).toBe(false);
+    }
+  });
+
+  it("skips a machine that says what it is", () => {
+    expect(
+      shouldCountView(
+        candidate({
+          headers: navigation({
+            "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1)",
+          }),
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      shouldCountView(
+        candidate({ headers: navigation({ "user-agent": null }) }),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("isBotUserAgent", () => {
+  it("names the machines a navigation check lets through", () => {
+    for (const ua of [
+      "Mozilla/5.0 (compatible; bingbot/2.0)",
+      "HeadlessChrome/120.0",
+      "python-requests/2.31",
+      "curl/8.4.0",
+      "Feedly/1.0",
+      "facebookexternalhit/1.1",
+      "",
+    ]) {
+      expect(isBotUserAgent(ua), ua).toBe(true);
+    }
+  });
+
+  it("lets browsers through", () => {
+    for (const ua of [
+      BROWSER_UA,
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+      "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    ]) {
+      expect(isBotUserAgent(ua), ua).toBe(false);
+    }
+  });
+});
+
+describe("referrerHost", () => {
+  it("keeps the host alone, lowercased, without www", () => {
+    expect(
+      referrerHost("https://www.Example.com/some/post?utm=1", "blog.example"),
+    ).toBe("example.com");
+    expect(referrerHost("https://news.ycombinator.com/", "blog.example")).toBe(
+      "news.ycombinator.com",
+    );
+  });
+
+  it("is direct for no referrer, the site itself, or a non-web scheme", () => {
+    expect(referrerHost(null, "blog.example")).toBe("");
+    expect(referrerHost("", "blog.example")).toBe("");
+    expect(referrerHost("https://blog.example/other", "blog.example")).toBe("");
+    expect(referrerHost("https://www.blog.example/", "blog.example")).toBe("");
+    expect(referrerHost("https://blog.example/", "www.blog.example")).toBe("");
+    expect(referrerHost("android-app://com.example/", "blog.example")).toBe("");
+    expect(referrerHost("not a url", "blog.example")).toBe("");
+  });
+});
+
+describe("viewPathKey", () => {
+  it("drops the language view prefix and trailing slashes", () => {
+    expect(viewPathKey("/", "")).toBe("/");
+    expect(viewPathKey("/archive/", "")).toBe("/archive");
+    expect(viewPathKey("/en", "/en")).toBe("/");
+    expect(viewPathKey("/en/archive", "/en")).toBe("/archive");
+    expect(viewPathKey("/english", "/en")).toBe("/english");
+  });
+});
+
+describe("day keys", () => {
+  it("files a moment under the site's own calendar day", () => {
+    // 2026-11-08T20:00:00Z is already the 9th in Shanghai.
+    const timestamp = Date.UTC(2026, 10, 8, 20) / 1000;
+    expect(formatDayKey(timestamp, "UTC")).toBe("2026-11-08");
+    expect(formatDayKey(timestamp, "Asia/Shanghai")).toBe("2026-11-09");
+    expect(formatDayKey(timestamp, "America/Los_Angeles")).toBe("2026-11-08");
+  });
+
+  it("falls back to UTC for a time zone it does not know", () => {
+    const timestamp = Date.UTC(2026, 10, 8, 20) / 1000;
+    expect(formatDayKey(timestamp, "Mars/Olympus")).toBe("2026-11-08");
+  });
+
+  it("moves across month and year ends", () => {
+    expect(shiftDayKey("2026-03-01", -1)).toBe("2026-02-28");
+    expect(shiftDayKey("2026-12-31", 1)).toBe("2027-01-01");
+    expect(shiftDayKey("2026-11-08", -29)).toBe("2026-10-10");
+  });
+
+  it("lists a window oldest first, the last day included", () => {
+    expect(dayKeysEndingAt("2026-11-08", 3)).toEqual([
+      "2026-11-06",
+      "2026-11-07",
+      "2026-11-08",
+    ]);
+  });
+
+  it("recognizes its own format", () => {
+    expect(isDayKey("2026-11-08")).toBe(true);
+    expect(isDayKey("2026-11-8")).toBe(false);
+    expect(isDayKey("yesterday")).toBe(false);
+  });
+});
