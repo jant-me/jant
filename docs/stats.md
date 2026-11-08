@@ -12,7 +12,7 @@ A post's number is how often its own page was opened. A note read on the home pa
 
 ## Referrers
 
-A referrer is the site a reader followed a link from, reduced to its domain. **Direct** is a visit with no referrer: a typed address, a bookmark, or a link from an app, an email, or a feed reader. Most apps send none, so Direct is usually the largest line. **Other** is every domain past the ten listed.
+A referrer is the site a reader followed a link from, reduced to its domain. A link tagged with `utm_source` or `ref` is filed under that tag instead, wherever it was opened: `?utm_source=newsletter` counts as `newsletter`, and ChatGPT tags the links in its answers with `utm_source=chatgpt.com`. **Direct** is a visit with neither: a typed address, a bookmark, or an untagged link from an app, an email, or a feed reader. Most apps send no referrer, so Direct is usually the largest line. **Other** is everything past the ten listed.
 
 ## Turning it off
 

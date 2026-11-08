@@ -8,7 +8,8 @@
  * `Sec-Fetch-*` headers every current engine sends and almost no crawler does,
  * and the short User-Agent list below is only a backstop for the headless
  * browsers that still say what they are. Second, reducing what is kept to a
- * counter key: the site's calendar day, the page, and the referring host.
+ * counter key: the site's calendar day, the page, and where the reader came
+ * from — the source the link was tagged with, or else the referring host.
  */
 
 /**
@@ -204,6 +205,81 @@ export function referrerHost(
   const host = normalizeHost(url.hostname);
   if (!host || host === normalizeHost(ownHost)) return "";
   return host.slice(0, HOST_MAX_LENGTH);
+}
+
+/** Query parameters whose value says where a link was shared, in the order tried. */
+const SOURCE_QUERY_PARAMS = ["utm_source", "ref"] as const;
+
+/**
+ * What a source parameter may look like once normalized: a hostname
+ * (`chatgpt.com`) or a plain word someone tagged a link with (`newsletter`,
+ * `hacker_news`). Anything else — spaces, slashes, markup, a long string —
+ * is not a name worth a row and is ignored.
+ */
+const SOURCE_TOKEN = /^[a-z0-9][a-z0-9._-]{0,62}$/;
+
+/**
+ * The referrer a view is filed under.
+ *
+ * A `utm_source` or `ref` parameter on the link wins when it names something:
+ * whoever tagged the link said where it would be shared, which beats the host
+ * the browser happened to report and is often the only signal — an app
+ * opening a link sends no `Referer`, and ChatGPT tags the links in its
+ * answers with `utm_source=chatgpt.com`. Without a usable tag the `Referer`
+ * host decides, as in {@link referrerHost}. Both are normalized the same way,
+ * so a `utm_source=chatgpt.com` and a `Referer` from chatgpt.com are one row.
+ *
+ * @param input - The request's `Referer` header, its URL (for the query
+ *   string), and the host the site is being served on
+ * @returns The referrer key, or `""` for a direct visit
+ * @example
+ * ```ts
+ * viewReferrer({
+ *   referer: null,
+ *   requestUrl: "https://blog.example/post?utm_source=chatgpt.com",
+ *   ownHost: "blog.example",
+ * }); // "chatgpt.com"
+ * viewReferrer({
+ *   referer: "https://t.co/abc",
+ *   requestUrl: "https://blog.example/post?ref=newsletter",
+ *   ownHost: "blog.example",
+ * }); // "newsletter"
+ * viewReferrer({
+ *   referer: "https://news.ycombinator.com/",
+ *   requestUrl: "https://blog.example/post",
+ *   ownHost: "blog.example",
+ * }); // "news.ycombinator.com"
+ * ```
+ */
+export function viewReferrer(input: {
+  referer: string | null | undefined;
+  requestUrl: string;
+  ownHost: string;
+}): string {
+  const tagged = taggedSource(input.requestUrl, input.ownHost);
+  if (tagged !== null) return tagged;
+  return referrerHost(input.referer, input.ownHost);
+}
+
+/**
+ * The source a link's own parameters name, or `null` when they name none.
+ * `""` is a tag naming the site itself, which is a direct visit.
+ */
+function taggedSource(requestUrl: string, ownHost: string): string | null {
+  let params: URLSearchParams;
+  try {
+    params = new URL(requestUrl).searchParams;
+  } catch {
+    return null;
+  }
+  for (const name of SOURCE_QUERY_PARAMS) {
+    const value = params.get(name)?.trim();
+    if (!value) continue;
+    const token = normalizeHost(value);
+    if (!SOURCE_TOKEN.test(token)) continue;
+    return token === normalizeHost(ownHost) ? "" : token;
+  }
+  return null;
 }
 
 /**

@@ -91,6 +91,41 @@ describe("viewCounter", () => {
     expect(overview.posts).toEqual([]);
   });
 
+  it("files a tagged link under its tag, even without a referrer", async () => {
+    const { app, services, buffer } = fixture;
+    const post = await services.posts.create({
+      format: "note",
+      title: "Tagged",
+      bodyMarkdown: "Body",
+      status: "published",
+    });
+
+    // ChatGPT's apps open links without a Referer, but tag them.
+    await app.request(`/${post.slug}?utm_source=chatgpt.com`, {
+      headers: navigationHeaders(),
+    });
+    // A tag beats the host the browser reports.
+    await app.request(`/${post.slug}?ref=newsletter`, {
+      headers: navigationHeaders({ referer: "https://mail.google.com/" }),
+    });
+    expect(buffer.size).toBe(2);
+
+    await buffer.flush();
+    const detail = await services.stats.getPost(post.id, {
+      days: 1,
+      today: TODAY,
+    });
+    expect(detail?.total).toBe(2);
+    expect(detail?.referrers.direct).toBe(0);
+    expect(detail?.referrers.top).toHaveLength(2);
+    expect(detail?.referrers.top).toEqual(
+      expect.arrayContaining([
+        { host: "chatgpt.com", views: 1 },
+        { host: "newsletter", views: 1 },
+      ]),
+    );
+  });
+
   it("ignores requests that are not a reader's navigation", async () => {
     const { app, buffer } = fixture;
 
