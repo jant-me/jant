@@ -8,6 +8,7 @@ import {
   shiftDayKey,
   shouldCountView,
   viewPathKey,
+  viewReferrer,
 } from "../view-counting.js";
 
 const BROWSER_UA =
@@ -159,6 +160,98 @@ describe("referrerHost", () => {
     expect(referrerHost("https://blog.example/", "www.blog.example")).toBe("");
     expect(referrerHost("android-app://com.example/", "blog.example")).toBe("");
     expect(referrerHost("not a url", "blog.example")).toBe("");
+  });
+});
+
+describe("viewReferrer", () => {
+  const ownHost = "blog.example";
+  const at = (query: string) => `https://blog.example/some-post${query}`;
+  const hn = "https://news.ycombinator.com/";
+
+  it("files a tagged link under its tag, whatever the browser reports", () => {
+    expect(
+      viewReferrer({
+        referer: null,
+        requestUrl: at("?utm_source=chatgpt.com"),
+        ownHost,
+      }),
+    ).toBe("chatgpt.com");
+    expect(
+      viewReferrer({
+        referer: "https://t.co/abc",
+        requestUrl: at("?ref=newsletter"),
+        ownHost,
+      }),
+    ).toBe("newsletter");
+    // utm_source is tried before ref.
+    expect(
+      viewReferrer({
+        referer: null,
+        requestUrl: at("?ref=second&utm_source=first"),
+        ownHost,
+      }),
+    ).toBe("first");
+  });
+
+  it("normalizes a tag the way it normalizes a host", () => {
+    expect(
+      viewReferrer({
+        referer: null,
+        requestUrl: at("?utm_source=WWW.ChatGPT.com."),
+        ownHost,
+      }),
+    ).toBe("chatgpt.com");
+    expect(
+      viewReferrer({
+        referer: null,
+        requestUrl: at("?utm_source=%20Hacker_News%20"),
+        ownHost,
+      }),
+    ).toBe("hacker_news");
+  });
+
+  it("ignores a tag that is not a name and falls back to the referrer", () => {
+    for (const value of [
+      "Product%20Hunt",
+      "a%2Fb",
+      "%3Cb%3Ex",
+      "a".repeat(64),
+      "",
+    ]) {
+      expect(
+        viewReferrer({
+          referer: hn,
+          requestUrl: at(`?utm_source=${value}`),
+          ownHost,
+        }),
+      ).toBe("news.ycombinator.com");
+    }
+    expect(
+      viewReferrer({
+        referer: null,
+        requestUrl: at("?utm_source=Product%20Hunt"),
+        ownHost,
+      }),
+    ).toBe("");
+  });
+
+  it("treats a tag naming the site itself as direct", () => {
+    expect(
+      viewReferrer({
+        referer: hn,
+        requestUrl: at("?utm_source=www.blog.example"),
+        ownHost,
+      }),
+    ).toBe("");
+  });
+
+  it("uses the referrer host when the link carries no tag", () => {
+    expect(viewReferrer({ referer: hn, requestUrl: at(""), ownHost })).toBe(
+      "news.ycombinator.com",
+    );
+    expect(
+      viewReferrer({ referer: null, requestUrl: at("?page=2"), ownHost }),
+    ).toBe("");
   });
 });
 

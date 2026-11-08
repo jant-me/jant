@@ -20,9 +20,9 @@ import { now } from "../lib/time.js";
 import { viewBuffer, type ViewBuffer } from "../lib/view-buffer.js";
 import {
   formatDayKey,
-  referrerHost,
   shouldCountView,
   viewPathKey,
+  viewReferrer,
 } from "../lib/view-counting.js";
 import { viewBasePath } from "../lib/view-language.js";
 
@@ -79,10 +79,11 @@ export function viewCounter(
         siteId: c.var.currentSite.id,
         day: formatDayKey(now(), appConfig.timeZone),
         page,
-        referrer: referrerHost(
-          c.req.header("referer"),
-          new URL(c.var.publicRequestUrl).hostname,
-        ),
+        referrer: viewReferrer({
+          referer: c.req.header("referer"),
+          requestUrl: c.req.url,
+          ownHost: new URL(c.var.publicRequestUrl).hostname,
+        }),
       },
       {
         record: (entries) =>
