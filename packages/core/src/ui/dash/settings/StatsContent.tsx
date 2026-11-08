@@ -1,10 +1,14 @@
 /**
- * Stats: views by day, the most-viewed posts, and where readers came from.
+ * Stats: views by day, the most-viewed posts and pages, and where readers
+ * came from.
  *
  * One quiet page of aggregates for the author. It shows a window of days and
  * nothing beyond it — no lifetime total, no comparison with the window before
  * — because a number to beat is the one social mechanic this page must not
- * grow into. `services/stats.ts` has the policy behind the numbers.
+ * grow into. When counting began inside the window, the page says so and the
+ * chart starts on that day: the days before were not counted, which is not
+ * the same as a month of zeros. `services/stats.ts` has the policy behind
+ * the numbers.
  */
 
 import { msg } from "@lingui/core/macro";
@@ -14,6 +18,7 @@ import {
   STATS_WINDOWS,
   VIEW_COUNT_RETENTION_DAYS,
   type StatsOverview,
+  type StatsPageRow,
   type StatsPostDetail,
   type StatsReferrers,
   type StatsSeriesPoint,
@@ -97,17 +102,33 @@ function WindowSwitch({
   );
 }
 
+/**
+ * One bar per counted day over the whole window, so a bar is the same width
+ * whenever the record began. The days before the record have no bar and no
+ * baseline: the baseline starts where counting did. The total line has then
+ * already named that day, so the axis carries today's date alone; it names
+ * both ends only when every day of the window was counted.
+ */
 function ViewsChart({
   series,
+  start,
   locale,
 }: {
   series: StatsSeriesPoint[];
+  start: string | null;
   locale: string;
 }) {
   const { i18n } = useLingui();
   const peak = Math.max(1, ...series.map((point) => point.views));
-  const first = series[0];
+  const startIndex = start
+    ? Math.max(
+        0,
+        series.findIndex((point) => point.day === start),
+      )
+    : 0;
+  const first = series[startIndex];
   const last = series.at(-1);
+  const single = start !== null;
 
   return (
     <figure class="settings-stats-figure">
@@ -125,6 +146,7 @@ function ViewsChart({
         )}
       >
         {series.map((point, index) => {
+          if (index < startIndex) return null;
           const height = (point.views / peak) * 100;
           return (
             <rect
@@ -154,8 +176,12 @@ function ViewsChart({
         })}
       </svg>
       {first && last && (
-        <figcaption class="settings-stats-axis" aria-hidden="true">
-          <span>{formatDayLabel(first.day, locale)}</span>
+        <figcaption
+          class={`settings-stats-axis${single ? " settings-stats-axis-single" : ""}`}
+          style={`--stats-start:${(startIndex / series.length) * 100}%`}
+          aria-hidden="true"
+        >
+          {!single && <span>{formatDayLabel(first.day, locale)}</span>}
           <span>{formatDayLabel(last.day, locale)}</span>
         </figcaption>
       )}
@@ -199,26 +225,14 @@ function ReferrerList({ referrers }: { referrers: StatsReferrers }) {
           }),
         )}
       </h2>
-      {rows.length === 0 ? (
-        <p class="text-sm text-muted-foreground">
-          {i18n._(
-            msg({
-              message: "Nothing counted yet.",
-              comment:
-                "@context: Empty state of a list on the stats page when the window has no views",
-            }),
-          )}
-        </p>
-      ) : (
-        <ol class="settings-stats-list">
-          {rows.map((row) => (
-            <li key={row.label} class="settings-stats-row">
-              <span class="settings-stats-label">{row.label}</span>
-              <span class="settings-stats-count">{row.views}</span>
-            </li>
-          ))}
-        </ol>
-      )}
+      <ol class="settings-stats-list">
+        {rows.map((row) => (
+          <li key={row.label} class="settings-stats-row">
+            <span class="settings-stats-label">{row.label}</span>
+            <span class="settings-stats-count">{row.views}</span>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -256,9 +270,9 @@ function PostList({
         <p class="text-sm text-muted-foreground">
           {i18n._(
             msg({
-              message: "Nothing counted yet.",
+              message: "No post was viewed.",
               comment:
-                "@context: Empty state of a list on the stats page when the window has no views",
+                "@context: Empty state of the posts list on the stats page when the window's views were all of other pages",
             }),
           )}
         </p>
@@ -274,6 +288,54 @@ function PostList({
               </a>
               <FormatBadge type={post.format} />
               <span class="settings-stats-count">{post.views}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+/** The pages that are not posts: the home page, the archive, collections. */
+function PageList({ pages }: { pages: StatsPageRow[] }) {
+  const { i18n } = useLingui();
+  const home = i18n._(
+    msg({
+      message: "Home",
+      comment:
+        "@context: Row for the home page in the pages list on the stats page",
+    }),
+  );
+
+  return (
+    <section class="settings-stats-section">
+      <h2 class="settings-stats-heading">
+        {i18n._(
+          msg({
+            message: "Pages",
+            comment:
+              "@context: Heading of the most-viewed pages other than posts on the stats page",
+          }),
+        )}
+      </h2>
+      {pages.length === 0 ? (
+        <p class="text-sm text-muted-foreground">
+          {i18n._(
+            msg({
+              message: "No other page was viewed.",
+              comment:
+                "@context: Empty state of the pages list on the stats page when the window's views were all of posts",
+            }),
+          )}
+        </p>
+      ) : (
+        <ol class="settings-stats-list">
+          {pages.map((page) => (
+            <li key={page.path} class="settings-stats-row">
+              <span class="settings-stats-label">
+                {page.path === "/" ? home : page.path}
+              </span>
+              <span class="settings-stats-count">{page.views}</span>
             </li>
           ))}
         </ol>
@@ -365,6 +427,43 @@ function Toggle({
   );
 }
 
+/**
+ * The total line. While the record began inside the window it names the
+ * day, since "the last 30 days" would claim days that were never counted.
+ */
+function TotalLine({
+  shown,
+  locale,
+}: {
+  shown: StatsOverview | StatsPostDetail;
+  locale: string;
+}) {
+  const { i18n } = useLingui();
+  return (
+    <p class="settings-stats-total">
+      {shown.start
+        ? i18n._(
+            msg({
+              message:
+                "{count, plural, one {# view} other {# views}} since {date}",
+              comment:
+                "@context: Total line on the stats page while counting began inside the window; {date} is a day like Nov 9",
+            }),
+            { count: shown.total, date: formatDayLabel(shown.start, locale) },
+          )
+        : i18n._(
+            msg({
+              message:
+                "{count, plural, one {# view} other {# views}} in the last {days} days",
+              comment:
+                "@context: Total line on the stats page; {days} is 7, 30 or 90",
+            }),
+            { count: shown.total, days: shown.days },
+          )}
+    </p>
+  );
+}
+
 export function StatsContent({
   enabled,
   days,
@@ -428,26 +527,24 @@ export function StatsContent({
       ) : (
         shown && (
           <>
-            <p class="settings-stats-total">
-              {i18n._(
-                msg({
-                  message:
-                    "{count, plural, one {# view} other {# views}} in the last {days} days",
-                  comment:
-                    "@context: Total line on the stats page; {days} is 7, 30 or 90",
-                }),
-                { count: shown.total, days: shown.days },
-              )}
-            </p>
-            <ViewsChart series={shown.series} locale={locale} />
-            {overview && (
-              <PostList
-                overview={overview}
-                days={days}
-                sitePathPrefix={sitePathPrefix}
-              />
+            <TotalLine shown={shown} locale={locale} />
+            <ViewsChart
+              series={shown.series}
+              start={shown.start}
+              locale={locale}
+            />
+            {/* The total line has already said there is nothing to list. */}
+            {shown.total > 0 && overview && (
+              <>
+                <PostList
+                  overview={overview}
+                  days={days}
+                  sitePathPrefix={sitePathPrefix}
+                />
+                <PageList pages={overview.pages} />
+              </>
             )}
-            <ReferrerList referrers={shown.referrers} />
+            {shown.total > 0 && <ReferrerList referrers={shown.referrers} />}
           </>
         )
       )}

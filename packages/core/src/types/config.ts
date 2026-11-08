@@ -484,6 +484,16 @@ export const CONFIG_FIELDS = {
     envOnly: false,
     envKeys: ["STATS_ENABLED"],
   },
+  // The day counting began, a `YYYY-MM-DD` key in the site's time zone.
+  // Written by the stats service alone: when the switch is turned on, or by
+  // the first flush that writes the site's counts when nobody ever touched
+  // the switch; deleted with the counts on the way off. The Stats page says
+  // where its record starts instead of drawing the days before as zero.
+  STATS_SINCE: {
+    defaultValue: "",
+    envOnly: false,
+    internal: true,
+  },
   // No default value, and deliberately no `editor`. "Never chosen" has to stay
   // tellable apart from an explicit choice — an unset site falls through to
   // `noindex` and then to the deployment default, an explicit one does not —

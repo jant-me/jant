@@ -36,7 +36,12 @@ msgstr "{count, plural, other {還有 # 篇{language}貼文，但列表裡沒有
 #. @context: Total line on the stats page; {days} is 7, 30 or 90
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "{count, plural, one {# view} other {# views}} in the last {days} days"
-msgstr "{count, plural, other {最近 {days} 天 # 次瀏覽}}"
+msgstr "{count, plural, other {最近 {days} 天共 # 次瀏覽}}"
+
+#. @context: Total line on the stats page while counting began inside the window; {date} is a day like Nov 9
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{count, plural, one {# view} other {# views}} since {date}"
+msgstr "{count, plural, other {{date}起 # 次瀏覽}}"
 
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -1353,8 +1358,10 @@ msgstr "這個主題下的標題、正文和連結。"
 msgid "Hidden from Latest"
 msgstr "Hidden from Latest"
 
+#. @context: Row for the home page in the pages list on the stats page
 #. @context: Settings subsection heading for home page settings
 #: src/ui/dash/settings/GeneralContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 msgid "Home"
 msgstr "首頁"
 
@@ -1830,10 +1837,20 @@ msgstr "找不到可加入的相符頁面。換個標題搜尋，或建立新頁
 msgid "No navigation items yet. Add links or enable system items below."
 msgstr "目前尚無導覽項目。請新增連結或在下方啟用系統項目。"
 
+#. @context: Empty state of the pages list on the stats page when the window's views were all of posts
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "No other page was viewed."
+msgstr "沒有其他頁面被瀏覽。"
+
 #. @context: Empty state in the navigation page picker
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "No pages available. Create one to add it to navigation."
 msgstr "沒有可加入的頁面。建立頁面後即可加入導覽。"
+
+#. @context: Empty state of the posts list on the stats page when the window's views were all of other pages
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "No post was viewed."
+msgstr "沒有貼文被瀏覽。"
 
 #. @context: GitHub sync picker — empty state when search returns nothing
 #: src/routes/dash/settings.tsx
@@ -1867,12 +1884,6 @@ msgstr "筆記"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Nothing at {address}. Check it, or search by title."
 msgstr "在 {address} 找不到任何頁面。請檢查位址，或以標題搜尋。"
-
-#. @context: Empty state of a list on the stats page when the window has no views
-#. @context: Empty state of a list on the stats page when the window has no views
-#: src/ui/dash/settings/StatsContent.tsx
-msgid "Nothing counted yet."
-msgstr "這段時間還沒有瀏覽。"
 
 #. @context: Config Editor empty search state
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -1979,6 +1990,11 @@ msgstr "頁面網址"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Page created."
 msgstr "頁面已建立。"
+
+#. @context: Heading of the most-viewed pages other than posts on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Pages"
+msgstr "頁面"
 
 #. @context: Bone color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx

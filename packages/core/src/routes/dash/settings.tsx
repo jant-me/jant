@@ -536,7 +536,9 @@ settingsRoutes.get("/stats", async (c) => {
 settingsRoutes.post("/stats", async (c) => {
   if (c.var.appConfig.demoMode) refuseInDemo(c, "stats");
   const body = parseValidated(UpdateStatsSettingsSchema, await c.req.json());
-  await c.var.services.stats.setEnabled(body.enabled);
+  await c.var.services.stats.setEnabled(body.enabled, {
+    today: formatDayKey(now(), c.var.appConfig.timeZone),
+  });
 
   // Either way the page changes shape — the chart appears, or it goes with
   // the counts — so it is shown again rather than toasted at.

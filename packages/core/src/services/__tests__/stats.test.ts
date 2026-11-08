@@ -229,6 +229,7 @@ describe("StatsService", () => {
 
       const overview = await stats.getOverview({ days: 7, today: TODAY });
       expect(overview.total).toBe(25);
+      expect(overview.pages).toEqual([{ path: "/", views: 7 }]);
       expect(overview.posts).toEqual([
         {
           id: untitled.id,
@@ -244,6 +245,34 @@ describe("StatsService", () => {
           format: "note",
           views: 4,
         },
+      ]);
+    });
+
+    it("lists the pages that are not posts by their path", async () => {
+      await stats.record(
+        [
+          entry({ page: "/", count: 7 }),
+          entry({ page: "/archive", count: 3 }),
+          entry({ page: "/archive", referrer: "a.b", count: 1 }),
+          entry({ page: "/collections/a+b", count: 1 }),
+          entry({ page: "/featured", count: 1 }),
+          // Post ids and the overflow row are not pages.
+          entry({ page: "pst_gone00000000000000000000000", count: 9 }),
+          entry({
+            page: VIEW_OVERFLOW_KEY,
+            referrer: VIEW_OVERFLOW_KEY,
+            count: 9,
+          }),
+        ],
+        { dailyLimit: 0, today: TODAY },
+      );
+
+      const { pages } = await stats.getOverview({ days: 7, today: TODAY });
+      expect(pages).toEqual([
+        { path: "/", views: 7 },
+        { path: "/archive", views: 4 },
+        { path: "/collections/a+b", views: 1 },
+        { path: "/featured", views: 1 },
       ]);
     });
 
@@ -314,19 +343,126 @@ describe("StatsService", () => {
     });
   });
 
-  describe("the switch", () => {
-    it("deletes the site's counts on the way off", async () => {
-      await stats.record([entry({ page: "/" })], {
+  describe("the start of the record", () => {
+    it("is stamped by the first flush with the batch's earliest day", async () => {
+      const earlier = shiftDayKey(TODAY, -2);
+      await stats.record(
+        [entry({ page: "/" }), entry({ page: "/a", day: earlier })],
+        { dailyLimit: 0, today: TODAY },
+      );
+      expect(await settings.get("STATS_SINCE")).toBe(earlier);
+
+      // A later batch does not move it, whatever days it carries.
+      await stats.record([entry({ page: "/", day: shiftDayKey(TODAY, -5) })], {
+        dailyLimit: 0,
+        today: TODAY,
+      });
+      expect(await settings.get("STATS_SINCE")).toBe(earlier);
+    });
+
+    it("is today for a site looked at before anything was counted", async () => {
+      const overview = await stats.getOverview({ days: 7, today: TODAY });
+      expect(overview.start).toBe(TODAY);
+      expect(overview.total).toBe(0);
+      expect(await settings.get("STATS_SINCE")).toBe(TODAY);
+
+      const tomorrow = shiftDayKey(TODAY, 1);
+      await stats.record([entry({ page: "/", day: tomorrow })], {
+        dailyLimit: 0,
+        today: tomorrow,
+      });
+      expect(await settings.get("STATS_SINCE")).toBe(TODAY);
+      expect(
+        (await stats.getOverview({ days: 7, today: tomorrow })).start,
+      ).toBe(TODAY);
+    });
+
+    it("is reported only while it falls inside the window", async () => {
+      const began = shiftDayKey(TODAY, -3);
+      await settings.set("STATS_SINCE", began);
+
+      expect((await stats.getOverview({ days: 7, today: TODAY })).start).toBe(
+        began,
+      );
+      // The window begins on the same day: every day of it was counted.
+      expect(
+        (await stats.getOverview({ days: 4, today: TODAY })).start,
+      ).toBeNull();
+      expect(
+        (await stats.getOverview({ days: 3, today: TODAY })).start,
+      ).toBeNull();
+    });
+
+    it("moves back to a counted day that predates it", async () => {
+      await settings.set("STATS_SINCE", TODAY);
+      const yesterday = shiftDayKey(TODAY, -1);
+      await stats.record([entry({ page: "/", day: yesterday })], {
         dailyLimit: 0,
         today: TODAY,
       });
 
-      await stats.setEnabled(false);
+      expect((await stats.getOverview({ days: 7, today: TODAY })).start).toBe(
+        yesterday,
+      );
+    });
+
+    it("is the site's start on a post's own page", async () => {
+      const post = await posts.create({
+        format: "note",
+        title: "Read me",
+        bodyMarkdown: "Body",
+        status: "published",
+      });
+      await settings.set("STATS_SINCE", shiftDayKey(TODAY, -3));
+      await stats.record([entry({ page: post.id })], {
+        dailyLimit: 0,
+        today: TODAY,
+      });
+
+      const detail = await stats.getPost(post.id, { days: 7, today: TODAY });
+      expect(detail?.start).toBe(shiftDayKey(TODAY, -3));
+    });
+  });
+
+  describe("the switch", () => {
+    it("deletes the site's counts and its start on the way off", async () => {
+      await stats.record([entry({ page: "/" })], {
+        dailyLimit: 0,
+        today: TODAY,
+      });
+      expect(await settings.get("STATS_SINCE")).toBe(TODAY);
+
+      await stats.setEnabled(false, { today: TODAY });
       expect(await settings.get("STATS_ENABLED")).toBe("false");
+      expect(await settings.get("STATS_SINCE")).toBeNull();
       expect(await rowCount()).toBe(0);
 
-      await stats.setEnabled(true);
+      const later = shiftDayKey(TODAY, 10);
+      await stats.setEnabled(true, { today: later });
       expect(await settings.get("STATS_ENABLED")).toBe("true");
+      expect(await settings.get("STATS_SINCE")).toBe(later);
+    });
+
+    it("keeps an existing start when turned on again", async () => {
+      await settings.set("STATS_SINCE", shiftDayKey(TODAY, -40));
+      await stats.setEnabled(true, { today: TODAY });
+      expect(await settings.get("STATS_SINCE")).toBe(shiftDayKey(TODAY, -40));
+    });
+
+    it("stamps the next flush after the counts were cleared", async () => {
+      await stats.record([entry({ page: "/" })], {
+        dailyLimit: 0,
+        today: TODAY,
+      });
+      await stats.clear();
+      expect(await settings.get("STATS_SINCE")).toBeNull();
+
+      const later = shiftDayKey(TODAY, 3);
+      await stats.record([entry({ page: "/", day: later })], {
+        dailyLimit: 0,
+        today: later,
+      });
+      expect(await settings.get("STATS_SINCE")).toBe(later);
     });
   });
 });

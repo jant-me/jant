@@ -23,22 +23,41 @@
  *   well-read day must never be able to take the site down. Writes arrive in
  *   batches from `lib/view-buffer.ts`, and once a day's recorded views reach
  *   the instance's `STATS_DAILY_LIMIT` the buffer stops until the next day.
+ * - **A record with a start.** The day counting began is kept in the
+ *   `STATS_SINCE` setting, written by whichever comes first: the switch
+ *   being turned on, the first look at the page, or the first flush of the
+ *   site's counts. The page says "since Nov 9" and draws nothing for the
+ *   days before, instead of showing a launch week as a month of zeros.
+ *   Turning stats off deletes it with the counts.
  *
  * `record()` is the one write path. It takes entries for any site, because a
  * batch holds whatever the process saw in its last few seconds; the reads are
  * scoped to the service's site like every other service.
  */
 
-import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  like,
+  lt,
+  lte,
+  sql,
+} from "drizzle-orm";
 import { supportsDrizzleTransaction, type Database } from "../db/index.js";
 import type { DatabaseDialect } from "../db/dialect.js";
 import {
   sqliteSchemaBundle,
   type DatabaseSchema,
 } from "../db/schema-bundle.js";
+import { now } from "../lib/time.js";
 import type { ViewCountEntry, ViewRecordResult } from "../lib/view-buffer.js";
 import {
   dayKeysEndingAt,
+  isDayKey,
   shiftDayKey,
   VIEW_OVERFLOW_KEY,
 } from "../lib/view-counting.js";
@@ -79,6 +98,8 @@ const SEEN_KEYS_LIMIT = 50_000;
 export interface ViewCountWriterState {
   seen: Set<string>;
   sweptOn: Map<string, string>;
+  /** Sites whose start day this process has already made sure of. */
+  stamped: Set<string>;
 }
 
 /**
@@ -95,7 +116,7 @@ export interface ViewCountWriterState {
  * ```
  */
 export function createViewCountWriterState(): ViewCountWriterState {
-  return { seen: new Set(), sweptOn: new Map() };
+  return { seen: new Set(), sweptOn: new Map(), stamped: new Set() };
 }
 
 const sharedWriterState = createViewCountWriterState();
@@ -121,6 +142,12 @@ export interface StatsReferrerRow {
   views: number;
 }
 
+/** A page that is not a post, by the path it was opened at. */
+export interface StatsPageRow {
+  path: string;
+  views: number;
+}
+
 /** Where views came from, in the shape the page shows. */
 export interface StatsReferrers {
   /** No referrer, or a link from the site itself. */
@@ -138,11 +165,19 @@ export interface StatsOverview {
   since: string;
   /** Last day of the window: today. */
   until: string;
+  /**
+   * The day counting began, when it falls inside the window; `null` when
+   * every day of the window was counted. The days before it were never
+   * counted, which is not the same as zero views.
+   */
+  start: string | null;
   total: number;
   /** One point per day of the window, oldest first, zero where nothing was counted. */
   series: StatsSeriesPoint[];
   /** The most-viewed posts, most views first. */
   posts: StatsPostRow[];
+  /** The most-viewed pages that are not posts, most views first. */
+  pages: StatsPageRow[];
   referrers: StatsReferrers;
 }
 
@@ -152,6 +187,8 @@ export interface StatsPostDetail {
   days: number;
   since: string;
   until: string;
+  /** As on the overview: the first counted day when inside the window. */
+  start: string | null;
   total: number;
   series: StatsSeriesPoint[];
   referrers: StatsReferrers;
@@ -160,7 +197,8 @@ export interface StatsPostDetail {
 export interface StatsService {
   /**
    * Write a batch of counted views, for any site, applying the row cap and
-   * the sweep on the way.
+   * the sweep on the way, and giving a site that has no start day yet the
+   * batch's earliest day as its start.
    *
    * @param entries - Views, already summed per site, day, page and referrer
    * @param opts.dailyLimit - Views this instance may record per day; `0` for no limit
@@ -172,7 +210,9 @@ export interface StatsService {
     opts: { dailyLimit: number; today: string },
   ): Promise<ViewRecordResult>;
   /**
-   * The site's views over the last `days` days.
+   * The site's views over the last `days` days. A site with no start day
+   * yet gets today as its start: the record begins with the first look at
+   * it.
    *
    * @param opts.days - Length of the window
    * @param opts.today - The site's current day key, the window's last day
@@ -192,19 +232,22 @@ export interface StatsService {
     opts: { days: number; today: string },
   ): Promise<StatsPostDetail | null>;
   /**
-   * Delete every counter row the site has.
+   * Delete every counter row the site has, and the day its record began:
+   * whatever is counted next starts a new record.
    *
    * @returns Nothing
    */
   clear(): Promise<void>;
   /**
    * Turn counting on or off. Off also deletes the site's rows: a switch that
-   * says off while ninety days of counts sit behind it would be a lie.
+   * says off while ninety days of counts sit behind it would be a lie. On
+   * makes today the start of the record unless one is already set.
    *
    * @param enabled - The new state
+   * @param opts.today - The site's current day key
    * @returns Nothing
    */
-  setEnabled(enabled: boolean): Promise<void>;
+  setEnabled(enabled: boolean, opts: { today: string }): Promise<void>;
 }
 
 function entryKey(entry: ViewCountEntry): string {
@@ -282,7 +325,7 @@ export function createStatsService(
     rowsPerSiteDay?: number;
   },
 ): StatsService {
-  const { viewCounts, posts, pathRegistry } = schema;
+  const { viewCounts, posts, pathRegistry, settings } = schema;
   const state = deps.writerState ?? sharedWriterState;
   const rowsPerSiteDay = deps.rowsPerSiteDay ?? VIEW_COUNT_ROWS_PER_SITE_DAY;
 
@@ -394,6 +437,59 @@ export function createStatsService(
   }
 
   /**
+   * Give each touched site a start day if it has none: the batch's earliest
+   * day for that site. Once per site per process, like the sweep; `clear()`
+   * forgets the site so the next flush stamps it again. Written through the
+   * table rather than the settings service because a batch spans sites.
+   */
+  async function stampStart(rows: ViewCountEntry[]): Promise<void> {
+    const firstDays = new Map<string, string>();
+    for (const row of rows) {
+      const known = firstDays.get(row.siteId);
+      if (known === undefined || row.day < known) {
+        firstDays.set(row.siteId, row.day);
+      }
+    }
+    for (const [touchedSite, day] of firstDays) {
+      if (state.stamped.has(touchedSite)) continue;
+      state.stamped.add(touchedSite);
+      await db
+        .insert(settings)
+        .values({
+          siteId: touchedSite,
+          key: "STATS_SINCE",
+          value: day,
+          updatedAt: now(),
+        })
+        .onConflictDoNothing();
+    }
+  }
+
+  /**
+   * Where the record starts, for a window: the stored start day when it
+   * falls inside the window, pulled back to the first counted day should a
+   * row predate it, and `null` when every day of the window was counted. A
+   * site with no start yet gets today as its start, stored for next time.
+   */
+  async function startOfRecord(
+    stored: string | null,
+    { since, today }: { since: string; today: string },
+    counted: StatsSeriesPoint[],
+  ): Promise<string | null> {
+    let start = stored !== null && isDayKey(stored) ? stored : null;
+    if (start === null) {
+      start = today;
+      state.stamped.add(siteId);
+      await deps.settings.set("STATS_SINCE", today);
+    }
+    if (start > today) start = today;
+    for (const row of counted) {
+      if (row.day < start) start = row.day;
+    }
+    return start > since ? start : null;
+  }
+
+  /**
    * Delete each touched site's rows past the retention window, once a day.
    * The window is the last `VIEW_COUNT_RETENTION_DAYS` days, today included.
    */
@@ -490,38 +586,62 @@ export function createStatsService(
       .limit(STATS_TOP_LIMIT);
   }
 
+  /**
+   * Pages that are not posts are keyed by their path, so a key that starts
+   * with `/` is one of them; post ids and the overflow key do not.
+   */
+  function topPagesQuery(since: string, today: string) {
+    const views = sql<number>`sum(${viewCounts.count})`;
+    return db
+      .select({
+        path: viewCounts.page,
+        views: views.mapWith(Number),
+      })
+      .from(viewCounts)
+      .where(and(windowCondition(since, today), like(viewCounts.page, "/%")))
+      .groupBy(viewCounts.page)
+      .orderBy(desc(views), asc(viewCounts.page))
+      .limit(STATS_TOP_LIMIT);
+  }
+
   return {
     async record(entries, opts) {
       if (entries.length === 0) return { limitReached: false };
       const rows = await capRows(entries);
       await writeRows(rows);
       rememberRows(rows);
+      await stampStart(rows);
       await sweep(rows, opts.today);
       return { limitReached: await limitReached(rows, opts.dailyLimit) };
     },
 
     async getOverview({ days, today }) {
       const since = shiftDayKey(today, -(days - 1));
-      const [seriesRows, postRows, referrerRows] = await Promise.all([
-        seriesQuery(since, today),
-        topPostsQuery(since, today),
-        referrersQuery(since, today),
-      ]);
+      const [seriesRows, postRows, pageRows, referrerRows, stored] =
+        await Promise.all([
+          seriesQuery(since, today),
+          topPostsQuery(since, today),
+          topPagesQuery(since, today),
+          referrersQuery(since, today),
+          deps.settings.get("STATS_SINCE"),
+        ]);
       const series = fillSeries(seriesRows, today, days);
       return {
         days,
         since,
         until: today,
+        start: await startOfRecord(stored, { since, today }, seriesRows),
         total: series.reduce((sum, point) => sum + point.views, 0),
         series,
         posts: postRows,
+        pages: pageRows,
         referrers: summarizeReferrers(referrerRows),
       };
     },
 
     async getPost(postId, { days, today }) {
       const since = shiftDayKey(today, -(days - 1));
-      const [post, seriesRows, referrerRows] = await Promise.all([
+      const [post, seriesRows, referrerRows, stored] = await Promise.all([
         db
           .select({
             id: posts.id,
@@ -535,6 +655,7 @@ export function createStatsService(
           .then((rows) => rows[0] ?? null),
         seriesQuery(since, today, postId),
         referrersQuery(since, today, postId),
+        deps.settings.get("STATS_SINCE"),
       ]);
       if (!post) return null;
       const series = fillSeries(seriesRows, today, days);
@@ -543,6 +664,9 @@ export function createStatsService(
         days,
         since,
         until: today,
+        // The site's start, not the post's: the post's own first view is
+        // a bar on the chart, not where the record begins.
+        start: await startOfRecord(stored, { since, today }, []),
         total: series.reduce((sum, point) => sum + point.views, 0),
         series,
         referrers: summarizeReferrers(referrerRows),
@@ -551,11 +675,20 @@ export function createStatsService(
 
     async clear() {
       await db.delete(viewCounts).where(eq(viewCounts.siteId, siteId));
+      await deps.settings.remove("STATS_SINCE");
+      state.stamped.delete(siteId);
     },
 
-    async setEnabled(enabled) {
+    async setEnabled(enabled, { today }) {
       await deps.settings.set("STATS_ENABLED", enabled ? "true" : "false");
-      if (!enabled) await this.clear();
+      if (!enabled) {
+        await this.clear();
+        return;
+      }
+      if ((await deps.settings.get("STATS_SINCE")) === null) {
+        state.stamped.add(siteId);
+        await deps.settings.set("STATS_SINCE", today);
+      }
     },
   };
 }

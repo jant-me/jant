@@ -38,6 +38,11 @@ msgstr "{count, plural, one {# post is} other {# posts are}} written in {languag
 msgid "{count, plural, one {# view} other {# views}} in the last {days} days"
 msgstr "{count, plural, one {# view} other {# views}} in the last {days} days"
 
+#. @context: Total line on the stats page while counting began inside the window; {date} is a day like Nov 9
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{count, plural, one {# view} other {# views}} since {date}"
+msgstr "{count, plural, one {# view} other {# views}} since {date}"
+
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
@@ -1353,8 +1358,10 @@ msgstr "Headings, body text, and links in this theme."
 msgid "Hidden from Latest"
 msgstr "Hidden from Latest"
 
+#. @context: Row for the home page in the pages list on the stats page
 #. @context: Settings subsection heading for home page settings
 #: src/ui/dash/settings/GeneralContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 msgid "Home"
 msgstr "Home"
 
@@ -1830,10 +1837,20 @@ msgstr "No matching pages available to add. Try another title or create a new pa
 msgid "No navigation items yet. Add links or enable system items below."
 msgstr "No navigation items yet. Add links or enable system items below."
 
+#. @context: Empty state of the pages list on the stats page when the window's views were all of posts
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "No other page was viewed."
+msgstr "No other page was viewed."
+
 #. @context: Empty state in the navigation page picker
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "No pages available. Create one to add it to navigation."
 msgstr "No pages available. Create one to add it to navigation."
+
+#. @context: Empty state of the posts list on the stats page when the window's views were all of other pages
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "No post was viewed."
+msgstr "No post was viewed."
 
 #. @context: GitHub sync picker — empty state when search returns nothing
 #: src/routes/dash/settings.tsx
@@ -1867,12 +1884,6 @@ msgstr "Note"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Nothing at {address}. Check it, or search by title."
 msgstr "Nothing at {address}. Check it, or search by title."
-
-#. @context: Empty state of a list on the stats page when the window has no views
-#. @context: Empty state of a list on the stats page when the window has no views
-#: src/ui/dash/settings/StatsContent.tsx
-msgid "Nothing counted yet."
-msgstr "Nothing counted yet."
 
 #. @context: Config Editor empty search state
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -1979,6 +1990,11 @@ msgstr "Page address"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Page created."
 msgstr "Page created."
+
+#. @context: Heading of the most-viewed pages other than posts on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Pages"
+msgstr "Pages"
 
 #. @context: Bone color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx

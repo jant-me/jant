@@ -160,7 +160,7 @@ describe("viewCounter", () => {
 
   it("counts nothing while stats are off", async () => {
     const { app, services, buffer } = fixture;
-    await services.stats.setEnabled(false);
+    await services.stats.setEnabled(false, { today: TODAY });
 
     const res = await app.request("/", { headers: navigationHeaders() });
     expect(res.status).toBe(200);
