@@ -809,7 +809,7 @@ msgstr "無法儲存。請稍後再試。"
 #. @context: Checkbox label on the stats page
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "Count page views"
-msgstr "統計頁面瀏覽"
+msgstr "啟用頁面瀏覽統計"
 
 #. @context: Help text under the stats checkbox; {days} is the retention window
 #: src/ui/dash/settings/StatsContent.tsx
