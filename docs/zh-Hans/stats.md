@@ -12,7 +12,7 @@ Jant 会统计页面浏览量，在 **Settings → 统计** 查看：最近 7、
 
 ## 来源
 
-来源是读者点链接过来的那个站点，只保留域名。链接带 `utm_source` 或 `ref` 参数时按参数值归类，不看从哪里打开：`?utm_source=newsletter` 记作 `newsletter`，ChatGPT 回答里的链接都带 `utm_source=chatgpt.com`。**直接访问**指两者都没有的访问：手动输入地址、书签，或从应用、邮件、RSS 阅读器里点开的未带参数的链接。大多数应用不传来源，所以直接访问通常是最大的一项。**其他**是列出的十项之外的全部。
+来源是读者点链接过来的那个站点，只保留域名。同一个站点的各种地址并成一项：`old.reddit.com`、`redd.it` 和 Reddit 应用都记作 `reddit.com`，`t.co` 记作 `x.com`，`google.co.uk` 记作 `google.com`。链接带 `utm_source` 或 `ref` 参数时按参数值归类，不看从哪里打开：`?utm_source=newsletter` 记作 `newsletter`，`?utm_source=twitter` 记作 `x.com`，ChatGPT 回答里的链接都带 `utm_source=chatgpt.com`。从 Android 应用里点开、带了应用名的链接，认识的应用记作它的站点，不认识的记作包名（`com.example.app`）。**直接访问**指参数和来源都没有的访问：手动输入地址、书签，或从应用、邮件、RSS 阅读器里点开的未带参数的链接。大多数应用不传来源，所以直接访问通常是最大的一项。**其他**是列出的十项之外的全部。
 
 ## 关闭
 

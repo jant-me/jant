@@ -9,8 +9,12 @@
  * and the short User-Agent list below is only a backstop for the headless
  * browsers that still say what they are. Second, reducing what is kept to a
  * counter key: the site's calendar day, the page, and where the reader came
- * from — the source the link was tagged with, or else the referring host.
+ * from — the source the link was tagged with, or else the referring host,
+ * either one folded to the address its source is listed under
+ * (`referrer-aliases.ts`).
  */
+
+import { canonicalSource } from "./referrer-aliases.js";
 
 /**
  * What the page a route rendered counts as: a post, by id, or any other
@@ -31,6 +35,13 @@ export const VIEW_OVERFLOW_KEY = "*";
 const PAGE_KEY_MAX_LENGTH = 512;
 /** A hostname's own limit. */
 const HOST_MAX_LENGTH = 253;
+
+/**
+ * Where a `Referer` may come from: the web, or an Android app that says which
+ * app opened the link (`android-app://com.example.app/`). Anything else is a
+ * direct visit.
+ */
+const REFERER_SCHEMES = new Set(["http:", "https:", "android-app:"]);
 
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -175,10 +186,14 @@ function normalizeHost(host: string): string {
 /**
  * The host a view came from, reduced to what the stats keep.
  *
- * Lowercased, with a leading `www.` and a trailing dot removed, so one site
- * is one row. Empty for a direct visit, for a link from the site itself, and
- * for anything that is not an `http(s)` URL — browsers send only the origin
- * across sites by default, and that is all that is wanted anyway.
+ * Lowercased, with a leading `www.` and a trailing dot removed, then folded
+ * to the address its source is listed under (`old.reddit.com` and `redd.it`
+ * are both `reddit.com`), so one site is one row. A link opened from an
+ * Android app names the app rather than a site; a known app folds to its
+ * site, an unknown one is kept by its package id. Empty for a direct visit,
+ * for a link from the site itself, and for any other scheme — browsers send
+ * only the origin across sites by default, and that is all that is wanted
+ * anyway.
  *
  * @param referer - The request's `Referer` header, if any
  * @param ownHost - The host the site is being served on
@@ -186,6 +201,8 @@ function normalizeHost(host: string): string {
  * @example
  * ```ts
  * referrerHost("https://www.Example.com/post?x=1", "blog.example"); // "example.com"
+ * referrerHost("https://old.reddit.com/r/blogs", "blog.example"); // "reddit.com"
+ * referrerHost("android-app://com.example.app/", "blog.example"); // "com.example.app"
  * referrerHost("https://blog.example/", "blog.example"); // ""
  * referrerHost(null, "blog.example"); // ""
  * ```
@@ -201,10 +218,10 @@ export function referrerHost(
   } catch {
     return "";
   }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+  if (!REFERER_SCHEMES.has(url.protocol)) return "";
   const host = normalizeHost(url.hostname);
   if (!host || host === normalizeHost(ownHost)) return "";
-  return host.slice(0, HOST_MAX_LENGTH);
+  return canonicalSource(host).slice(0, HOST_MAX_LENGTH);
 }
 
 /** Query parameters whose value says where a link was shared, in the order tried. */
@@ -226,8 +243,10 @@ const SOURCE_TOKEN = /^[a-z0-9][a-z0-9._-]{0,62}$/;
  * the browser happened to report and is often the only signal — an app
  * opening a link sends no `Referer`, and ChatGPT tags the links in its
  * answers with `utm_source=chatgpt.com`. Without a usable tag the `Referer`
- * host decides, as in {@link referrerHost}. Both are normalized the same way,
- * so a `utm_source=chatgpt.com` and a `Referer` from chatgpt.com are one row.
+ * host decides, as in {@link referrerHost}. Both are normalized and folded
+ * the same way, so a `utm_source=chatgpt.com` and a `Referer` from
+ * chatgpt.com are one row, and so are `utm_source=twitter` and a `Referer`
+ * from t.co.
  *
  * @param input - The request's `Referer` header, its URL (for the query
  *   string), and the host the site is being served on
@@ -277,7 +296,8 @@ function taggedSource(requestUrl: string, ownHost: string): string | null {
     if (!value) continue;
     const token = normalizeHost(value);
     if (!SOURCE_TOKEN.test(token)) continue;
-    return token === normalizeHost(ownHost) ? "" : token;
+    if (token === normalizeHost(ownHost)) return "";
+    return canonicalSource(token);
   }
   return null;
 }

@@ -158,8 +158,34 @@ describe("referrerHost", () => {
     expect(referrerHost("https://blog.example/other", "blog.example")).toBe("");
     expect(referrerHost("https://www.blog.example/", "blog.example")).toBe("");
     expect(referrerHost("https://blog.example/", "www.blog.example")).toBe("");
-    expect(referrerHost("android-app://com.example/", "blog.example")).toBe("");
+    expect(referrerHost("ftp://files.example/", "blog.example")).toBe("");
     expect(referrerHost("not a url", "blog.example")).toBe("");
+  });
+
+  it("folds a host to the address its source is listed under", () => {
+    expect(referrerHost("https://old.reddit.com/r/blogs", "blog.example")).toBe(
+      "reddit.com",
+    );
+    expect(referrerHost("https://t.co/abc", "blog.example")).toBe("x.com");
+    expect(referrerHost("https://www.google.co.uk/", "blog.example")).toBe(
+      "google.com",
+    );
+    expect(referrerHost("https://mail.google.com/mail/", "blog.example")).toBe(
+      "mail.google.com",
+    );
+  });
+
+  it("names the Android app a link was opened from", () => {
+    expect(
+      referrerHost(
+        "android-app://com.google.android.googlequicksearchbox/",
+        "blog.example",
+      ),
+    ).toBe("google.com");
+    expect(referrerHost("android-app://com.example.app/", "blog.example")).toBe(
+      "com.example.app",
+    );
+    expect(referrerHost("android-app://", "blog.example")).toBe("");
   });
 });
 
@@ -252,6 +278,33 @@ describe("viewReferrer", () => {
     expect(
       viewReferrer({ referer: null, requestUrl: at("?page=2"), ownHost }),
     ).toBe("");
+  });
+
+  it("folds a tag the way it folds a host", () => {
+    expect(
+      viewReferrer({
+        referer: hn,
+        requestUrl: at("?utm_source=twitter"),
+        ownHost,
+      }),
+    ).toBe("x.com");
+    expect(
+      viewReferrer({ referer: null, requestUrl: at("?ref=t.co"), ownHost }),
+    ).toBe("x.com");
+    expect(
+      viewReferrer({
+        referer: null,
+        requestUrl: at("?utm_source=ig"),
+        ownHost,
+      }),
+    ).toBe("instagram.com");
+    expect(
+      viewReferrer({
+        referer: null,
+        requestUrl: at("?ref=newsletter"),
+        ownHost,
+      }),
+    ).toBe("newsletter");
   });
 });
 
