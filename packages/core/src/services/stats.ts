@@ -365,9 +365,10 @@ export function createStatsService(
           viewCounts.page,
           viewCounts.referrer,
         ],
-        // Unqualified on purpose: in a DO UPDATE both SQLite and Postgres read
-        // a bare column as the existing row's, and `excluded` as the new one.
-        set: { count: sql`count + excluded.count` },
+        // Qualified on purpose: Postgres has both the row and `excluded` in
+        // scope in a DO UPDATE and rejects a bare `count` as ambiguous; SQLite
+        // accepts either form.
+        set: { count: sql`${viewCounts.count} + excluded.count` },
       });
   }
 
