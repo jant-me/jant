@@ -12,7 +12,7 @@ A post's number is how often its own page was opened. A note read on the home pa
 
 ## Referrers
 
-A referrer is the site a reader followed a link from, reduced to its domain. A link tagged with `utm_source` or `ref` is filed under that tag instead, wherever it was opened: `?utm_source=newsletter` counts as `newsletter`, and ChatGPT tags the links in its answers with `utm_source=chatgpt.com`. **Direct** is a visit with neither: a typed address, a bookmark, or an untagged link from an app, an email, or a feed reader. Most apps send no referrer, so Direct is usually the largest line. **Other** is everything past the ten listed.
+A referrer is the site a reader followed a link from, reduced to its domain. The addresses a well-known site goes by are folded into one: `old.reddit.com`, `redd.it` and the Reddit app count as `reddit.com`, `t.co` as `x.com`, `google.co.uk` as `google.com`. A link tagged with `utm_source` or `ref` is filed under that tag instead, wherever it was opened: `?utm_source=newsletter` counts as `newsletter`, `?utm_source=twitter` as `x.com`, and ChatGPT tags the links in its answers with `utm_source=chatgpt.com`. An Android app that names itself counts as its site, or by its package name (`com.example.app`) when Jant does not know the app. **Direct** is a visit with neither tag nor referrer: a typed address, a bookmark, or an untagged link from an app, an email, or a feed reader. Most apps send no referrer, so Direct is usually the largest line. **Other** is everything past the ten listed.
 
 ## Turning it off
 
