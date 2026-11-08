@@ -1,15 +1,27 @@
 /**
  * The Stats page and its switch, through the real services: the page shows
- * what the counters hold for the window asked for, one post can be opened on
- * its own, and the switch deletes the counts on the way off.
+ * what the counters hold for the window asked for, says where its record
+ * begins, one post can be opened on its own, and the switch deletes the
+ * counts on the way off.
  */
 
 import { describe, expect, it } from "vitest";
 import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { settingsRoutes } from "../settings.js";
 import type { ViewCountEntry } from "../../../lib/view-buffer.js";
+import { shiftDayKey } from "../../../lib/view-counting.js";
 
 const TODAY = new Date().toISOString().slice(0, 10);
+
+/** `Nov 9` the way the page writes a day in English. */
+function dayLabel(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, date ?? 1)));
+}
 
 function createApp(options: { demoMode?: boolean } = {}) {
   const test = createTestApp({
@@ -32,7 +44,18 @@ function entry(
   };
 }
 
-async function seed(services: ReturnType<typeof createApp>["services"]) {
+/**
+ * A post with views, the home page with a few, and a record that began
+ * long before any window, so the total line talks about the window.
+ */
+async function seed(
+  services: ReturnType<typeof createApp>["services"],
+  options: { since?: string } = {},
+) {
+  await services.settings.set(
+    "STATS_SINCE",
+    options.since ?? shiftDayKey(TODAY, -365),
+  );
   const post = await services.posts.create({
     format: "note",
     title: "A well-read note",
@@ -51,7 +74,7 @@ async function seed(services: ReturnType<typeof createApp>["services"]) {
 }
 
 describe("GET /settings/stats", () => {
-  it("shows the window's total, the posts, and the referrers", async () => {
+  it("shows the window's total, the posts, the pages, and the referrers", async () => {
     const { app, services } = createApp();
     const post = await seed(services);
 
@@ -61,8 +84,47 @@ describe("GET /settings/stats", () => {
     expect(html).toContain("50 views in the last 30 days");
     expect(html).toContain("A well-read note");
     expect(html).toContain(`/settings/stats?post=${post.id}&amp;days=30`);
+    expect(html).toContain("Home");
     expect(html).toContain("news.ycombinator.com");
     expect(html).toContain("Count page views");
+  });
+
+  it("says since when it has been counting while that day is in the window", async () => {
+    const { app, services } = createApp();
+    const began = shiftDayKey(TODAY, -2);
+    await seed(services, { since: began });
+
+    const week = await (await app.request("/settings/stats?days=7")).text();
+    expect(week).toContain(`50 views since ${dayLabel(began)}`);
+    // Four of the seven days were never counted: the baseline starts after
+    // them, and the axis names today alone.
+    expect(week).toContain(`style="--stats-start:${(4 / 7) * 100}%"`);
+    expect(week).toContain("settings-stats-axis-single");
+    expect(week).toContain(dayLabel(TODAY));
+  });
+
+  it("starts its record today when nothing was ever counted", async () => {
+    const { app } = createApp();
+
+    const html = await (await app.request("/settings/stats")).text();
+    expect(html).toContain(`0 views since ${dayLabel(TODAY)}`);
+    expect(html).toContain("settings-stats-axis-single");
+    // Nothing to list: the total line has said so.
+    expect(html).not.toContain("Referrers");
+  });
+
+  it("names the list that has nothing when the views went elsewhere", async () => {
+    const { app, services } = createApp();
+    await services.settings.set("STATS_SINCE", shiftDayKey(TODAY, -365));
+    await services.stats.record([entry({ page: "/", count: 3 })], {
+      dailyLimit: 0,
+      today: TODAY,
+    });
+
+    const html = await (await app.request("/settings/stats")).text();
+    expect(html).toContain("No post was viewed.");
+    expect(html).toContain("Home");
+    expect(html).toContain("Direct");
   });
 
   it("takes a window from ?days and ignores one it does not offer", async () => {
@@ -86,6 +148,7 @@ describe("GET /settings/stats", () => {
     expect(html).toContain("43 views in the last 30 days");
     expect(html).toContain("news.ycombinator.com");
     expect(html).toContain(`href="/${post.slug}"`);
+    expect(html).not.toContain("No other page was viewed.");
 
     const missing = await app.request(
       "/settings/stats?post=pst_missing0000000000000000000",
@@ -95,7 +158,7 @@ describe("GET /settings/stats", () => {
 
   it("says so when stats are off", async () => {
     const { app, services } = createApp();
-    await services.stats.setEnabled(false);
+    await services.stats.setEnabled(false, { today: TODAY });
 
     const html = await (await app.request("/settings/stats")).text();
     expect(html).toContain("Stats are off.");
@@ -118,9 +181,27 @@ describe("POST /settings/stats", () => {
     });
     expect(res.status).toBe(200);
     expect(await services.settings.get("STATS_ENABLED")).toBe("false");
+    expect(await services.settings.get("STATS_SINCE")).toBeNull();
     expect(
       (await services.stats.getOverview({ days: 90, today: TODAY })).total,
     ).toBe(0);
+  });
+
+  it("starts a new record when turned back on", async () => {
+    const { app, services } = createApp();
+    await services.stats.setEnabled(false, { today: TODAY });
+
+    const res = await app.request("/settings/stats", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ enabled: true }),
+    });
+    expect(res.status).toBe(200);
+    expect(await services.settings.get("STATS_ENABLED")).toBe("true");
+    expect(await services.settings.get("STATS_SINCE")).toBe(TODAY);
   });
 
   it("refuses in demo mode", async () => {

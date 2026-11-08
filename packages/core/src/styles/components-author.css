@@ -1696,12 +1696,25 @@
     opacity: 1;
   }
 
+  /* The baseline under the bars. It starts where the record does: the chart
+     sets `--stats-start` to the share of the window that was never counted. */
   .settings-stats-axis {
     @apply flex justify-between;
-    margin-top: 0.35rem;
+    margin-left: var(--stats-start, 0%);
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--border);
     font-family: var(--font-ui);
     font-size: var(--type-xs);
     color: var(--site-text-secondary);
+  }
+
+  .settings-stats-axis > span {
+    white-space: nowrap;
+  }
+
+  /* Today's date alone, under the end of the baseline. */
+  .settings-stats-axis-single {
+    @apply justify-end;
   }
 
   .settings-stats-section {

@@ -158,9 +158,11 @@ export const SNAPSHOT_EXCLUDED_SETTING_KEYS = [
   // and the announcement state below it belongs to the announcing instance.
   "DISCOVER",
   "DISCOVER_ANNOUNCE_STATE",
-  // Whether this deployment counts its readers. The counts themselves are an
-  // excluded table (`view_count`), and the switch goes with them.
+  // Whether this deployment counts its readers, and since when. The counts
+  // themselves are an excluded table (`view_count`), and the switch and the
+  // day they began go with them.
   "STATS_ENABLED",
+  "STATS_SINCE",
   // Local UI state: which affordances this author has already been shown, and
   // how far setup got.
   "DISCOVERY_COMPOSE_OPEN_SHORTCUT_AT",

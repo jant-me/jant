@@ -1,8 +1,10 @@
 # Stats
 
-Jant counts page views and shows them under **Settings → Stats**: views per day for the last 7, 30, or 90 days, the ten most-read posts in that window, and the sites readers came from. Open a post in the list to see its own days and referrers.
+Jant counts page views and shows them under **Settings → Stats**: views per day for the last 7, 30, or 90 days, the ten most-read posts in that window, the other pages opened in it (the home page, the archive, collections), and the sites readers came from. Open a post in the list to see its own days and referrers.
 
 The counts are the whole record. Jant stores nothing about any reader, sets no cookie, and adds no script to your pages. Counts older than 90 days are deleted. There is no lifetime total and no comparison with the window before.
+
+While the day counting began falls inside the window, the total says since when, and the chart starts on that day.
 
 ## What counts as a view
 

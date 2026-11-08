@@ -799,6 +799,14 @@ async function main() {
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
       assert.equal(await countViews(), 1, "the post view reached view_count");
+      const stamped = await assertPool.query(
+        `SELECT "value" FROM "site_setting" WHERE "key" = 'STATS_SINCE'`,
+      );
+      assert.match(
+        stamped.rows[0]?.value ?? "",
+        /^\d{4}-\d{2}-\d{2}$/,
+        "the flush stamped the day counting began",
+      );
     }
 
     // A snapshot written on Postgres restores on Postgres. Import once sent
