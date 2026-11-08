@@ -139,23 +139,6 @@ export function SettingsRootContent({
           )}
         />
         <SettingsDirectoryLink
-          href={toPublicPath("/settings/custom-urls", sitePathPrefix)}
-          icon={ICONS.arrowRightLeft}
-          tone="subtle"
-          name={i18n._(
-            msg({
-              message: "Custom URLs",
-              comment: "@context: Settings item — custom URL settings",
-            }),
-          )}
-          description={i18n._(
-            msg({
-              message: "Redirects, vanity paths, and URL control",
-              comment: "@context: Settings item description for custom URLs",
-            }),
-          )}
-        />
-        <SettingsDirectoryLink
           href={toPublicPath("/settings/stats", sitePathPrefix)}
           icon={ICONS.barChart}
           tone="subtle"
@@ -321,6 +304,23 @@ export function SettingsRootContent({
           }),
         )}
       >
+        <SettingsDirectoryLink
+          href={toPublicPath("/settings/custom-urls", sitePathPrefix)}
+          icon={ICONS.arrowRightLeft}
+          tone="subtle"
+          name={i18n._(
+            msg({
+              message: "Custom URLs",
+              comment: "@context: Settings item — custom URL settings",
+            }),
+          )}
+          description={i18n._(
+            msg({
+              message: "Redirects, vanity paths, and URL control",
+              comment: "@context: Settings item description for custom URLs",
+            }),
+          )}
+        />
         <SettingsDirectoryLink
           href={toPublicPath("/settings/code-injection", sitePathPrefix)}
           icon={ICONS.terminal}
