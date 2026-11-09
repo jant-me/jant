@@ -88,6 +88,7 @@ export async function renderSmartCollectionPage(
     getNavigationData(c),
   ]);
   if (!smartCollection) return null;
+  c.set("viewTarget", { kind: "smartCollection", id: smartCollection.id });
 
   const canonicalPagePath = getCollectionPagePath(smartCollection.slug);
   const viewer = {

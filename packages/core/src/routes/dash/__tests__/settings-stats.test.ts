@@ -1,7 +1,7 @@
 /**
  * The Stats page and its switch, through the real services: the page shows
  * what the counters hold for the window asked for, says where its record
- * begins, one post can be opened on its own, and the switch deletes the
+ * begins, any page in its list opens on its own, and the switch deletes the
  * counts on the way off.
  */
 
@@ -45,8 +45,8 @@ function entry(
 }
 
 /**
- * A post with views, the home page with a few, and a record that began
- * long before any window, so the total line talks about the window.
+ * A post, a collection and the home page with views, and a record that
+ * began long before any window, so the total line talks about the window.
  */
 async function seed(
   services: ReturnType<typeof createApp>["services"],
@@ -62,29 +62,38 @@ async function seed(
     bodyMarkdown: "Body",
     status: "published",
   });
+  const reading = await services.collections.create({
+    slug: "reading",
+    title: "Reading",
+  });
   await services.stats.record(
     [
       entry({ page: post.id, referrer: "news.ycombinator.com", count: 41 }),
       entry({ page: post.id, count: 2 }),
-      entry({ page: "/", count: 7 }),
+      entry({ page: "/", count: 4 }),
+      entry({ page: reading.id, count: 3 }),
     ],
     { dailyLimit: 0, today: TODAY },
   );
-  return post;
+  return { post, reading };
 }
 
 describe("GET /settings/stats", () => {
-  it("shows the window's total, the posts, the pages, and the referrers", async () => {
+  it("shows the window's total, the pages of every kind, and the referrers", async () => {
     const { app, services } = createApp();
-    const post = await seed(services);
+    const { post, reading } = await seed(services);
 
     const res = await app.request("/settings/stats");
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("50 views in the last 30 days");
     expect(html).toContain("A well-read note");
-    expect(html).toContain(`/settings/stats?post=${post.id}&amp;days=30`);
-    expect(html).toContain("Home");
+    expect(html).toContain(`/settings/stats?page=${post.id}&amp;days=30`);
+    expect(html).toContain(">Home<");
+    expect(html).toContain("/settings/stats?page=%2F&amp;days=30");
+    expect(html).toContain(">Reading<");
+    expect(html).toContain(`/settings/stats?page=${reading.id}&amp;days=30`);
+    expect(html).toContain(">Collection<");
     expect(html).toContain("news.ycombinator.com");
     expect(html).toContain("Count page views");
   });
@@ -111,20 +120,7 @@ describe("GET /settings/stats", () => {
     expect(html).toContain("settings-stats-axis-single");
     // Nothing to list: the total line has said so.
     expect(html).not.toContain("Referrers");
-  });
-
-  it("names the list that has nothing when the views went elsewhere", async () => {
-    const { app, services } = createApp();
-    await services.settings.set("STATS_SINCE", shiftDayKey(TODAY, -365));
-    await services.stats.record([entry({ page: "/", count: 3 })], {
-      dailyLimit: 0,
-      today: TODAY,
-    });
-
-    const html = await (await app.request("/settings/stats")).text();
-    expect(html).toContain("No post was viewed.");
-    expect(html).toContain("Home");
-    expect(html).toContain("Direct");
+    expect(html).not.toContain(">Home<");
   });
 
   it("takes a window from ?days and ignores one it does not offer", async () => {
@@ -138,22 +134,39 @@ describe("GET /settings/stats", () => {
     expect(odd).toContain("50 views in the last 30 days");
   });
 
-  it("opens one post, and answers 404 for a post the site does not have", async () => {
+  it("opens one page of any kind, and answers 404 for a key that names nothing", async () => {
     const { app, services } = createApp();
-    const post = await seed(services);
+    const { post, reading } = await seed(services);
 
-    const res = await app.request(`/settings/stats?post=${post.id}`);
+    const res = await app.request(`/settings/stats?page=${post.id}`);
     expect(res.status).toBe(200);
-    const html = await res.text();
-    expect(html).toContain("43 views in the last 30 days");
-    expect(html).toContain("news.ycombinator.com");
-    expect(html).toContain(`href="/${post.slug}"`);
-    expect(html).not.toContain("No other page was viewed.");
+    const postHtml = await res.text();
+    expect(postHtml).toContain("43 views in the last 30 days");
+    expect(postHtml).toContain("news.ycombinator.com");
+    expect(postHtml).toContain(`href="/${post.slug}"`);
+    // One page's numbers list no pages.
+    expect(postHtml).not.toContain(">Home<");
 
-    const missing = await app.request(
-      "/settings/stats?post=pst_missing0000000000000000000",
-    );
-    expect(missing.status).toBe(404);
+    const home = await (await app.request("/settings/stats?page=%2F")).text();
+    expect(home).toContain(">Home<");
+    expect(home).toContain("4 views in the last 30 days");
+
+    const collection = await (
+      await app.request(`/settings/stats?page=${reading.id}`)
+    ).text();
+    expect(collection).toContain(">Reading<");
+    expect(collection).toContain(">Collection<");
+    expect(collection).toContain("3 views in the last 30 days");
+    expect(collection).toContain('href="/reading"');
+
+    for (const key of [
+      "pst_00000000000000000000000001",
+      "%2Fnowhere",
+      "nonsense",
+    ]) {
+      const missing = await app.request(`/settings/stats?page=${key}`);
+      expect(missing.status).toBe(404);
+    }
   });
 
   it("says so when stats are off", async () => {

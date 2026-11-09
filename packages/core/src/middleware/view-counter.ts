@@ -67,10 +67,12 @@ export function viewCounter(
       return;
     }
 
+    // `c.req.path` carries no query string: the second page of the home
+    // feed and a filtered archive are the page they belong to.
     const page =
-      target.kind === "post"
-        ? target.id
-        : viewPathKey(c.req.path, viewBasePath(c));
+      target.kind === "path"
+        ? viewPathKey(c.req.path, viewBasePath(c))
+        : target.id;
     const { services } = c.var;
     const { dailyLimit } = appConfig.stats;
 

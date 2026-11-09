@@ -5,7 +5,10 @@ import {
   DEFAULT_TEST_SITE_ID,
 } from "../../__tests__/helpers/db.js";
 import type { Database } from "../../db/index.js";
+import { createCollectionService } from "../collection.js";
+import { createPathService } from "../path.js";
 import { createPostService } from "../post.js";
+import { createSmartCollectionService } from "../smart-collection.js";
 import { createSettingsService } from "../settings.js";
 import {
   createStatsService,
@@ -17,6 +20,8 @@ import { shiftDayKey, VIEW_OVERFLOW_KEY } from "../../lib/view-counting.js";
 
 const TODAY = "2026-11-08";
 const SITE = DEFAULT_TEST_SITE_ID;
+/** A well-formed id of a post the site no longer has. */
+const GONE_POST = "pst_00000000000000000000000000";
 
 function entry(
   overrides: Partial<ViewCountEntry> & { page: string },
@@ -35,6 +40,8 @@ describe("StatsService", () => {
   let stats: ReturnType<typeof createStatsService>;
   let settings: ReturnType<typeof createSettingsService>;
   let posts: ReturnType<typeof createPostService>;
+  let collections: ReturnType<typeof createCollectionService>;
+  let smartCollections: ReturnType<typeof createSmartCollectionService>;
 
   function createStats(rowsPerSiteDay?: number) {
     return createStatsService(db, SITE, undefined, "sqlite", {
@@ -56,6 +63,9 @@ describe("StatsService", () => {
     db = testDb.db as unknown as Database;
     settings = createSettingsService(db, SITE);
     posts = createPostService(db, { slugIdLength: 5 }, SITE);
+    const paths = createPathService(db, SITE);
+    collections = createCollectionService(db, SITE, paths);
+    smartCollections = createSmartCollectionService(db, SITE, paths, posts);
     stats = createStats();
   });
 
@@ -202,7 +212,7 @@ describe("StatsService", () => {
       ]);
     });
 
-    it("lists the most-viewed posts with their title and address", async () => {
+    it("lists the most-viewed pages of every kind, each named", async () => {
       const titled = await posts.create({
         format: "note",
         title: "Hello",
@@ -211,53 +221,31 @@ describe("StatsService", () => {
       });
       const untitled = await posts.create({
         format: "note",
-        bodyMarkdown: "A note with no title",
+        bodyMarkdown: "A note with no title is named by its opening words.",
         status: "published",
+      });
+      const reading = await collections.create({
+        slug: "reading",
+        title: "Reading",
+      });
+      const quotes = await smartCollections.create({
+        slug: "quotes",
+        title: "Quotes",
+        selection: { format: "quote" },
       });
       await stats.record(
         [
           entry({ page: titled.id, count: 2 }),
           entry({ page: titled.id, referrer: "a.b", count: 2 }),
           entry({ page: untitled.id, count: 5 }),
-          // A page that is not a post counts toward the total, not the list.
+          entry({ page: reading.id, count: 3 }),
+          entry({ page: quotes.id, count: 1 }),
           entry({ page: "/", count: 7 }),
-          // A post that no longer exists leaves its rows behind until the sweep.
-          entry({ page: "pst_gone00000000000000000000000", count: 9 }),
-        ],
-        { dailyLimit: 0, today: TODAY },
-      );
-
-      const overview = await stats.getOverview({ days: 7, today: TODAY });
-      expect(overview.total).toBe(25);
-      expect(overview.pages).toEqual([{ path: "/", views: 7 }]);
-      expect(overview.posts).toEqual([
-        {
-          id: untitled.id,
-          title: null,
-          slug: untitled.slug,
-          format: "note",
-          views: 5,
-        },
-        {
-          id: titled.id,
-          title: "Hello",
-          slug: titled.slug,
-          format: "note",
-          views: 4,
-        },
-      ]);
-    });
-
-    it("lists the pages that are not posts by their path", async () => {
-      await stats.record(
-        [
-          entry({ page: "/", count: 7 }),
-          entry({ page: "/archive", count: 3 }),
-          entry({ page: "/archive", referrer: "a.b", count: 1 }),
-          entry({ page: "/collections/a+b", count: 1 }),
-          entry({ page: "/featured", count: 1 }),
-          // Post ids and the overflow row are not pages.
-          entry({ page: "pst_gone00000000000000000000000", count: 9 }),
+          entry({ page: "/archive", count: 6 }),
+          // A deleted post leaves its rows behind until the sweep; the list
+          // still accounts for them.
+          entry({ page: GONE_POST, count: 9 }),
+          // The overflow row is a remainder, not a page.
           entry({
             page: VIEW_OVERFLOW_KEY,
             referrer: VIEW_OVERFLOW_KEY,
@@ -267,12 +255,40 @@ describe("StatsService", () => {
         { dailyLimit: 0, today: TODAY },
       );
 
-      const { pages } = await stats.getOverview({ days: 7, today: TODAY });
-      expect(pages).toEqual([
-        { path: "/", views: 7 },
-        { path: "/archive", views: 4 },
-        { path: "/collections/a+b", views: 1 },
-        { path: "/featured", views: 1 },
+      const overview = await stats.getOverview({ days: 7, today: TODAY });
+      expect(overview.total).toBe(44);
+      expect(overview.pages).toEqual([
+        { kind: "post", key: GONE_POST, post: null, views: 9 },
+        { kind: "path", key: "/", views: 7 },
+        { kind: "path", key: "/archive", views: 6 },
+        {
+          kind: "post",
+          key: untitled.id,
+          post: {
+            title: "A note with no title is named by its opening words.",
+            slug: untitled.slug,
+            format: "note",
+          },
+          views: 5,
+        },
+        {
+          kind: "post",
+          key: titled.id,
+          post: { title: "Hello", slug: titled.slug, format: "note" },
+          views: 4,
+        },
+        {
+          kind: "collection",
+          key: reading.id,
+          collection: { title: "Reading", slug: "reading" },
+          views: 3,
+        },
+        {
+          kind: "collection",
+          key: quotes.id,
+          collection: { title: "Quotes", slug: "quotes" },
+          views: 1,
+        },
       ]);
     });
 
@@ -301,29 +317,34 @@ describe("StatsService", () => {
       expect(referrers.other).toBe(22);
     });
 
-    it("answers for one post, or null for a post the site does not have", async () => {
+    it("answers for one page by its key, and null for a key that names nothing", async () => {
       const post = await posts.create({
         format: "note",
         title: "Read me",
         bodyMarkdown: "Body",
         status: "published",
       });
+      const reading = await collections.create({
+        slug: "reading",
+        title: "Reading",
+      });
       await stats.record(
         [
           entry({ page: post.id, referrer: "news.ycombinator.com", count: 30 }),
           entry({ page: post.id, count: 4 }),
+          entry({ page: reading.id, count: 2 }),
           entry({ page: "/", count: 50 }),
         ],
         { dailyLimit: 0, today: TODAY },
       );
+      const window = { days: 7, today: TODAY };
 
-      const detail = await stats.getPost(post.id, { days: 7, today: TODAY });
+      const detail = await stats.getPage(post.id, window);
       expect(detail).toMatchObject({
-        post: {
-          id: post.id,
-          title: "Read me",
-          slug: post.slug,
-          format: "note",
+        page: {
+          kind: "post",
+          key: post.id,
+          post: { title: "Read me", slug: post.slug, format: "note" },
         },
         total: 34,
         referrers: {
@@ -334,12 +355,54 @@ describe("StatsService", () => {
       });
       expect(detail?.series.at(-1)).toEqual({ day: TODAY, views: 34 });
 
+      expect(await stats.getPage(reading.id, window)).toMatchObject({
+        page: {
+          kind: "collection",
+          key: reading.id,
+          collection: { title: "Reading", slug: "reading" },
+        },
+        total: 2,
+      });
+      expect(await stats.getPage("/", window)).toMatchObject({
+        page: { kind: "path", key: "/" },
+        total: 50,
+      });
+
+      // A page the site has is a page, with nothing counted in the window.
+      const quiet = await posts.create({
+        format: "note",
+        title: "Quiet",
+        bodyMarkdown: "Body",
+        status: "published",
+      });
+      expect((await stats.getPage(quiet.id, window))?.total).toBe(0);
+
+      // Nothing the site has, and nothing it ever counted.
+      expect(await stats.getPage(GONE_POST, window)).toBeNull();
+      expect(await stats.getPage("/nowhere", window)).toBeNull();
+      expect(await stats.getPage("nonsense", window)).toBeNull();
+      expect(await stats.getPage(VIEW_OVERFLOW_KEY, window)).toBeNull();
+    });
+
+    it("keeps a deleted post's page while its rows last", async () => {
+      const post = await posts.create({
+        format: "note",
+        title: "Gone soon",
+        bodyMarkdown: "Body",
+        status: "published",
+      });
+      await stats.record([entry({ page: post.id, count: 3 })], {
+        dailyLimit: 0,
+        today: TODAY,
+      });
+      await posts.delete(post.id);
+
       expect(
-        await stats.getPost("pst_missing0000000000000000000", {
-          days: 7,
-          today: TODAY,
-        }),
-      ).toBeNull();
+        await stats.getPage(post.id, { days: 7, today: TODAY }),
+      ).toMatchObject({
+        page: { kind: "post", key: post.id, post: null },
+        total: 3,
+      });
     });
   });
 
@@ -419,7 +482,7 @@ describe("StatsService", () => {
         today: TODAY,
       });
 
-      const detail = await stats.getPost(post.id, { days: 7, today: TODAY });
+      const detail = await stats.getPage(post.id, { days: 7, today: TODAY });
       expect(detail?.start).toBe(shiftDayKey(TODAY, -3));
     });
   });

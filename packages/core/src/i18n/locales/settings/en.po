@@ -359,9 +359,11 @@ msgid "Applies to your entire site, including admin pages. Pick a palette, then 
 msgstr "Applies to your entire site, including admin pages. Pick a palette, then choose whether it follows the system or stays fixed."
 
 #. @context: Custom URL target type badge for an archive view
+#. @context: Row for the archive page in the pages list on the stats page
 #. @context: Suggested navigation link target type
 #: src/routes/dash/custom-urls.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 msgid "Archive"
 msgstr "Archive"
 
@@ -589,11 +591,13 @@ msgstr "Code injection updated."
 msgid "collection"
 msgstr "collection"
 
+#. @context: Badge on a collection's row on the stats page
 #. @context: Custom URL target type badge for a collection
 #. @context: Custom URL type option
 #. @context: Suggested navigation link target type
 #: src/routes/dash/custom-urls.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 msgid "Collection"
 msgstr "Collection"
 
@@ -611,6 +615,11 @@ msgstr "Collection created."
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Collection link"
 msgstr "Collection link"
+
+#. @context: Row for the collections directory in the pages list on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Collections"
+msgstr "Collections"
 
 #. @context: Appearance settings heading
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -1029,6 +1038,16 @@ msgstr "Delete this custom URL? Visitors using it won't be redirected anymore."
 msgid "Delete this navigation link? Visitors won't see it in your site header anymore."
 msgstr "Delete this navigation link? Visitors won't see it in your site header anymore."
 
+#. @context: Name on the stats page of a collection whose views remain after it was deleted
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Deleted collection"
+msgstr "Deleted collection"
+
+#. @context: Name on the stats page of a post whose views remain after it was deleted
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Deleted post"
+msgstr "Deleted post"
+
 #. @context: Settings item description for account settings on the settings home page when demo restrictions are enabled
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Demo limits"
@@ -1219,9 +1238,11 @@ msgstr "Favicon and the profile mark in your header"
 
 #. @context: Browse filter label for featured posts
 #. @context: Post badge - featured
+#. @context: Row for the Featured page in the pages list on the stats page
 #. @context: Select option for using featured posts as the main RSS feed
 #: src/ui/dash/appearance/NavigationContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 #: src/ui/dash/StatusBadge.tsx
 msgid "Featured"
 msgstr "Featured"
@@ -1837,20 +1858,10 @@ msgstr "No matching pages available to add. Try another title or create a new pa
 msgid "No navigation items yet. Add links or enable system items below."
 msgstr "No navigation items yet. Add links or enable system items below."
 
-#. @context: Empty state of the pages list on the stats page when the window's views were all of posts
-#: src/ui/dash/settings/StatsContent.tsx
-msgid "No other page was viewed."
-msgstr "No other page was viewed."
-
 #. @context: Empty state in the navigation page picker
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "No pages available. Create one to add it to navigation."
 msgstr "No pages available. Create one to add it to navigation."
-
-#. @context: Empty state of the posts list on the stats page when the window's views were all of other pages
-#: src/ui/dash/settings/StatsContent.tsx
-msgid "No post was viewed."
-msgstr "No post was viewed."
 
 #. @context: GitHub sync picker — empty state when search returns nothing
 #: src/routes/dash/settings.tsx
@@ -1991,7 +2002,7 @@ msgstr "Page address"
 msgid "Page created."
 msgstr "Page created."
 
-#. @context: Heading of the most-viewed pages other than posts on the stats page
+#. @context: Heading of the most-viewed pages on the stats page
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "Pages"
 msgstr "Pages"
@@ -2090,11 +2101,6 @@ msgstr "Post addresses do not change, and you can turn this off again at any tim
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Post notes by messaging a Telegram bot"
 msgstr "Post notes by messaging a Telegram bot"
-
-#. @context: Heading of the most-viewed posts on the stats page
-#: src/ui/dash/settings/StatsContent.tsx
-msgid "Posts"
-msgstr "Posts"
 
 #. @context: Badge on the language served at the root address
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -2600,6 +2606,11 @@ msgstr "Step {current} of {total}"
 msgid "Stop accepting posts from Telegram. Your existing notes stay published."
 msgstr "Stop accepting posts from Telegram. Your existing notes stay published."
 
+#. @context: Row for the subscribe page in the pages list on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Subscribe"
+msgstr "Subscribe"
+
 #. @context: Section heading for suggested nav links
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Suggested links"
@@ -2956,12 +2967,6 @@ msgstr "Typography choices and reading texture"
 #: src/ui/dash/settings/SessionsContent.tsx
 msgid "Unknown device"
 msgstr "Unknown device"
-
-#. @context: Stand-in title for a post with no title on the stats page
-#. @context: Stand-in title for a post with no title on the stats page
-#: src/ui/dash/settings/StatsContent.tsx
-msgid "Untitled"
-msgstr "Untitled"
 
 #. @context: Settings item description for password change
 #: src/ui/dash/settings/AccountMenuContent.tsx
