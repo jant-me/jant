@@ -3055,8 +3055,8 @@ msgstr "View these posts"
 
 #. @context: Settings item description for stats
 #: src/ui/dash/settings/SettingsRootContent.tsx
-msgid "Views by day, most-read posts, and referrers"
-msgstr "Views by day, most-read posts, and referrers"
+msgid "Views by day, most-read pages, and referrers"
+msgstr "Views by day, most-read pages, and referrers"
 
 #. @context: Accessible name of the bar chart on the stats page
 #: src/ui/dash/settings/StatsContent.tsx

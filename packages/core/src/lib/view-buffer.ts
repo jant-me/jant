@@ -187,6 +187,9 @@ export class ViewBuffer {
       // eslint-disable-next-line no-console -- Background failures must be visible.
       console.error(`[Jant] View counting flush error: ${message}`);
     } finally {
+      // The sink closes over a request's services and context; once nothing
+      // waits for it, let it go. A hit added meanwhile brought its own.
+      if (this.#sink === sink && this.#pending.size === 0) this.#sink = null;
       scheduled?.settle();
     }
   }

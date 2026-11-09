@@ -150,7 +150,7 @@ export function SettingsRootContent({
           )}
           description={i18n._(
             msg({
-              message: "Views by day, most-read posts, and referrers",
+              message: "Views by day, most-read pages, and referrers",
               comment: "@context: Settings item description for stats",
             }),
           )}

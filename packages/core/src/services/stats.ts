@@ -222,7 +222,9 @@ export interface StatsService {
   /**
    * Write a batch of counted views, for any site, applying the row cap and
    * the sweep on the way, and giving a site that has no start day yet the
-   * batch's earliest day as its start.
+   * batch's earliest day as its start. Entries of a site whose switch is off
+   * are dropped: a hit added before the author turned stats off and flushed
+   * after must not undo the deletion that came with it.
    *
    * @param entries - Views, already summed per site, day, page and referrer
    * @param opts.dailyLimit - Views this instance may record per day; `0` for no limit
@@ -462,6 +464,31 @@ export function createStatsService(
     await db.batch(
       queries as [(typeof queries)[number], ...(typeof queries)[number][]],
     );
+  }
+
+  /**
+   * The batch without the sites whose switch is off. Read from the table
+   * rather than the settings service because a batch spans sites, and read
+   * on every flush, so the promise `clear()` made holds across processes.
+   */
+  async function withoutSwitchedOff(
+    entries: ViewCountEntry[],
+  ): Promise<ViewCountEntry[]> {
+    if (entries.length === 0) return entries;
+    const siteIds = [...new Set(entries.map((entry) => entry.siteId))];
+    const off = await db
+      .select({ siteId: settings.siteId })
+      .from(settings)
+      .where(
+        and(
+          inArray(settings.siteId, siteIds),
+          eq(settings.key, "STATS_ENABLED"),
+          eq(settings.value, "false"),
+        ),
+      );
+    if (off.length === 0) return entries;
+    const offSites = new Set(off.map((row) => row.siteId));
+    return entries.filter((entry) => !offSites.has(entry.siteId));
   }
 
   function rememberRows(rows: ViewCountEntry[]): void {
@@ -775,8 +802,9 @@ export function createStatsService(
 
   return {
     async record(entries, opts) {
-      if (entries.length === 0) return { limitReached: false };
-      const rows = await capRows(entries);
+      const counted = await withoutSwitchedOff(entries);
+      if (counted.length === 0) return { limitReached: false };
+      const rows = await capRows(counted);
       await writeRows(rows);
       rememberRows(rows);
       await stampStart(rows);
