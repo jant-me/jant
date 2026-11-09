@@ -21,15 +21,20 @@ function renderSettingsRootContent(
 }
 
 describe("SettingsRootContent", () => {
-  it("places Config Editor last in Advanced and preserves the site path prefix", () => {
+  it("lists Custom URLs first and Config Editor last in Advanced, and preserves the site path prefix", () => {
     const html = renderSettingsRootContent({ sitePathPrefix: "/notes" });
 
+    const advancedSection = html.indexOf(">Advanced<");
+    const customUrls = html.indexOf("/notes/settings/custom-urls");
     const codeInjection = html.indexOf("/notes/settings/code-injection");
     const apiTokens = html.indexOf("/notes/settings/api-tokens");
     const configEditor = html.indexOf("/notes/settings/config");
     const accountSection = html.indexOf(">Account<");
 
-    expect(codeInjection).toBeGreaterThan(-1);
+    // The docs send authors to Settings → Advanced → Custom URLs.
+    expect(advancedSection).toBeGreaterThan(-1);
+    expect(customUrls).toBeGreaterThan(advancedSection);
+    expect(codeInjection).toBeGreaterThan(customUrls);
     expect(apiTokens).toBeGreaterThan(codeInjection);
     expect(configEditor).toBeGreaterThan(apiTokens);
     expect(accountSection).toBeGreaterThan(configEditor);
