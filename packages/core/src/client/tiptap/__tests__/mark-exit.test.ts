@@ -120,6 +120,24 @@ describe("highlight editing", () => {
     expect(editor.getHTML()).toBe("<p>word next</p>");
   });
 
+  it.each([
+    ["text", "<p>这是</p>", "<p>这是<mark>重点</mark></p>"],
+    ["punctuation", "<p>测试，</p>", "<p>测试，<mark>重点</mark></p>"],
+    [
+      "a line break",
+      "<p>测试<br><br></p>",
+      "<p>测试<br><br><mark>重点</mark></p>",
+    ],
+  ])(
+    "converts delimiters typed after %s and keeps what came before",
+    (_label, content, html) => {
+      const editor = createEditor(content);
+      editor.commands.focus("end");
+      type(editor, "==重点==");
+      expect(editor.getHTML()).toBe(html);
+    },
+  );
+
   it("toggles a highlight with Mod-Shift-H", () => {
     const editor = createEditor("<p>word</p>");
     const press = () =>

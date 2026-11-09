@@ -476,10 +476,15 @@ const MarkdownHighlight = Mark.create({
     };
   },
 
+  // The character before `==` is checked with a lookbehind, never matched.
+  // `markInputRule` and `markPasteRule` delete everything matched ahead of
+  // the content, so a matched `是` in `这是==重点==` was deleted with the
+  // delimiters, and a matched line break failed Tiptap's check that the
+  // match is the text in the document, leaving `==text==` as typed.
   addInputRules() {
     return [
       markInputRule({
-        find: /(?:^|[^=])(==([^=\s](?:(?:=(?!=)|[^=\n])*?[^=\s])?)==)$/,
+        find: /(?<!=)==([^=\s](?:(?:=(?!=)|[^=\n])*?[^=\s])?)==$/,
         type: this.type,
       }),
     ];
@@ -488,7 +493,7 @@ const MarkdownHighlight = Mark.create({
   addPasteRules() {
     return [
       markPasteRule({
-        find: /(?:^|[^=])(==([^=\s](?:(?:=(?!=)|[^=\n])*?[^=\s])?)==)(?![=])/g,
+        find: /(?<!=)==([^=\s](?:(?:=(?!=)|[^=\n])*?[^=\s])?)==(?!=)/g,
         type: this.type,
       }),
     ];
