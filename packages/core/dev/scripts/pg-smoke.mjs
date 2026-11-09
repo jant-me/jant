@@ -332,7 +332,26 @@ async function main() {
       }),
     );
     assert.equal(postPage.status, 200);
-    assert.match(await postPage.text(), /Hello from Postgres smoke\./);
+    const postHtml = await postPage.text();
+    assert.match(postHtml, /Hello from Postgres smoke\./);
+    // The page carries a view token; the reader bundle posts it back once the
+    // page has been seen, and only then is the view counted.
+    const viewToken = postHtml.match(
+      /<meta name="jant-view" content="([^"]+)">/,
+    )?.[1];
+    assert.ok(viewToken, "the post page carries a view token");
+    const seen = await handler.fetch(
+      new Request("http://127.0.0.1:3000/_/seen", {
+        method: "POST",
+        body: viewToken,
+        headers: {
+          "Content-Type": "text/plain",
+          "Sec-Fetch-Site": "same-origin",
+          Origin: "http://127.0.0.1:3000",
+        },
+      }),
+    );
+    assert.equal(seen.status, 204);
 
     const archivePage = await handler.fetch(
       new Request("http://127.0.0.1:3000/archive"),
