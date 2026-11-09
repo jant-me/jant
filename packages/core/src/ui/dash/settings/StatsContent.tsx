@@ -11,13 +11,19 @@
  * the same as a month of zeros. Posts, collections and the site's own pages
  * share one ranked list, since the question is what was read, not what kind
  * of thing it was; a badge says the kind, and a bar behind each row says its
- * share. `services/stats.ts` has the policy behind the numbers.
+ * share. Every page and every referrer in the lists opens on its own: a
+ * page with where its readers came from, a referrer with the pages it sent
+ * them to. Each hop drops the other dimension rather than stacking filters,
+ * since today's hours are kept for the site as a whole and a filtered chart
+ * would have nothing to draw. `services/stats.ts` has the policy behind the
+ * numbers.
  */
 
 import type { I18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../../i18n/context.js";
 import { toPublicPath } from "../../../lib/url.js";
+import { VIEW_INTERNAL_REFERRER } from "../../../lib/view-counting.js";
 import {
   STATS_WINDOWS,
   VIEW_COUNT_RETENTION_DAYS,
@@ -25,6 +31,7 @@ import {
   type StatsPage,
   type StatsPageDetail,
   type StatsPageRow,
+  type StatsReferrerDetail,
   type StatsReferrers,
   type StatsSeries,
   type StatsWindow,
@@ -35,22 +42,33 @@ export interface StatsContentProps {
   /** Whether views are being counted; off means no numbers to show. */
   enabled: boolean;
   days: StatsWindow;
-  /** The site over the window; `null` when stats are off or one page is shown. */
+  /** The site over the window; `null` when stats are off or a detail is shown. */
   overview: StatsOverview | null;
   /** One page over the window, when the page is about one page. */
   page: StatsPageDetail | null;
+  /** One referrer over the window, when the page is about one referrer. */
+  referrer: StatsReferrerDetail | null;
   sitePathPrefix: string;
   demoMode: boolean;
 }
 
-/** The address of the stats page for a window, and optionally one page. */
+/** What a stats address can be about besides the site: one page, or one referrer. */
+type StatsTarget = { page: string } | { referrer: string };
+
+/**
+ * The address of the stats page for a window, and optionally one page or
+ * one referrer. A referrer key goes in verbatim, so Direct is `referrer=`
+ * and Internal `referrer=%2F`: these addresses live in the settings and
+ * are never shown.
+ */
 function statsHref(
   sitePathPrefix: string,
   days: StatsWindow,
-  pageKey?: string,
+  target?: StatsTarget,
 ): string {
   const params = new URLSearchParams();
-  if (pageKey) params.set("page", pageKey);
+  if (target && "page" in target) params.set("page", target.page);
+  if (target && "referrer" in target) params.set("referrer", target.referrer);
   params.set("days", String(days));
   return `${toPublicPath("/settings/stats", sitePathPrefix)}?${params}`;
 }
@@ -194,6 +212,38 @@ function pagePublicPath(page: StatsPage): string | null {
   }
 }
 
+/**
+ * What a referrer is called on the stats page: a host or a tag as itself,
+ * the two keys that are not hosts by name.
+ *
+ * @param key - The referrer's counter key
+ * @param i18n - The dashboard's locale
+ * @returns The name
+ * @example
+ * statsReferrerName("", i18n); // "Direct"
+ */
+export function statsReferrerName(key: string, i18n: I18n): string {
+  if (key === "") {
+    return i18n._(
+      msg({
+        message: "Direct",
+        comment:
+          "@context: Name on the stats page of the views with no referrer: typed addresses, apps, feed readers; a row of the referrer list and the heading of their own numbers",
+      }),
+    );
+  }
+  if (key === VIEW_INTERNAL_REFERRER) {
+    return i18n._(
+      msg({
+        message: "Internal",
+        comment:
+          "@context: Name on the stats page of the views that followed a link from another page of the site; a row of the referrer list and the heading of their own numbers",
+      }),
+    );
+  }
+  return key;
+}
+
 /** The kind of a page, where the name alone does not say: a post's format, or that it is a collection. */
 function PageBadge({ page }: { page: StatsPage }) {
   const { i18n } = useLingui();
@@ -242,11 +292,11 @@ function windowLabel(window: StatsWindow, i18n: Translator): string {
 function WindowSwitch({
   days,
   sitePathPrefix,
-  pageKey,
+  target,
 }: {
   days: StatsWindow;
   sitePathPrefix: string;
-  pageKey?: string;
+  target?: StatsTarget;
 }) {
   const { i18n } = useLingui();
   return (
@@ -263,7 +313,7 @@ function WindowSwitch({
       {STATS_WINDOWS.map((window) => (
         <a
           key={window}
-          href={statsHref(sitePathPrefix, window, pageKey)}
+          href={statsHref(sitePathPrefix, window, target)}
           class="settings-stats-window"
           aria-current={window === days ? "page" : undefined}
         >
@@ -403,41 +453,41 @@ function RankedRow({
   );
 }
 
+/**
+ * Where the views came from, each referrer a link to the pages it sent
+ * readers to. Internal and Direct take their place among the hosts by
+ * size; Other is last and opens nothing, being a remainder.
+ */
 function ReferrerList({
   referrers,
   total,
+  days,
+  sitePathPrefix,
 }: {
   referrers: StatsReferrers;
   total: number;
+  days: StatsWindow;
+  sitePathPrefix: string;
 }) {
   const { i18n } = useLingui();
-  const rows = [
-    ...referrers.top.map((row) => ({ label: row.host, views: row.views })),
+  const rows: { key: string | null; label: string; views: number }[] = [
+    ...referrers.top.map((row) => ({
+      key: row.host,
+      label: row.host,
+      views: row.views,
+    })),
     {
-      label: i18n._(
-        msg({
-          message: "Internal",
-          comment:
-            "@context: Row on the stats page for views that followed a link from another page of the site",
-        }),
-      ),
+      key: VIEW_INTERNAL_REFERRER,
+      label: statsReferrerName(VIEW_INTERNAL_REFERRER, i18n),
       views: referrers.internal,
     },
-    {
-      label: i18n._(
-        msg({
-          message: "Direct",
-          comment:
-            "@context: Row on the stats page for views with no referrer: typed addresses, apps, feed readers",
-        }),
-      ),
-      views: referrers.direct,
-    },
+    { key: "", label: statsReferrerName("", i18n), views: referrers.direct },
   ]
     .filter((row) => row.views > 0)
     .sort((a, b) => b.views - a.views);
   if (referrers.other > 0) {
     rows.push({
+      key: null,
       label: i18n._(
         msg({
           message: "Other",
@@ -467,7 +517,16 @@ function ReferrerList({
             share={shareOf(row.views, total)}
             views={row.views}
           >
-            <span class="settings-stats-label">{row.label}</span>
+            {row.key === null ? (
+              <span class="settings-stats-label">{row.label}</span>
+            ) : (
+              <a
+                href={statsHref(sitePathPrefix, days, { referrer: row.key })}
+                class="settings-stats-label settings-stats-link"
+              >
+                {row.label}
+              </a>
+            )}
           </RankedRow>
         ))}
       </ol>
@@ -509,7 +568,7 @@ function PageList({
             views={row.views}
           >
             <a
-              href={statsHref(sitePathPrefix, days, row.key)}
+              href={statsHref(sitePathPrefix, days, { page: row.key })}
               class="settings-stats-label settings-stats-link"
             >
               {statsPageName(row, i18n)}
@@ -614,7 +673,7 @@ function TotalLine({
   shown,
   locale,
 }: {
-  shown: StatsOverview | StatsPageDetail;
+  shown: Pick<StatsOverview, "days" | "total" | "start">;
   locale: string;
 }) {
   const { i18n } = useLingui();
@@ -684,23 +743,46 @@ function PageHeading({
   );
 }
 
+/** The heading of one referrer's numbers: its name, as the list wrote it. */
+function ReferrerHeading({ referrer }: { referrer: string }) {
+  const { i18n } = useLingui();
+  return (
+    <h1 class="settings-stats-title">
+      <span class="settings-stats-title-name">
+        {statsReferrerName(referrer, i18n)}
+      </span>
+    </h1>
+  );
+}
+
 export function StatsContent({
   enabled,
   days,
   overview,
   page,
+  referrer,
   sitePathPrefix,
   demoMode,
 }: StatsContentProps) {
   const { i18n } = useLingui();
   const locale = i18n.locale;
-  const shown = page ?? overview;
+  const shown = page ?? referrer ?? overview;
+  // The site and a referrer list pages; the site and a page list referrers.
+  const pages = overview?.pages ?? referrer?.pages ?? null;
+  const referrers = overview?.referrers ?? page?.referrers ?? null;
+  const target: StatsTarget | undefined = page
+    ? { page: page.page.key }
+    : referrer
+      ? { referrer: referrer.referrer }
+      : undefined;
 
   return (
     <div class="settings-stats">
       <header class="settings-stats-header">
         {page ? (
           <PageHeading page={page.page} sitePathPrefix={sitePathPrefix} />
+        ) : referrer ? (
+          <ReferrerHeading referrer={referrer.referrer} />
         ) : (
           <h1 class="settings-stats-title">
             {i18n._(
@@ -715,7 +797,7 @@ export function StatsContent({
           <WindowSwitch
             days={days}
             sitePathPrefix={sitePathPrefix}
-            pageKey={page?.page.key}
+            target={target}
           />
         )}
       </header>
@@ -741,22 +823,27 @@ export function StatsContent({
               />
             )}
             {/* The total line has already said there is nothing to list. */}
-            {shown.total > 0 && overview && (
+            {shown.total > 0 && pages && (
               <PageList
-                pages={overview.pages}
-                total={overview.total}
+                pages={pages}
+                total={shown.total}
                 days={days}
                 sitePathPrefix={sitePathPrefix}
               />
             )}
-            {shown.total > 0 && (
-              <ReferrerList referrers={shown.referrers} total={shown.total} />
+            {shown.total > 0 && referrers && (
+              <ReferrerList
+                referrers={referrers}
+                total={shown.total}
+                days={days}
+                sitePathPrefix={sitePathPrefix}
+              />
             )}
           </>
         )
       )}
 
-      {!page && (
+      {!target && (
         <Toggle
           enabled={enabled}
           sitePathPrefix={sitePathPrefix}

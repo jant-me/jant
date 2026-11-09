@@ -1083,7 +1083,7 @@ msgstr "設計"
 msgid "Destination"
 msgstr "目標網址"
 
-#. @context: Row on the stats page for views with no referrer: typed addresses, apps, feed readers
+#. @context: Name on the stats page of the views with no referrer: typed addresses, apps, feed readers; a row of the referrer list and the heading of their own numbers
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "Direct"
 msgstr "直接造訪"
@@ -1433,7 +1433,7 @@ msgstr "安裝 GitHub App，以授予存取權而無需管理個人權杖。權�
 msgid "Integrations"
 msgstr "第三方整合"
 
-#. @context: Row on the stats page for views that followed a link from another page of the site
+#. @context: Name on the stats page of the views that followed a link from another page of the site; a row of the referrer list and the heading of their own numbers
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "Internal"
 msgstr "站內"

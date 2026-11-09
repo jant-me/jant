@@ -71,6 +71,7 @@ import { TelegramContent } from "../../ui/dash/settings/TelegramContent.js";
 import {
   StatsContent,
   statsPageName,
+  statsReferrerName,
 } from "../../ui/dash/settings/StatsContent.js";
 import {
   DEFAULT_STATS_WINDOW,
@@ -478,7 +479,12 @@ settingsRoutes.get("/stats", async (c) => {
   const { appConfig, services } = c.var;
   const enabled = appConfig.stats.enabled;
   const days = parseStatsWindow(c.req.query("days"));
-  const pageKey = c.req.query("page");
+  // One page, or else one referrer. The referrer key is the stored one, so
+  // an empty value is Direct and `/` Internal: present or absent is what
+  // matters, not truthy.
+  const pageKey = c.req.query("page") || undefined;
+  const referrerKey =
+    pageKey === undefined ? c.req.query("referrer") : undefined;
   const at = now();
   const window = {
     days,
@@ -487,12 +493,20 @@ settingsRoutes.get("/stats", async (c) => {
   };
 
   // The chrome needs nothing from the counts, so the reads go out together.
-  const [navData, page, overview] = await Promise.all([
+  const [navData, page, referrer, overview] = await Promise.all([
     getNavigationData(c),
-    enabled && pageKey ? services.stats.getPage(pageKey, window) : null,
-    enabled && !pageKey ? services.stats.getOverview(window) : null,
+    enabled && pageKey !== undefined
+      ? services.stats.getPage(pageKey, window)
+      : null,
+    enabled && referrerKey !== undefined
+      ? services.stats.getReferrer(referrerKey, window)
+      : null,
+    enabled && pageKey === undefined && referrerKey === undefined
+      ? services.stats.getOverview(window)
+      : null,
   ]);
-  if (pageKey && !page) return c.notFound();
+  if (pageKey !== undefined && !page) return c.notFound();
+  if (referrerKey !== undefined && !referrer) return c.notFound();
 
   const statsLabel = breadcrumbLabel(c, "stats");
   const content = (
@@ -501,42 +515,49 @@ settingsRoutes.get("/stats", async (c) => {
       days={days}
       overview={overview}
       page={page}
+      referrer={referrer}
       sitePathPrefix={appConfig.sitePathPrefix}
       demoMode={appConfig.demoMode}
     />
   );
+  const detailName = page
+    ? statsPageName(page.page, getI18n(c))
+    : referrer
+      ? statsReferrerName(referrer.referrer, getI18n(c))
+      : null;
 
   return renderPublicPage(c, {
     page: "settings",
     title: buildPageTitle(statsLabel, navData.siteName),
     navData,
-    content: page ? (
-      <>
-        <AdminBreadcrumb
-          ancestors={[
-            {
-              label: breadcrumbLabel(c, "settings"),
-              href: publicPath(c, "/settings"),
-            },
-            {
-              label: statsLabel,
-              href: `${publicPath(c, "/settings/stats")}?days=${days}`,
-            },
-          ]}
-          current={statsPageName(page.page, getI18n(c))}
-        />
-        {content}
-      </>
-    ) : (
-      <>
-        <AdminBreadcrumb
-          parent={breadcrumbLabel(c, "settings")}
-          parentHref={publicPath(c, "/settings")}
-          current={statsLabel}
-        />
-        {content}
-      </>
-    ),
+    content:
+      detailName !== null ? (
+        <>
+          <AdminBreadcrumb
+            ancestors={[
+              {
+                label: breadcrumbLabel(c, "settings"),
+                href: publicPath(c, "/settings"),
+              },
+              {
+                label: statsLabel,
+                href: `${publicPath(c, "/settings/stats")}?days=${days}`,
+              },
+            ]}
+            current={detailName}
+          />
+          {content}
+        </>
+      ) : (
+        <>
+          <AdminBreadcrumb
+            parent={breadcrumbLabel(c, "settings")}
+            parentHref={publicPath(c, "/settings")}
+            current={statsLabel}
+          />
+          {content}
+        </>
+      ),
   });
 });
 
