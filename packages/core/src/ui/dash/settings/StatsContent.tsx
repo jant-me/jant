@@ -1,15 +1,17 @@
 /**
- * Stats: views by day, the most-viewed pages, and where readers came from.
+ * Stats: views by hour or by day, the most-viewed pages, and where readers
+ * came from.
  *
- * One quiet page of aggregates for the author. It shows a window of days and
+ * One quiet page of aggregates for the author. It shows a window of time and
  * nothing beyond it — no lifetime total, no comparison with the window before
  * — because a number to beat is the one social mechanic this page must not
- * grow into. When counting began inside the window, the page says so and the
+ * grow into. Today is the default and is drawn by the hour; a longer window
+ * by the day. When counting began inside the window, the page says so and the
  * chart starts on that day: the days before were not counted, which is not
  * the same as a month of zeros. Posts, collections and the site's own pages
- * share one list, since the question is what was read, not what kind of
- * thing it was; a badge says the kind. `services/stats.ts` has the policy
- * behind the numbers.
+ * share one ranked list, since the question is what was read, not what kind
+ * of thing it was; a badge says the kind, and a bar behind each row says its
+ * share. `services/stats.ts` has the policy behind the numbers.
  */
 
 import type { I18n } from "@lingui/core";
@@ -24,7 +26,7 @@ import {
   type StatsPageDetail,
   type StatsPageRow,
   type StatsReferrers,
-  type StatsSeriesPoint,
+  type StatsSeries,
   type StatsWindow,
 } from "../../../services/stats.js";
 import { FormatBadge } from "../FormatBadge.js";
@@ -61,6 +63,34 @@ function formatDayLabel(day: string, locale: string): string {
     day: "numeric",
     timeZone: "UTC",
   }).format(new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, date ?? 1)));
+}
+
+/** `14:00` for an hour of the day, in the dashboard's locale. */
+function formatHourLabel(hour: number, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(2000, 0, 1, hour)));
+}
+
+/** The hour of the day an hour key names. */
+function hourOf(hourKey: string): number {
+  return Number(hourKey.slice(11, 13));
+}
+
+/** What one point of a series is called under the chart and in its tooltips. */
+function pointLabel(series: StatsSeries, at: string, locale: string): string {
+  return series.unit === "hour"
+    ? formatHourLabel(hourOf(at), locale)
+    : formatDayLabel(at, locale);
+}
+
+/** The share of a total one row holds, as a CSS percentage for its bar. */
+function shareOf(views: number, total: number): string {
+  if (total <= 0) return "0%";
+  return `${Math.round((views / total) * 1000) / 10}%`;
 }
 
 /** The site's own pages by name; any other path as itself. */
@@ -185,6 +215,30 @@ function PageBadge({ page }: { page: StatsPage }) {
   return null;
 }
 
+/** The translator the components get from the context; it takes values. */
+type Translator = ReturnType<typeof useLingui>["i18n"];
+
+/** What a window is called on the switch. */
+function windowLabel(window: StatsWindow, i18n: Translator): string {
+  if (window === 1) {
+    return i18n._(
+      msg({
+        message: "Today",
+        comment:
+          "@context: The one-day option of the window switch on the stats page",
+      }),
+    );
+  }
+  return i18n._(
+    msg({
+      message: "{window} days",
+      comment:
+        "@context: One option of the window switch on the stats page; {window} is 7 or 30",
+    }),
+    { window },
+  );
+}
+
 function WindowSwitch({
   days,
   sitePathPrefix,
@@ -202,7 +256,7 @@ function WindowSwitch({
         msg({
           message: "Window",
           comment:
-            "@context: Accessible name of the 7/30/90-day switch on the stats page",
+            "@context: Accessible name of the today/7/30-day switch on the stats page",
         }),
       )}
     >
@@ -213,14 +267,7 @@ function WindowSwitch({
           class="settings-stats-window"
           aria-current={window === days ? "page" : undefined}
         >
-          {i18n._(
-            msg({
-              message: "{window} days",
-              comment:
-                "@context: One option of the window switch on the stats page; {window} is 7, 30 or 90",
-            }),
-            { window },
-          )}
+          {windowLabel(window, i18n)}
         </a>
       ))}
     </nav>
@@ -228,54 +275,74 @@ function WindowSwitch({
 }
 
 /**
- * One bar per counted day over the whole window, so a bar is the same width
- * whenever the record began. The days before the record have no bar and no
- * baseline: the baseline starts where counting did. The total line has then
- * already named that day, so the axis carries today's date alone; it names
- * both ends only when every day of the window was counted.
+ * One bar per point over the whole window, so a bar is the same width
+ * whatever the record covers. Today has 24 slots and bars up to the current
+ * hour. A longer window has one slot per day; the days before the record
+ * have no bar and no baseline, since the baseline starts where counting did.
+ * The total line has then already named that day, so the axis carries
+ * today's date alone; it names both ends only when every day was counted.
  */
 function ViewsChart({
   series,
   start,
   locale,
 }: {
-  series: StatsSeriesPoint[];
+  series: StatsSeries;
   start: string | null;
   locale: string;
 }) {
   const { i18n } = useLingui();
-  const peak = Math.max(1, ...series.map((point) => point.views));
-  const startIndex = start
-    ? Math.max(
-        0,
-        series.findIndex((point) => point.day === start),
-      )
-    : 0;
-  const first = series[startIndex];
-  const last = series.at(-1);
-  const single = start !== null;
+  const { unit, points } = series;
+  const slots = unit === "hour" ? 24 : points.length;
+  const peak = Math.max(1, ...points.map((point) => point.views));
+  const startIndex =
+    unit === "day" && start
+      ? Math.max(
+          0,
+          points.findIndex((point) => point.at === start),
+        )
+      : 0;
+  const single = unit === "day" && start !== null;
+  const firstLabel =
+    unit === "hour"
+      ? formatHourLabel(0, locale)
+      : points[startIndex] && formatDayLabel(points[startIndex].at, locale);
+  const lastLabel =
+    unit === "hour"
+      ? formatHourLabel(23, locale)
+      : points.at(-1) && formatDayLabel(points.at(-1)!.at, locale);
 
   return (
     <figure class="settings-stats-figure">
       <svg
         class="settings-stats-chart"
-        viewBox={`0 0 ${series.length} 100`}
+        viewBox={`0 0 ${slots} 100`}
         preserveAspectRatio="none"
         role="img"
-        aria-label={i18n._(
-          msg({
-            message: "Views per day",
-            comment:
-              "@context: Accessible name of the bar chart on the stats page",
-          }),
-        )}
+        aria-label={
+          unit === "hour"
+            ? i18n._(
+                msg({
+                  message: "Views per hour",
+                  comment:
+                    "@context: Accessible name of today's bar chart on the stats page",
+                }),
+              )
+            : i18n._(
+                msg({
+                  message: "Views per day",
+                  comment:
+                    "@context: Accessible name of the bar chart on the stats page",
+                }),
+              )
+        }
       >
-        {series.map((point, index) => {
+        {points.map((point, index) => {
           if (index < startIndex) return null;
           const height = (point.views / peak) * 100;
           return (
             <rect
-              key={point.day}
+              key={point.at}
               class="settings-stats-bar"
               x={index + 0.15}
               y={100 - height}
@@ -288,10 +355,10 @@ function ViewsChart({
                     message:
                       "{day}: {count, plural, one {# view} other {# views}}",
                     comment:
-                      "@context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8",
+                      "@context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8 or an hour like 14:00",
                   }),
                   {
-                    day: formatDayLabel(point.day, locale),
+                    day: pointLabel(series, point.at, locale),
                     count: point.views,
                   },
                 )}
@@ -300,24 +367,61 @@ function ViewsChart({
           );
         })}
       </svg>
-      {first && last && (
+      {firstLabel && lastLabel && (
         <figcaption
           class={`settings-stats-axis${single ? " settings-stats-axis-single" : ""}`}
-          style={`--stats-start:${(startIndex / series.length) * 100}%`}
+          style={`--stats-start:${(startIndex / slots) * 100}%`}
           aria-hidden="true"
         >
-          {!single && <span>{formatDayLabel(first.day, locale)}</span>}
-          <span>{formatDayLabel(last.day, locale)}</span>
+          {!single && <span>{firstLabel}</span>}
+          <span>{lastLabel}</span>
         </figcaption>
       )}
     </figure>
   );
 }
 
-function ReferrerList({ referrers }: { referrers: StatsReferrers }) {
+/** One ranked row: its place, its name, its kind, its count, and a bar for its share. */
+function RankedRow({
+  rank,
+  share,
+  views,
+  children,
+}: {
+  rank: number;
+  share: string;
+  views: number;
+  children: unknown;
+}) {
+  return (
+    <li class="settings-stats-row" style={`--stats-share:${share}`}>
+      <span class="settings-stats-rank">{rank}</span>
+      {children}
+      <span class="settings-stats-count">{views}</span>
+    </li>
+  );
+}
+
+function ReferrerList({
+  referrers,
+  total,
+}: {
+  referrers: StatsReferrers;
+  total: number;
+}) {
   const { i18n } = useLingui();
   const rows = [
     ...referrers.top.map((row) => ({ label: row.host, views: row.views })),
+    {
+      label: i18n._(
+        msg({
+          message: "Internal",
+          comment:
+            "@context: Row on the stats page for views that followed a link from another page of the site",
+        }),
+      ),
+      views: referrers.internal,
+    },
     {
       label: i18n._(
         msg({
@@ -328,7 +432,11 @@ function ReferrerList({ referrers }: { referrers: StatsReferrers }) {
       ),
       views: referrers.direct,
     },
-    {
+  ]
+    .filter((row) => row.views > 0)
+    .sort((a, b) => b.views - a.views);
+  if (referrers.other > 0) {
+    rows.push({
       label: i18n._(
         msg({
           message: "Other",
@@ -337,8 +445,8 @@ function ReferrerList({ referrers }: { referrers: StatsReferrers }) {
         }),
       ),
       views: referrers.other,
-    },
-  ].filter((row) => row.views > 0);
+    });
+  }
 
   return (
     <section class="settings-stats-section">
@@ -351,11 +459,15 @@ function ReferrerList({ referrers }: { referrers: StatsReferrers }) {
         )}
       </h2>
       <ol class="settings-stats-list">
-        {rows.map((row) => (
-          <li key={row.label} class="settings-stats-row">
+        {rows.map((row, index) => (
+          <RankedRow
+            key={row.label}
+            rank={index + 1}
+            share={shareOf(row.views, total)}
+            views={row.views}
+          >
             <span class="settings-stats-label">{row.label}</span>
-            <span class="settings-stats-count">{row.views}</span>
-          </li>
+          </RankedRow>
         ))}
       </ol>
     </section>
@@ -365,10 +477,12 @@ function ReferrerList({ referrers }: { referrers: StatsReferrers }) {
 /** The most-viewed pages of the window, each a link to its own numbers. */
 function PageList({
   pages,
+  total,
   days,
   sitePathPrefix,
 }: {
   pages: StatsPageRow[];
+  total: number;
   days: StatsWindow;
   sitePathPrefix: string;
 }) {
@@ -386,8 +500,13 @@ function PageList({
         )}
       </h2>
       <ol class="settings-stats-list">
-        {pages.map((row) => (
-          <li key={row.key} class="settings-stats-row">
+        {pages.map((row, index) => (
+          <RankedRow
+            key={row.key}
+            rank={index + 1}
+            share={shareOf(row.views, total)}
+            views={row.views}
+          >
             <a
               href={statsHref(sitePathPrefix, days, row.key)}
               class="settings-stats-label settings-stats-link"
@@ -395,8 +514,7 @@ function PageList({
               {statsPageName(row, i18n)}
             </a>
             <PageBadge page={row} />
-            <span class="settings-stats-count">{row.views}</span>
-          </li>
+          </RankedRow>
         ))}
       </ol>
     </section>
@@ -487,8 +605,9 @@ function Toggle({
 }
 
 /**
- * The total line. While the record began inside the window it names the
- * day, since "the last 30 days" would claim days that were never counted.
+ * The total line. Today says so. While the record began inside a longer
+ * window it names the day, since "the last 30 days" would claim days that
+ * were never counted.
  */
 function TotalLine({
   shown,
@@ -498,6 +617,19 @@ function TotalLine({
   locale: string;
 }) {
   const { i18n } = useLingui();
+  if (shown.days === 1) {
+    return (
+      <p class="settings-stats-total">
+        {i18n._(
+          msg({
+            message: "{count, plural, one {# view} other {# views}} today",
+            comment: "@context: Total line on the stats page for today",
+          }),
+          { count: shown.total },
+        )}
+      </p>
+    );
+  }
   return (
     <p class="settings-stats-total">
       {shown.start
@@ -515,7 +647,7 @@ function TotalLine({
               message:
                 "{count, plural, one {# view} other {# views}} in the last {days} days",
               comment:
-                "@context: Total line on the stats page; {days} is 7, 30 or 90",
+                "@context: Total line on the stats page; {days} is 7 or 30",
             }),
             { count: shown.total, days: shown.days },
           )}
@@ -539,13 +671,13 @@ function PageHeading({
       {path ? (
         <a
           href={toPublicPath(path, sitePathPrefix)}
-          class="settings-stats-link"
+          class="settings-stats-title-name settings-stats-link"
         >
           {name}
         </a>
       ) : (
-        name
-      )}{" "}
+        <span class="settings-stats-title-name">{name}</span>
+      )}
       <PageBadge page={page} />
     </h1>
   );
@@ -600,20 +732,25 @@ export function StatsContent({
         shown && (
           <>
             <TotalLine shown={shown} locale={locale} />
-            <ViewsChart
-              series={shown.series}
-              start={shown.start}
-              locale={locale}
-            />
+            {shown.series && (
+              <ViewsChart
+                series={shown.series}
+                start={shown.start}
+                locale={locale}
+              />
+            )}
             {/* The total line has already said there is nothing to list. */}
             {shown.total > 0 && overview && (
               <PageList
                 pages={overview.pages}
+                total={overview.total}
                 days={days}
                 sitePathPrefix={sitePathPrefix}
               />
             )}
-            {shown.total > 0 && <ReferrerList referrers={shown.referrers} />}
+            {shown.total > 0 && (
+              <ReferrerList referrers={shown.referrers} total={shown.total} />
+            )}
           </>
         )
       )}

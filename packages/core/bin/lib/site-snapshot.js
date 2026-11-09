@@ -80,10 +80,11 @@ export const SNAPSHOT_EXCLUDED_TABLES = [
   // in-flight uploads, and the recycle-window ledger for deleted objects.
   "upload_session",
   "storage_purge",
-  // View counts. Ninety days of per-day counters about one deployment's
-  // readers, not content: an export is a site's writing, and a restore must
-  // not bring another site's traffic along.
+  // View counts, by day and by hour: a month of counters about one
+  // deployment's readers, not content. An export is a site's writing, and a
+  // restore must not bring another site's traffic along.
   "view_count",
+  "view_hour",
 ];
 
 /**

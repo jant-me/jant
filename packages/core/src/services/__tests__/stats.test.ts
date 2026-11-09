@@ -16,9 +16,14 @@ import {
   VIEW_COUNT_RETENTION_DAYS,
 } from "../stats.js";
 import type { ViewCountEntry } from "../../lib/view-buffer.js";
-import { shiftDayKey, VIEW_OVERFLOW_KEY } from "../../lib/view-counting.js";
+import {
+  shiftDayKey,
+  VIEW_INTERNAL_REFERRER,
+  VIEW_OVERFLOW_KEY,
+} from "../../lib/view-counting.js";
 
 const TODAY = "2026-11-08";
+const HOUR = `${TODAY}T12`;
 const SITE = DEFAULT_TEST_SITE_ID;
 /** A well-formed id of a post the site no longer has. */
 const GONE_POST = "pst_00000000000000000000000000";
@@ -29,6 +34,7 @@ function entry(
   return {
     siteId: SITE,
     day: TODAY,
+    hour: HOUR,
     referrer: "",
     count: 1,
     ...overrides,
@@ -80,10 +86,15 @@ describe("StatsService", () => {
         { dailyLimit: 0, today: TODAY },
       );
 
-      const overview = await stats.getOverview({ days: 7, today: TODAY });
+      const overview = await stats.getOverview({
+        days: 7,
+        today: TODAY,
+        hour: `${TODAY}T12`,
+      });
       expect(overview.total).toBe(6);
       expect(overview.referrers).toEqual({
         direct: 5,
+        internal: 0,
         top: [{ host: "a.b", views: 1 }],
         other: 0,
       });
@@ -97,9 +108,15 @@ describe("StatsService", () => {
       await stats.record(entries, { dailyLimit: 0, today: TODAY });
 
       expect(await rowCount()).toBe(50);
-      expect((await stats.getOverview({ days: 1, today: TODAY })).total).toBe(
-        50,
-      );
+      expect(
+        (
+          await stats.getOverview({
+            days: 1,
+            today: TODAY,
+            hour: `${TODAY}T12`,
+          })
+        ).total,
+      ).toBe(50);
     });
 
     it("folds new pairs into the overflow row once a day is at the cap", async () => {
@@ -132,9 +149,15 @@ describe("StatsService", () => {
         { page: "/c", referrer: "", count: 5 },
       ]);
       // The day's total is still exact.
-      expect((await capped.getOverview({ days: 1, today: TODAY })).total).toBe(
-        20,
-      );
+      expect(
+        (
+          await capped.getOverview({
+            days: 1,
+            today: TODAY,
+            hour: `${TODAY}T12`,
+          })
+        ).total,
+      ).toBe(20);
     });
 
     it("sweeps rows past the retention window", async () => {
@@ -155,6 +178,23 @@ describe("StatsService", () => {
         sql`SELECT day FROM view_count WHERE site_id = ${SITE} ORDER BY day`,
       )) as { day: string }[];
       expect(days.map((row) => row.day)).toEqual([kept, TODAY]);
+    });
+
+    it("sweeps hours older than yesterday", async () => {
+      const old = shiftDayKey(TODAY, -3);
+      await stats.record([entry({ page: "/", day: old, hour: `${old}T10` })], {
+        dailyLimit: 0,
+        today: old,
+      });
+      await stats.record([entry({ page: "/" })], {
+        dailyLimit: 0,
+        today: TODAY,
+      });
+
+      const hours = (await db.all(
+        sql`SELECT hour FROM view_hour WHERE site_id = ${SITE} ORDER BY hour`,
+      )) as { hour: string }[];
+      expect(hours.map((row) => row.hour)).toEqual([HOUR]);
     });
 
     it("reports the daily limit once the day's views reach it", async () => {
@@ -198,18 +238,111 @@ describe("StatsService", () => {
         { dailyLimit: 0, today: TODAY },
       );
 
-      const overview = await stats.getOverview({ days: 3, today: TODAY });
+      const overview = await stats.getOverview({
+        days: 3,
+        today: TODAY,
+        hour: `${TODAY}T12`,
+      });
       expect(overview).toMatchObject({
         days: 3,
         since: shiftDayKey(TODAY, -2),
         until: TODAY,
         total: 5,
       });
-      expect(overview.series).toEqual([
-        { day: shiftDayKey(TODAY, -2), views: 4 },
-        { day: shiftDayKey(TODAY, -1), views: 0 },
-        { day: TODAY, views: 1 },
-      ]);
+      expect(overview.series).toEqual({
+        unit: "day",
+        points: [
+          { at: shiftDayKey(TODAY, -2), views: 4 },
+          { at: shiftDayKey(TODAY, -1), views: 0 },
+          { at: TODAY, views: 1 },
+        ],
+      });
+    });
+
+    it("draws today by the hour, up to the current one", async () => {
+      const yesterday = shiftDayKey(TODAY, -1);
+      await stats.record(
+        [
+          entry({ page: "/", hour: `${TODAY}T09`, count: 2 }),
+          entry({ page: "/", hour: `${TODAY}T09`, referrer: "a.b" }),
+          entry({ page: "/", hour: `${TODAY}T11`, count: 5 }),
+          // Yesterday's hours are not today's.
+          entry({
+            page: "/",
+            day: yesterday,
+            hour: `${yesterday}T23`,
+            count: 7,
+          }),
+        ],
+        { dailyLimit: 0, today: TODAY },
+      );
+
+      const overview = await stats.getOverview({
+        days: 1,
+        today: TODAY,
+        hour: `${TODAY}T11`,
+      });
+      expect(overview.total).toBe(8);
+      expect(overview.series.unit).toBe("hour");
+      expect(overview.series.points).toHaveLength(12);
+      expect(overview.series.points[9]).toEqual({
+        at: `${TODAY}T09`,
+        views: 3,
+      });
+      expect(overview.series.points[10]).toEqual({
+        at: `${TODAY}T10`,
+        views: 0,
+      });
+      expect(overview.series.points[11]).toEqual({
+        at: `${TODAY}T11`,
+        views: 5,
+      });
+      // The day table holds the same views, folded by page and referrer.
+      expect(await rowCount()).toBe(3);
+    });
+
+    it("keeps a page's today to its total and sources, without hours", async () => {
+      const post = await posts.create({
+        format: "note",
+        title: "Read me",
+        bodyMarkdown: "Body",
+        status: "published",
+      });
+      await stats.record([entry({ page: post.id, count: 2 })], {
+        dailyLimit: 0,
+        today: TODAY,
+      });
+
+      const detail = await stats.getPage(post.id, {
+        days: 1,
+        today: TODAY,
+        hour: HOUR,
+      });
+      expect(detail?.total).toBe(2);
+      expect(detail?.series).toBeNull();
+    });
+
+    it("keeps internal navigation apart from direct visits", async () => {
+      await stats.record(
+        [
+          entry({ page: "/", count: 4 }),
+          entry({ page: "/", referrer: VIEW_INTERNAL_REFERRER, count: 9 }),
+          entry({ page: "/", referrer: "a.b", count: 1 }),
+        ],
+        { dailyLimit: 0, today: TODAY },
+      );
+
+      const { referrers } = await stats.getOverview({
+        days: 7,
+        today: TODAY,
+        hour: HOUR,
+      });
+      expect(referrers).toEqual({
+        direct: 4,
+        internal: 9,
+        top: [{ host: "a.b", views: 1 }],
+        other: 0,
+      });
     });
 
     it("lists the most-viewed pages of every kind, each named", async () => {
@@ -255,7 +388,11 @@ describe("StatsService", () => {
         { dailyLimit: 0, today: TODAY },
       );
 
-      const overview = await stats.getOverview({ days: 7, today: TODAY });
+      const overview = await stats.getOverview({
+        days: 7,
+        today: TODAY,
+        hour: `${TODAY}T12`,
+      });
       expect(overview.total).toBe(44);
       expect(overview.pages).toEqual([
         { kind: "post", key: GONE_POST, post: null, views: 9 },
@@ -309,7 +446,11 @@ describe("StatsService", () => {
         { dailyLimit: 0, today: TODAY },
       );
 
-      const { referrers } = await stats.getOverview({ days: 1, today: TODAY });
+      const { referrers } = await stats.getOverview({
+        days: 1,
+        today: TODAY,
+        hour: `${TODAY}T12`,
+      });
       expect(referrers.direct).toBe(100);
       expect(referrers.top.map((row) => row.host)).toEqual(hosts.slice(0, 10));
       expect(referrers.top[0]).toEqual({ host: "h0.test", views: 20 });
@@ -337,7 +478,7 @@ describe("StatsService", () => {
         ],
         { dailyLimit: 0, today: TODAY },
       );
-      const window = { days: 7, today: TODAY };
+      const window = { days: 7, today: TODAY, hour: `${TODAY}T12` };
 
       const detail = await stats.getPage(post.id, window);
       expect(detail).toMatchObject({
@@ -353,7 +494,7 @@ describe("StatsService", () => {
           other: 0,
         },
       });
-      expect(detail?.series.at(-1)).toEqual({ day: TODAY, views: 34 });
+      expect(detail?.series?.points.at(-1)).toEqual({ at: TODAY, views: 34 });
 
       expect(await stats.getPage(reading.id, window)).toMatchObject({
         page: {
@@ -398,7 +539,11 @@ describe("StatsService", () => {
       await posts.delete(post.id);
 
       expect(
-        await stats.getPage(post.id, { days: 7, today: TODAY }),
+        await stats.getPage(post.id, {
+          days: 7,
+          today: TODAY,
+          hour: `${TODAY}T12`,
+        }),
       ).toMatchObject({
         page: { kind: "post", key: post.id, post: null },
         total: 3,
@@ -424,7 +569,11 @@ describe("StatsService", () => {
     });
 
     it("is today for a site looked at before anything was counted", async () => {
-      const overview = await stats.getOverview({ days: 7, today: TODAY });
+      const overview = await stats.getOverview({
+        days: 7,
+        today: TODAY,
+        hour: `${TODAY}T12`,
+      });
       expect(overview.start).toBe(TODAY);
       expect(overview.total).toBe(0);
       expect(await settings.get("STATS_SINCE")).toBe(TODAY);
@@ -436,7 +585,13 @@ describe("StatsService", () => {
       });
       expect(await settings.get("STATS_SINCE")).toBe(TODAY);
       expect(
-        (await stats.getOverview({ days: 7, today: tomorrow })).start,
+        (
+          await stats.getOverview({
+            days: 7,
+            today: tomorrow,
+            hour: `${tomorrow}T12`,
+          })
+        ).start,
       ).toBe(TODAY);
     });
 
@@ -444,15 +599,33 @@ describe("StatsService", () => {
       const began = shiftDayKey(TODAY, -3);
       await settings.set("STATS_SINCE", began);
 
-      expect((await stats.getOverview({ days: 7, today: TODAY })).start).toBe(
-        began,
-      );
+      expect(
+        (
+          await stats.getOverview({
+            days: 7,
+            today: TODAY,
+            hour: `${TODAY}T12`,
+          })
+        ).start,
+      ).toBe(began);
       // The window begins on the same day: every day of it was counted.
       expect(
-        (await stats.getOverview({ days: 4, today: TODAY })).start,
+        (
+          await stats.getOverview({
+            days: 4,
+            today: TODAY,
+            hour: `${TODAY}T12`,
+          })
+        ).start,
       ).toBeNull();
       expect(
-        (await stats.getOverview({ days: 3, today: TODAY })).start,
+        (
+          await stats.getOverview({
+            days: 3,
+            today: TODAY,
+            hour: `${TODAY}T12`,
+          })
+        ).start,
       ).toBeNull();
     });
 
@@ -464,9 +637,15 @@ describe("StatsService", () => {
         today: TODAY,
       });
 
-      expect((await stats.getOverview({ days: 7, today: TODAY })).start).toBe(
-        yesterday,
-      );
+      expect(
+        (
+          await stats.getOverview({
+            days: 7,
+            today: TODAY,
+            hour: `${TODAY}T12`,
+          })
+        ).start,
+      ).toBe(yesterday);
     });
 
     it("is the site's start on a post's own page", async () => {
@@ -482,7 +661,11 @@ describe("StatsService", () => {
         today: TODAY,
       });
 
-      const detail = await stats.getPage(post.id, { days: 7, today: TODAY });
+      const detail = await stats.getPage(post.id, {
+        days: 7,
+        today: TODAY,
+        hour: `${TODAY}T12`,
+      });
       expect(detail?.start).toBe(shiftDayKey(TODAY, -3));
     });
   });
@@ -499,6 +682,11 @@ describe("StatsService", () => {
       expect(await settings.get("STATS_ENABLED")).toBe("false");
       expect(await settings.get("STATS_SINCE")).toBeNull();
       expect(await rowCount()).toBe(0);
+      expect(
+        (await db.all(
+          sql`SELECT count(*) AS total FROM view_hour WHERE site_id = ${SITE}`,
+        )) as { total: number }[],
+      ).toEqual([{ total: 0 }]);
 
       const later = shiftDayKey(TODAY, 10);
       await stats.setEnabled(true, { today: later });

@@ -35,6 +35,8 @@ function createApp(options: { authenticated?: boolean } = {}) {
 }
 
 const TODAY = new Date().toISOString().slice(0, 10);
+/** Late enough in the day to take in every hour a test could run at. */
+const HOUR = `${TODAY}T23`;
 
 describe("viewCounter", () => {
   let fixture: ReturnType<typeof createApp>;
@@ -64,6 +66,7 @@ describe("viewCounter", () => {
     const detail = await services.stats.getPage(post.id, {
       days: 1,
       today: TODAY,
+      hour: HOUR,
     });
     expect(detail?.total).toBe(1);
     expect(detail?.referrers.top).toEqual([
@@ -71,7 +74,7 @@ describe("viewCounter", () => {
     ]);
   });
 
-  it("files the home page under its path, a same-site link as direct", async () => {
+  it("files the home page under its path, a same-site link as internal", async () => {
     const { app, services, buffer } = fixture;
 
     const res = await app.request("/", {
@@ -90,9 +93,16 @@ describe("viewCounter", () => {
     const overview = await services.stats.getOverview({
       days: 1,
       today: TODAY,
+      hour: HOUR,
     });
     expect(overview.total).toBe(2);
-    expect(overview.referrers).toEqual({ direct: 2, top: [], other: 0 });
+    // The first came from a page of the site, the second from nowhere.
+    expect(overview.referrers).toEqual({
+      direct: 1,
+      internal: 1,
+      top: [],
+      other: 0,
+    });
     expect(overview.pages).toEqual([{ kind: "path", key: "/", views: 2 }]);
   });
 
@@ -117,6 +127,7 @@ describe("viewCounter", () => {
     const overview = await services.stats.getOverview({
       days: 1,
       today: TODAY,
+      hour: HOUR,
     });
     expect(overview.pages).toEqual([
       {
@@ -157,6 +168,7 @@ describe("viewCounter", () => {
     const detail = await services.stats.getPage(post.id, {
       days: 1,
       today: TODAY,
+      hour: HOUR,
     });
     expect(detail?.total).toBe(2);
     expect(detail?.referrers.direct).toBe(0);

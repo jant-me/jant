@@ -1189,3 +1189,22 @@ export const viewCounts = sqliteTable(
     }),
   ],
 );
+
+/**
+ * Views per hour, pre-aggregated per site: the total alone, no page and no
+ * referrer. It exists for one chart, today's hours on the Stats page, which
+ * the day table cannot draw; today's lists still come from `view_count`.
+ * `hour` is the site's local hour, `YYYY-MM-DDTHH`. Rows older than
+ * yesterday are swept along with the day table's.
+ */
+export const viewHours = sqliteTable(
+  "view_hour",
+  {
+    siteId: text("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    hour: text("hour").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.siteId, table.hour] })],
+);

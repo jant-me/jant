@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   dayKeysEndingAt,
   formatDayKey,
+  formatHourKey,
+  hourKeysOfDay,
   isBotUserAgent,
+  isHourKey,
+  VIEW_INTERNAL_REFERRER,
   isDayKey,
   referrerHost,
   shiftDayKey,
@@ -154,12 +158,18 @@ describe("referrerHost", () => {
     );
   });
 
-  it("is direct for no referrer, the site itself, or a non-web scheme", () => {
+  it("is direct for no referrer or a non-web scheme, and the site's own for its own host", () => {
     expect(referrerHost(null, "blog.example")).toBe("");
     expect(referrerHost("", "blog.example")).toBe("");
-    expect(referrerHost("https://blog.example/other", "blog.example")).toBe("");
-    expect(referrerHost("https://www.blog.example/", "blog.example")).toBe("");
-    expect(referrerHost("https://blog.example/", "www.blog.example")).toBe("");
+    expect(referrerHost("https://blog.example/other", "blog.example")).toBe(
+      VIEW_INTERNAL_REFERRER,
+    );
+    expect(referrerHost("https://www.blog.example/", "blog.example")).toBe(
+      VIEW_INTERNAL_REFERRER,
+    );
+    expect(referrerHost("https://blog.example/", "www.blog.example")).toBe(
+      VIEW_INTERNAL_REFERRER,
+    );
     expect(referrerHost("ftp://files.example/", "blog.example")).toBe("");
     expect(referrerHost("not a url", "blog.example")).toBe("");
   });
@@ -282,6 +292,36 @@ describe("viewReferrer", () => {
     ).toBe("");
   });
 
+  it("files a view from the site itself as internal, by Referer or by Sec-Fetch-Site", () => {
+    expect(
+      viewReferrer({
+        referer: "https://blog.example/",
+        requestUrl: at(""),
+        ownHost,
+      }),
+    ).toBe(VIEW_INTERNAL_REFERRER);
+    for (const fetchSite of ["same-origin", "same-site"]) {
+      expect(
+        viewReferrer({ referer: null, requestUrl: at(""), ownHost, fetchSite }),
+      ).toBe(VIEW_INTERNAL_REFERRER);
+    }
+    // Another site that withholds its Referer is not the site itself, and
+    // neither is a typed address.
+    for (const fetchSite of ["cross-site", "none", null, undefined]) {
+      expect(
+        viewReferrer({ referer: null, requestUrl: at(""), ownHost, fetchSite }),
+      ).toBe("");
+    }
+    // A tag still wins over the site's own Referer.
+    expect(
+      viewReferrer({
+        referer: "https://blog.example/",
+        requestUrl: at("?ref=newsletter"),
+        ownHost,
+      }),
+    ).toBe("newsletter");
+  });
+
   it("folds a tag the way it folds a host", () => {
     expect(
       viewReferrer({
@@ -372,5 +412,27 @@ describe("viewPageKind", () => {
     expect(viewPageKind("med_01h455vb4pex5vsknk084sn02q")).toBeNull();
     expect(viewPageKind("pst_not-an-id")).toBeNull();
     expect(viewPageKind("")).toBeNull();
+  });
+});
+
+describe("hour keys", () => {
+  it("names the hour a moment falls in, in the site's zone", () => {
+    // 2025-11-08T00:00:00Z.
+    expect(formatHourKey(1_762_560_000, "UTC")).toBe("2025-11-08T00");
+    expect(formatHourKey(1_762_560_000, "Asia/Shanghai")).toBe("2025-11-08T08");
+    expect(formatHourKey(1_762_560_000, "America/Los_Angeles")).toBe(
+      "2025-11-07T16",
+    );
+    // An unknown zone falls back to UTC rather than failing a view.
+    expect(formatHourKey(1_762_560_000, "Nowhere/Nope")).toBe("2025-11-08T00");
+  });
+
+  it("lists a day's 24 hours in order", () => {
+    const hours = hourKeysOfDay("2026-11-09");
+    expect(hours).toHaveLength(24);
+    expect(hours[0]).toBe("2026-11-09T00");
+    expect(hours[23]).toBe("2026-11-09T23");
+    expect(isHourKey("2026-11-09T14")).toBe(true);
+    expect(isHourKey("2026-11-09")).toBe(false);
   });
 });
