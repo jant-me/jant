@@ -317,8 +317,19 @@ async function main() {
     assert.equal(composeBody.status, "published");
     assert.match(composeBody.permalink, /^\/.+/);
 
+    // Opened the way a browser opens a link, so it counts as a view. The
+    // count reaches `view_count` through an upsert whose SQL Postgres reads
+    // differently from SQLite, which is checked once the buffer has flushed.
     const postPage = await handler.fetch(
-      new Request(`http://127.0.0.1:3000${composeBody.permalink}`),
+      new Request(`http://127.0.0.1:3000${composeBody.permalink}`, {
+        headers: {
+          "Sec-Fetch-Dest": "document",
+          "Sec-Fetch-Mode": "navigate",
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+          Referer: "https://news.ycombinator.com/item?id=1",
+        },
+      }),
     );
     assert.equal(postPage.status, 200);
     assert.match(await postPage.text(), /Hello from Postgres smoke\./);
@@ -772,6 +783,31 @@ async function main() {
     assert.equal(settingsResponse.status, 200);
     const settingsBody = await settingsResponse.json();
     assert.equal(settingsBody.settings.SITE_NAME, "PG Smoke Updated");
+
+    // The reader's view of the post page lands in `view_count` five seconds
+    // after the hit, filed under the referring host.
+    {
+      const countViews = async () =>
+        (
+          await assertPool.query(
+            'SELECT COALESCE(SUM("count"), 0)::int AS "views" FROM "view_count" WHERE "referrer" = $1',
+            ["news.ycombinator.com"],
+          )
+        ).rows[0].views;
+      const deadline = Date.now() + 20_000;
+      while ((await countViews()) < 1 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      assert.equal(await countViews(), 1, "the post view reached view_count");
+      const stamped = await assertPool.query(
+        `SELECT "value" FROM "site_setting" WHERE "key" = 'STATS_SINCE'`,
+      );
+      assert.match(
+        stamped.rows[0]?.value ?? "",
+        /^\d{4}-\d{2}-\d{2}$/,
+        "the flush stamped the day counting began",
+      );
+    }
 
     // A snapshot written on Postgres restores on Postgres. Import once sent
     // SQLite's `PRAGMA defer_foreign_keys` along with the data and failed.

@@ -8,6 +8,7 @@ import {
   resolvePort,
 } from "./request-handler.js";
 import { registerTelegramPoolWebhooks } from "../lib/telegram-pool-webhooks.js";
+import { viewBuffer } from "../lib/view-buffer.js";
 
 export {
   applyNodeRuntimeEnvDefaults,
@@ -96,6 +97,9 @@ export async function start(
                 });
               });
             } finally {
+              // Counted views still waiting in the buffer go out before the
+              // database they go to is closed.
+              await viewBuffer.flush();
               await handler.close();
             }
           },

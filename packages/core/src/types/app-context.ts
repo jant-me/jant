@@ -16,6 +16,7 @@ import type { RateLimiter } from "../lib/rate-limit.js";
 import type { StorageDriver } from "../lib/storage.js";
 import type { Bindings } from "./bindings.js";
 import type { Site, SiteDomain } from "./entities.js";
+import type { ViewTarget } from "../lib/view-counting.js";
 
 /**
  * Session payload as returned by better-auth's `getSession`.
@@ -81,6 +82,14 @@ export interface AppVariables {
    * multilingual content is off.
    */
   viewLang?: string;
+  /**
+   * What the page just rendered counts as for the view counter: a post, by
+   * id, or any other public page, by its path. Set by the page routes worth
+   * counting and absent on everything else, so an API call, a feed or a
+   * partial never registers a view. Read by `middleware/view-counter.ts`
+   * after the response.
+   */
+  viewTarget?: ViewTarget;
 }
 
 /**

@@ -33,10 +33,25 @@ msgstr "{count, plural, one {# post is} other {# posts are}} still written in {l
 msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 msgstr "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 
+#. @context: Total line on the stats page; {days} is 7, 30 or 90
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{count, plural, one {# view} other {# views}} in the last {days} days"
+msgstr "{count, plural, one {# view} other {# views}} in the last {days} days"
+
+#. @context: Total line on the stats page while counting began inside the window; {date} is a day like Nov 9
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{count, plural, one {# view} other {# views}} since {date}"
+msgstr "{count, plural, one {# view} other {# views}} since {date}"
+
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
 msgstr "{count} settings shown"
+
+#. @context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{day}: {count, plural, one {# view} other {# views}}"
+msgstr "{day}: {count, plural, one {# view} other {# views}}"
 
 #. @context: Body of the dialog confirming removal of the last additional language
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -52,6 +67,11 @@ msgstr "{name} is a directory of Jant blogs, curated by hand by the Jant communi
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
 msgstr "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
+
+#. @context: One option of the window switch on the stats page; {window} is 7, 30 or 90
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{window} days"
+msgstr "{window} days"
 
 #. @context: Custom CSS textarea placeholder
 #: src/ui/dash/appearance/AdvancedContent.tsx
@@ -339,9 +359,11 @@ msgid "Applies to your entire site, including admin pages. Pick a palette, then 
 msgstr "Applies to your entire site, including admin pages. Pick a palette, then choose whether it follows the system or stays fixed."
 
 #. @context: Custom URL target type badge for an archive view
+#. @context: Row for the archive page in the pages list on the stats page
 #. @context: Suggested navigation link target type
 #: src/routes/dash/custom-urls.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 msgid "Archive"
 msgstr "Archive"
 
@@ -456,6 +478,7 @@ msgstr "Calm and natural, easy on the eyes."
 #. @context: Button to cancel form
 #. @context: Button to cancel settings changes
 #. @context: Button to cancel unsaved changes and revert to original values
+#. @context: Cancel button in the confirm dialog
 #. @context: Dialog cancel button
 #. @context: GitHub sync picker — cancel action
 #: src/routes/dash/custom-urls.tsx
@@ -470,6 +493,7 @@ msgstr "Calm and natural, easy on the eyes."
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/SessionsContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Cancel"
 msgstr "Cancel"
@@ -567,11 +591,13 @@ msgstr "Code injection updated."
 msgid "collection"
 msgstr "collection"
 
+#. @context: Badge on a collection's row on the stats page
 #. @context: Custom URL target type badge for a collection
 #. @context: Custom URL type option
 #. @context: Suggested navigation link target type
 #: src/routes/dash/custom-urls.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 msgid "Collection"
 msgstr "Collection"
 
@@ -589,6 +615,11 @@ msgstr "Collection created."
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Collection link"
 msgstr "Collection link"
+
+#. @context: Row for the collections directory in the pages list on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Collections"
+msgstr "Collections"
 
 #. @context: Appearance settings heading
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -788,6 +819,16 @@ msgstr "Couldn't load pages. Try again in a moment."
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Couldn't save. Try again in a moment."
 msgstr "Couldn't save. Try again in a moment."
+
+#. @context: Checkbox label on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Count page views"
+msgstr "Count page views"
+
+#. @context: Help text under the stats checkbox; {days} is the retention window
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Counts are kept for {days} days and store nothing about any reader. Turning this off deletes them."
+msgstr "Counts are kept for {days} days and store nothing about any reader. Turning this off deletes them."
 
 #. @context: Ember color theme preview help line
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -997,6 +1038,16 @@ msgstr "Delete this custom URL? Visitors using it won't be redirected anymore."
 msgid "Delete this navigation link? Visitors won't see it in your site header anymore."
 msgstr "Delete this navigation link? Visitors won't see it in your site header anymore."
 
+#. @context: Name on the stats page of a collection whose views remain after it was deleted
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Deleted collection"
+msgstr "Deleted collection"
+
+#. @context: Name on the stats page of a post whose views remain after it was deleted
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Deleted post"
+msgstr "Deleted post"
+
 #. @context: Settings item description for account settings on the settings home page when demo restrictions are enabled
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Demo limits"
@@ -1026,6 +1077,11 @@ msgstr "Design"
 #: src/routes/dash/custom-urls.tsx
 msgid "Destination"
 msgstr "Destination"
+
+#. @context: Row on the stats page for views with no referrer: typed addresses, apps, feed readers
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Direct"
+msgstr "Direct"
 
 #. @context: Button to disconnect GitHub repository on GitHub Sync settings
 #. @context: Button to disconnect Telegram
@@ -1182,9 +1238,11 @@ msgstr "Favicon and the profile mark in your header"
 
 #. @context: Browse filter label for featured posts
 #. @context: Post badge - featured
+#. @context: Row for the Featured page in the pages list on the stats page
 #. @context: Select option for using featured posts as the main RSS feed
 #: src/ui/dash/appearance/NavigationContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 #: src/ui/dash/StatusBadge.tsx
 msgid "Featured"
 msgstr "Featured"
@@ -1321,8 +1379,10 @@ msgstr "Headings, body text, and links in this theme."
 msgid "Hidden from Latest"
 msgstr "Hidden from Latest"
 
+#. @context: Row for the home page in the pages list on the stats page
 #. @context: Settings subsection heading for home page settings
 #: src/ui/dash/settings/GeneralContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
 msgid "Home"
 msgstr "Home"
 
@@ -1902,6 +1962,11 @@ msgstr "Or submit your address by hand"
 msgid "Orange-tinted background. The warmest palette."
 msgstr "Orange-tinted background. The warmest palette."
 
+#. @context: Row on the stats page for every referrer past the ten listed
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Other"
+msgstr "Other"
+
 #. @context: Label for the list of non-primary languages
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Other languages"
@@ -1936,6 +2001,11 @@ msgstr "Page address"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Page created."
 msgstr "Page created."
+
+#. @context: Heading of the most-viewed pages on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Pages"
+msgstr "Pages"
 
 #. @context: Bone color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -2112,6 +2182,11 @@ msgstr "Redirect Type"
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Redirects, vanity paths, and URL control"
 msgstr "Redirects, vanity paths, and URL control"
+
+#. @context: Heading of the referrer list on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Referrers"
+msgstr "Referrers"
 
 #. @context: GitHub sync picker — tooltip for the refresh button next to the search input
 #: src/routes/dash/settings.tsx
@@ -2497,6 +2572,30 @@ msgstr "Something doesn't look right. Check the form and try again."
 msgid "Start writing"
 msgstr "Start writing"
 
+#. @context: Breadcrumb label
+#. @context: Settings item — view stats
+#. @context: Stats page title
+#: src/routes/dash/settings.tsx
+#: src/ui/dash/settings/SettingsRootContent.tsx
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Stats"
+msgstr "Stats"
+
+#. @context: Stats page body when counting is turned off
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Stats are off. Turn them on below to start counting."
+msgstr "Stats are off. Turn them on below to start counting."
+
+#. @context: Note under the stats checkbox when demo restrictions apply
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Stats settings are locked in demo mode."
+msgstr "Stats settings are locked in demo mode."
+
+#. @context: Error shown when changing the stats setting is blocked in demo mode
+#: src/routes/dash/settings.tsx
+msgid "Stats settings are locked in demo mode. Every visitor shares the demo site."
+msgstr "Stats settings are locked in demo mode. Every visitor shares the demo site."
+
 #. @context: How far along first-run setup is, shown beside the screen's name on a self-hosted install
 #: src/routes/auth/setup.tsx
 msgid "Step {current} of {total}"
@@ -2506,6 +2605,11 @@ msgstr "Step {current} of {total}"
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Stop accepting posts from Telegram. Your existing notes stay published."
 msgstr "Stop accepting posts from Telegram. Your existing notes stay published."
+
+#. @context: Row for the subscribe page in the pages list on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Subscribe"
+msgstr "Subscribe"
 
 #. @context: Section heading for suggested nav links
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -2808,11 +2912,21 @@ msgstr "Tune how your site looks, reads, and runs."
 msgid "Turn off"
 msgstr "Turn off"
 
+#. @context: Confirm button for turning off stats
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Turn Off"
+msgstr "Turn Off"
+
 #. @context: Title of the dialog confirming removal of the last additional language
 #. @context: Title of the disable-multilingual dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Turn off multilingual content?"
 msgstr "Turn off multilingual content?"
+
+#. @context: Confirmation before turning off stats, which deletes the counts
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Turn off stats and delete every count? This can't be undone."
+msgstr "Turn off stats and delete every count? This can't be undone."
 
 #. @context: Link in the multilingual section that opens the setup dialog
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -2939,6 +3053,16 @@ msgstr "View"
 msgid "View these posts"
 msgstr "View these posts"
 
+#. @context: Settings item description for stats
+#: src/ui/dash/settings/SettingsRootContent.tsx
+msgid "Views by day, most-read pages, and referrers"
+msgstr "Views by day, most-read pages, and referrers"
+
+#. @context: Accessible name of the bar chart on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Views per day"
+msgstr "Views per day"
+
 #. @context: Prefix before Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Want more control?"
@@ -3038,6 +3162,11 @@ msgstr "Which layout /archive opens with. Readers can switch layouts from the pa
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Which post stream the canonical /feed URL returns."
 msgstr "Which post stream the canonical /feed URL returns."
+
+#. @context: Accessible name of the 7/30/90-day switch on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Window"
+msgstr "Window"
 
 #. @context: Parchment color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx

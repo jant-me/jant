@@ -1255,6 +1255,15 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   still stop the deploy. Before committing such a change, grep
   `dev/scripts/pg-smoke.mjs` for the endpoint and run `mise run check-pg-smoke`
   against a throwaway database.
+- A raw `sql` tagged-template fragment is dialect-specific even when it looks
+  portable, and the vitest suite runs on SQLite only.
+  `set count = count + excluded.count` passed every test and failed every
+  flush on Postgres (`column reference "count" is ambiguous`: a DO UPDATE has
+  both the row and `excluded` in scope, and SQLite quietly picks the row).
+  Write a column through its Drizzle reference (`${viewCounts.count}`) rather
+  than by name, and give any new raw SQL a step in `dev/scripts/pg-smoke.mjs`
+  that makes the real database run it — a page a reader opens, a job that
+  fires — not only a unit test.
 - After pushing to `main`, check every workflow the push starts, not only
   CI: `gh run list --branch main`. Release runs from CI's `workflow_run`, so
   its failures never show up where the push was made; it failed on every push

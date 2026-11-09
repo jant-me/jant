@@ -79,6 +79,7 @@ export async function renderSmartCollectionPage(
   c: Context<Env>,
   slug: string,
 ): Promise<Response | null> {
+  c.set("viewTarget", { kind: "path" });
   const page = parsePageNumber(c.req.query("page"));
   const paginatedPageTitle = formatPageLabel(page);
 
@@ -87,6 +88,7 @@ export async function renderSmartCollectionPage(
     getNavigationData(c),
   ]);
   if (!smartCollection) return null;
+  c.set("viewTarget", { kind: "smartCollection", id: smartCollection.id });
 
   const canonicalPagePath = getCollectionPagePath(smartCollection.slug);
   const viewer = {

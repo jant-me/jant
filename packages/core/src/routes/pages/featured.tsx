@@ -32,6 +32,7 @@ export const featuredRoutes = new Hono<Env>();
  * @returns Featured page response
  */
 export async function renderFeaturedPage(c: Context<Env>): Promise<Response> {
+  c.set("viewTarget", { kind: "path" });
   // The chrome and the timeline are independent, so they load together. The
   // timeline only ever wanted `navData.isAuthenticated`, which is
   // `c.var.isAuthenticated` verbatim.

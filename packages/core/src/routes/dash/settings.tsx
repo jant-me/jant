@@ -68,6 +68,17 @@ import {
   getTelegramStatusStreamUrl,
 } from "../../lib/telegram-settings-status.js";
 import { TelegramContent } from "../../ui/dash/settings/TelegramContent.js";
+import {
+  StatsContent,
+  statsPageName,
+} from "../../ui/dash/settings/StatsContent.js";
+import {
+  DEFAULT_STATS_WINDOW,
+  STATS_WINDOWS,
+  type StatsWindow,
+} from "../../services/stats.js";
+import { formatDayKey } from "../../lib/view-counting.js";
+import { now } from "../../lib/time.js";
 import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
 import {
   ContentLanguageSchema,
@@ -168,6 +179,18 @@ const UpdateDiscoverSettingsSchema = z.object({
   discover: z.enum(["latest", "off"]),
 });
 
+const UpdateStatsSettingsSchema = z.object({
+  enabled: z.boolean(),
+});
+
+/** The stats window a `?days=` asks for, or the default for anything else. */
+function parseStatsWindow(value: string | undefined): StatsWindow {
+  const days = Number(value);
+  return (STATS_WINDOWS as readonly number[]).includes(days)
+    ? (days as StatsWindow)
+    : DEFAULT_STATS_WINDOW;
+}
+
 function publicPath(c: Context<Env>, path: string): string {
   return toPublicPath(path, c.var.appConfig.sitePathPrefix);
 }
@@ -237,7 +260,8 @@ function breadcrumbLabel(
     | "deleteAccount"
     | "apiTokens"
     | "githubSync"
-    | "telegram",
+    | "telegram"
+    | "stats",
 ): string {
   const i18n = getI18n(c);
   switch (key) {
@@ -321,11 +345,20 @@ function breadcrumbLabel(
       return i18n._(
         msg({ message: "Telegram", comment: "@context: Breadcrumb label" }),
       );
+    case "stats":
+      return i18n._(
+        msg({ message: "Stats", comment: "@context: Breadcrumb label" }),
+      );
   }
 }
 
 type DemoRestriction =
-  "sessions" | "password" | "accountDeletion" | "customCss" | "codeInjection";
+  | "sessions"
+  | "password"
+  | "accountDeletion"
+  | "customCss"
+  | "codeInjection"
+  | "stats";
 
 function getDemoRestrictionMessage(
   c: Context<Env>,
@@ -379,6 +412,15 @@ function getDemoRestrictionMessage(
             "@context: Error shown when saving code injection is blocked in demo mode",
         }),
       );
+    case "stats":
+      return i18n._(
+        msg({
+          message:
+            "Stats settings are locked in demo mode. Every visitor shares the demo site.",
+          comment:
+            "@context: Error shown when changing the stats setting is blocked in demo mode",
+        }),
+      );
   }
 }
 
@@ -426,6 +468,88 @@ settingsRoutes.get("/", async (c) => {
       </div>
     ),
   });
+});
+
+// ===========================================================================
+// Stats
+// ===========================================================================
+
+settingsRoutes.get("/stats", async (c) => {
+  const { appConfig, services } = c.var;
+  const enabled = appConfig.stats.enabled;
+  const days = parseStatsWindow(c.req.query("days"));
+  const pageKey = c.req.query("page");
+  const today = formatDayKey(now(), appConfig.timeZone);
+  const window = { days, today };
+
+  // The chrome needs nothing from the counts, so the reads go out together.
+  const [navData, page, overview] = await Promise.all([
+    getNavigationData(c),
+    enabled && pageKey ? services.stats.getPage(pageKey, window) : null,
+    enabled && !pageKey ? services.stats.getOverview(window) : null,
+  ]);
+  if (pageKey && !page) return c.notFound();
+
+  const statsLabel = breadcrumbLabel(c, "stats");
+  const content = (
+    <StatsContent
+      enabled={enabled}
+      days={days}
+      overview={overview}
+      page={page}
+      sitePathPrefix={appConfig.sitePathPrefix}
+      demoMode={appConfig.demoMode}
+    />
+  );
+
+  return renderPublicPage(c, {
+    page: "settings",
+    title: buildPageTitle(statsLabel, navData.siteName),
+    navData,
+    content: page ? (
+      <>
+        <AdminBreadcrumb
+          ancestors={[
+            {
+              label: breadcrumbLabel(c, "settings"),
+              href: publicPath(c, "/settings"),
+            },
+            {
+              label: statsLabel,
+              href: `${publicPath(c, "/settings/stats")}?days=${days}`,
+            },
+          ]}
+          current={statsPageName(page.page, getI18n(c))}
+        />
+        {content}
+      </>
+    ) : (
+      <>
+        <AdminBreadcrumb
+          parent={breadcrumbLabel(c, "settings")}
+          parentHref={publicPath(c, "/settings")}
+          current={statsLabel}
+        />
+        {content}
+      </>
+    ),
+  });
+});
+
+settingsRoutes.post("/stats", async (c) => {
+  if (c.var.appConfig.demoMode) refuseInDemo(c, "stats");
+  const body = parseValidated(UpdateStatsSettingsSchema, await c.req.json());
+  await c.var.services.stats.setEnabled(body.enabled, {
+    today: formatDayKey(now(), c.var.appConfig.timeZone),
+  });
+
+  // Either way the page changes shape — the chart appears, or it goes with
+  // the counts — so it is shown again rather than toasted at.
+  const wantsJson = c.req.header("accept")?.includes("application/json");
+  if (wantsJson) {
+    return c.json({ status: "ok" as const });
+  }
+  return dsRedirect(publicPath(c, "/settings/stats"));
 });
 
 // ===========================================================================

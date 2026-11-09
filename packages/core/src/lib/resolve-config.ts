@@ -424,6 +424,20 @@ export function resolveConfig(
     siteAvatarThumbUrl,
     faviconVersion: allSettings["SITE_FAVICON_VERSION"] ?? "",
 
+    // View stats. The daily limit exists for one runtime: free-tier D1 allows
+    // 100,000 rows written per UTC day and refuses every query, reads too,
+    // once that is spent — so a well-read day must never be able to take the
+    // site down with it. SQLite and Postgres on Node have no such quota, and
+    // an unset variable there means no limit rather than the Cloudflare one.
+    stats: {
+      enabled: resolve("STATS_ENABLED", allSettings, env) === "true",
+      dailyLimit:
+        readEnvInteger(env, "STATS_DAILY_LIMIT") ??
+        (env.NODE_DATABASE || env.NODE_SQLITE
+          ? 0
+          : Number(CONFIG_FIELDS.STATS_DAILY_LIMIT.defaultValue)),
+    },
+
     // Rate limiting (ENV only). Defaults are conservative enough for a
     // human typing in the search UI but reject bot floods.
     rateLimit: {

@@ -36,6 +36,7 @@ export const homeRoutes = new Hono<Env>();
  * @returns Home page response
  */
 export async function renderHomePage(c: Context<Env>): Promise<Response> {
+  c.set("viewTarget", { kind: "path" });
   const i18n = getI18n(c);
   const page = parsePageNumber(c.req.query("page"));
   const paginatedPageTitle = formatPageLabel(page);

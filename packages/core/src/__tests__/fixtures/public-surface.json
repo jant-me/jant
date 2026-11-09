@@ -231,6 +231,8 @@
       "SITE_ORIGIN": [],
       "SITE_PATH_PREFIX": [],
       "SLUG_ID_LENGTH": [],
+      "STATS_DAILY_LIMIT": [],
+      "STATS_ENABLED": [],
       "STORAGE_DRIVER": [
         "local",
         "r2",
