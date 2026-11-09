@@ -20,6 +20,7 @@ import { now } from "../lib/time.js";
 import { viewBuffer, type ViewBuffer } from "../lib/view-buffer.js";
 import {
   formatDayKey,
+  formatHourKey,
   shouldCountView,
   viewPathKey,
   viewReferrer,
@@ -75,16 +76,19 @@ export function viewCounter(
         : target.id;
     const { services } = c.var;
     const { dailyLimit } = appConfig.stats;
+    const at = now();
 
     buffer.add(
       {
         siteId: c.var.currentSite.id,
-        day: formatDayKey(now(), appConfig.timeZone),
+        day: formatDayKey(at, appConfig.timeZone),
+        hour: formatHourKey(at, appConfig.timeZone),
         page,
         referrer: viewReferrer({
           referer: c.req.header("referer"),
           requestUrl: c.req.url,
           ownHost: new URL(c.var.publicRequestUrl).hostname,
+          fetchSite: c.req.header("sec-fetch-site"),
         }),
       },
       {

@@ -1181,3 +1181,16 @@ export const viewCounts = pgTable(
     }),
   ],
 );
+
+/** Views per hour; mirrors the SQLite `view_hour` table. */
+export const viewHours = pgTable(
+  "view_hour",
+  {
+    siteId: text("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    hour: text("hour").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.siteId, table.hour] })],
+);

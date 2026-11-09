@@ -8,6 +8,7 @@ import {
 const HIT = {
   siteId: "sit_test",
   day: "2026-11-08",
+  hour: "2026-11-08T12",
   page: "pst_one",
   referrer: "example.com",
 };

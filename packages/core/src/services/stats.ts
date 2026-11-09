@@ -16,9 +16,16 @@
  *   the archive and an aggregate selection are counted by path. The key's
  *   shape says which (`viewPageKind`), and the list is named from it when
  *   read, never stored.
- * - **Ninety days.** Rows older than `VIEW_COUNT_RETENTION_DAYS` are deleted,
+ * - **Thirty days.** Rows older than `VIEW_COUNT_RETENTION_DAYS` are deleted,
  *   once a day per site, by whichever flush comes first. Nothing is rolled up:
  *   a lifetime total is exactly the scoreboard this feature is not.
+ * - **Hours for today alone.** `view_hour` keeps one total per site and hour,
+ *   no page and no referrer, so today's chart can show when readers came;
+ *   today's lists still come from the day table. Two days of hours are kept.
+ * - **Where a reader came from, in three kinds.** A host or a tag, the site
+ *   itself (`VIEW_INTERNAL_REFERRER`: a reader moving from one page to the
+ *   next), or nothing at all: a typed address, a bookmark, an app, a feed
+ *   reader. Direct means the last of these only.
  * - **Bounded breakdown.** A site-day holds at most
  *   `VIEW_COUNT_ROWS_PER_SITE_DAY` rows; past that, new page-referrer pairs
  *   land on one overflow row, so a script spraying made-up referrers cannot
@@ -63,8 +70,10 @@ import { now } from "../lib/time.js";
 import type { ViewCountEntry, ViewRecordResult } from "../lib/view-buffer.js";
 import {
   dayKeysEndingAt,
+  hourKeysOfDay,
   isDayKey,
   shiftDayKey,
+  VIEW_INTERNAL_REFERRER,
   VIEW_OVERFLOW_KEY,
   viewPageKind,
 } from "../lib/view-counting.js";
@@ -72,7 +81,10 @@ import type { Format } from "../types/constants.js";
 import type { SettingsService } from "./settings.js";
 
 /** Days a counter row is kept before the sweep deletes it. */
-export const VIEW_COUNT_RETENTION_DAYS = 90;
+export const VIEW_COUNT_RETENTION_DAYS = 30;
+
+/** Days an hour row is kept: today, and yesterday until today's sweep. */
+export const VIEW_HOUR_RETENTION_DAYS = 2;
 
 /** Rows one site may hold for one day before new pairs fold into overflow. */
 export const VIEW_COUNT_ROWS_PER_SITE_DAY = 5_000;
@@ -80,16 +92,18 @@ export const VIEW_COUNT_ROWS_PER_SITE_DAY = 5_000;
 /** How many pages and how many referrers the page lists. */
 export const STATS_TOP_LIMIT = 10;
 
-/** The windows the Stats page offers, in days. */
-export const STATS_WINDOWS = [7, 30, 90] as const;
+/** The windows the Stats page offers, in days; `1` is today, by the hour. */
+export const STATS_WINDOWS = [1, 7, 30] as const;
 export type StatsWindow = (typeof STATS_WINDOWS)[number];
-export const DEFAULT_STATS_WINDOW: StatsWindow = 30;
+export const DEFAULT_STATS_WINDOW: StatsWindow = 1;
 
 /**
  * Rows per upsert statement. Five bound parameters a row keeps a chunk under
  * D1's limit of 100 parameters per statement.
  */
 const UPSERT_CHUNK_ROWS = 16;
+/** Hour rows per statement: three parameters each. */
+const HOUR_UPSERT_CHUNK_ROWS = 32;
 
 /** Keys remembered as already in the table, before the set is emptied. */
 const SEEN_KEYS_LIMIT = 50_000;
@@ -128,10 +142,35 @@ export function createViewCountWriterState(): ViewCountWriterState {
 
 const sharedWriterState = createViewCountWriterState();
 
-/** Views on one day. */
+/** Views at one point of a series: a day key, or an hour key for today. */
 export interface StatsSeriesPoint {
-  day: string;
+  at: string;
   views: number;
+}
+
+/**
+ * The chart's series. Today is drawn by the hour, up to the current one;
+ * a longer window by the day, one point per day of the window.
+ */
+export interface StatsSeries {
+  unit: "hour" | "day";
+  points: StatsSeriesPoint[];
+}
+
+/** A counter row of the day table, as written. */
+interface ViewDayRow {
+  siteId: string;
+  day: string;
+  page: string;
+  referrer: string;
+  count: number;
+}
+
+/** A counter row of the hour table, as written. */
+interface ViewHourRow {
+  siteId: string;
+  hour: string;
+  count: number;
 }
 
 /** Views from one referring host. */
@@ -176,8 +215,10 @@ export type StatsPageRow = StatsPage & { views: number };
 
 /** Where views came from, in the shape the page shows. */
 export interface StatsReferrers {
-  /** No referrer, or a link from the site itself. */
+  /** No referrer at all: a typed address, a bookmark, an app, a feed reader. */
   direct: number;
+  /** A link from another page of the site. */
+  internal: number;
   /** The busiest hosts, most views first. */
   top: StatsReferrerRow[];
   /** Every host past the top list, and the overflow row. */
@@ -198,8 +239,8 @@ export interface StatsOverview {
    */
   start: string | null;
   total: number;
-  /** One point per day of the window, oldest first, zero where nothing was counted. */
-  series: StatsSeriesPoint[];
+  /** Oldest first, zero where nothing was counted. */
+  series: StatsSeries;
   /** The most-viewed pages, posts among them, most views first. */
   pages: StatsPageRow[];
   referrers: StatsReferrers;
@@ -214,19 +255,24 @@ export interface StatsPageDetail {
   /** As on the overview: the first counted day when inside the window. */
   start: string | null;
   total: number;
-  series: StatsSeriesPoint[];
+  /**
+   * By the day; `null` for today, since hours are kept for the site as a
+   * whole and not per page.
+   */
+  series: StatsSeries | null;
   referrers: StatsReferrers;
 }
 
 export interface StatsService {
   /**
-   * Write a batch of counted views, for any site, applying the row cap and
-   * the sweep on the way, and giving a site that has no start day yet the
-   * batch's earliest day as its start. Entries of a site whose switch is off
-   * are dropped: a hit added before the author turned stats off and flushed
+   * Write a batch of counted views, for any site: the day table by page and
+   * referrer, the hour table as totals, applying the row cap and the sweep
+   * on the way, and giving a site that has no start day yet the batch's
+   * earliest day as its start. Entries of a site whose switch is off are
+   * dropped: a hit added before the author turned stats off and flushed
    * after must not undo the deletion that came with it.
    *
-   * @param entries - Views, already summed per site, day, page and referrer
+   * @param entries - Views, already summed per site, hour, page and referrer
    * @param opts.dailyLimit - Views this instance may record per day; `0` for no limit
    * @param opts.today - Today's UTC day key, for the sweep and the limit
    * @returns Whether the daily limit has been reached
@@ -240,24 +286,30 @@ export interface StatsService {
    * yet gets today as its start: the record begins with the first look at
    * it.
    *
-   * @param opts.days - Length of the window
+   * @param opts.days - Length of the window; `1` is today, by the hour
    * @param opts.today - The site's current day key, the window's last day
+   * @param opts.hour - The site's current hour key, the last hour drawn today
    * @returns The overview
    */
-  getOverview(opts: { days: number; today: string }): Promise<StatsOverview>;
+  getOverview(opts: {
+    days: number;
+    today: string;
+    hour: string;
+  }): Promise<StatsOverview>;
   /**
    * One page's views over the last `days` days, by its counter key: a
    * post's or collection's id, or a path.
    *
    * @param key - The page's counter key
-   * @param opts.days - Length of the window
+   * @param opts.days - Length of the window; `1` is today
    * @param opts.today - The site's current day key, the window's last day
+   * @param opts.hour - The site's current hour key
    * @returns The detail, or `null` for a key that names nothing the site
    *   has or ever counted
    */
   getPage(
     key: string,
-    opts: { days: number; today: string },
+    opts: { days: number; today: string; hour: string },
   ): Promise<StatsPageDetail | null>;
   /**
    * Delete every counter row the site has, and the day its record began:
@@ -278,8 +330,32 @@ export interface StatsService {
   setEnabled(enabled: boolean, opts: { today: string }): Promise<void>;
 }
 
-function entryKey(entry: ViewCountEntry): string {
+function entryKey(entry: ViewDayRow): string {
   return `${entry.siteId}\n${entry.day}\n${entry.page}\n${entry.referrer}`;
+}
+
+/** The day table's rows for a batch: the hour folded away. */
+function foldByDay(entries: ViewCountEntry[]): ViewDayRow[] {
+  const rows = new Map<string, ViewDayRow>();
+  for (const { siteId, day, page, referrer, count } of entries) {
+    const row: ViewDayRow = { siteId, day, page, referrer, count };
+    const known = rows.get(entryKey(row));
+    if (known) known.count += count;
+    else rows.set(entryKey(row), row);
+  }
+  return [...rows.values()];
+}
+
+/** The hour table's rows for a batch: the total per site and hour. */
+function foldByHour(entries: ViewCountEntry[]): ViewHourRow[] {
+  const rows = new Map<string, ViewHourRow>();
+  for (const { siteId, hour, count } of entries) {
+    const key = `${siteId}\n${hour}`;
+    const known = rows.get(key);
+    if (known) known.count += count;
+    else rows.set(key, { siteId, hour, count });
+  }
+  return [...rows.values()];
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -296,32 +372,49 @@ function chunk<T>(items: T[], size: number): T[][] {
  */
 function summarizeReferrers(rows: StatsReferrerRow[]): StatsReferrers {
   let direct = 0;
+  let internal = 0;
   let other = 0;
   const named: StatsReferrerRow[] = [];
   for (const row of rows) {
     if (row.host === "") direct += row.views;
+    else if (row.host === VIEW_INTERNAL_REFERRER) internal += row.views;
     else if (row.host === VIEW_OVERFLOW_KEY) other += row.views;
     else named.push(row);
   }
   named.sort((a, b) => b.views - a.views || a.host.localeCompare(b.host));
   const top = named.slice(0, STATS_TOP_LIMIT);
   for (const row of named.slice(STATS_TOP_LIMIT)) other += row.views;
-  return { direct, top, other };
+  return { direct, internal, top, other };
 }
 
 /**
  * Fill a window with one point per day, zero where nothing was counted.
  */
-function fillSeries(
+function fillDays(
   rows: StatsSeriesPoint[],
   today: string,
   days: number,
 ): StatsSeriesPoint[] {
-  const byDay = new Map(rows.map((row) => [row.day, row.views]));
+  const byDay = new Map(rows.map((row) => [row.at, row.views]));
   return dayKeysEndingAt(today, days).map((day) => ({
-    day,
+    at: day,
     views: byDay.get(day) ?? 0,
   }));
+}
+
+/**
+ * Fill today with one point per hour up to the current one, zero where
+ * nothing was counted; the hours still to come are not points.
+ */
+function fillHours(
+  rows: StatsSeriesPoint[],
+  today: string,
+  hour: string,
+): StatsSeriesPoint[] {
+  const byHour = new Map(rows.map((row) => [row.at, row.views]));
+  return hourKeysOfDay(today)
+    .filter((key) => key <= hour)
+    .map((key) => ({ at: key, views: byHour.get(key) ?? 0 }));
 }
 
 /**
@@ -355,6 +448,7 @@ export function createStatsService(
 ): StatsService {
   const {
     viewCounts,
+    viewHours,
     posts,
     collections,
     smartCollections,
@@ -378,8 +472,8 @@ export function createStatsService(
    * a count; a busy site's keys are all known after the first flush of the
    * day.
    */
-  async function capRows(entries: ViewCountEntry[]): Promise<ViewCountEntry[]> {
-    const groups = new Map<string, ViewCountEntry[]>();
+  async function capRows(entries: ViewDayRow[]): Promise<ViewDayRow[]> {
+    const groups = new Map<string, ViewDayRow[]>();
     for (const entry of entries) {
       const key = `${entry.siteId}\n${entry.day}`;
       const group = groups.get(key);
@@ -387,7 +481,7 @@ export function createStatsService(
       else groups.set(key, [entry]);
     }
 
-    const rows: ViewCountEntry[] = [];
+    const rows: ViewDayRow[] = [];
     for (const group of groups.values()) {
       const unseen = new Set(
         group.filter((entry) => !state.seen.has(entryKey(entry))),
@@ -432,7 +526,7 @@ export function createStatsService(
     return rows;
   }
 
-  function upsert(executor: Database, rows: ViewCountEntry[]) {
+  function upsertDays(executor: Database, rows: ViewDayRow[]) {
     return executor
       .insert(viewCounts)
       .values(rows)
@@ -450,17 +544,35 @@ export function createStatsService(
       });
   }
 
-  async function writeRows(rows: ViewCountEntry[]): Promise<void> {
-    const chunks = chunk(rows, UPSERT_CHUNK_ROWS);
+  function upsertHours(executor: Database, rows: ViewHourRow[]) {
+    return executor
+      .insert(viewHours)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: [viewHours.siteId, viewHours.hour],
+        set: { count: sql`${viewHours.count} + excluded.count` },
+      });
+  }
+
+  /** Both tables' upserts, in one transaction or one batch. */
+  async function writeRows(
+    dayRows: ViewDayRow[],
+    hourRows: ViewHourRow[],
+  ): Promise<void> {
+    const dayChunks = chunk(dayRows, UPSERT_CHUNK_ROWS);
+    const hourChunks = chunk(hourRows, HOUR_UPSERT_CHUNK_ROWS);
     if (supportsDrizzleTransaction(db, dialect)) {
       await db.transaction(async (tx) => {
-        for (const part of chunks) {
-          await upsert(tx as unknown as Database, part);
-        }
+        const executor = tx as unknown as Database;
+        for (const part of dayChunks) await upsertDays(executor, part);
+        for (const part of hourChunks) await upsertHours(executor, part);
       });
       return;
     }
-    const queries = chunks.map((part) => upsert(db, part));
+    const queries = [
+      ...dayChunks.map((part) => upsertDays(db, part)),
+      ...hourChunks.map((part) => upsertHours(db, part)),
+    ];
     await db.batch(
       queries as [(typeof queries)[number], ...(typeof queries)[number][]],
     );
@@ -491,7 +603,7 @@ export function createStatsService(
     return entries.filter((entry) => !offSites.has(entry.siteId));
   }
 
-  function rememberRows(rows: ViewCountEntry[]): void {
+  function rememberRows(rows: ViewDayRow[]): void {
     if (state.seen.size + rows.length > SEEN_KEYS_LIMIT) state.seen.clear();
     for (const row of rows) state.seen.add(entryKey(row));
   }
@@ -502,7 +614,7 @@ export function createStatsService(
    * forgets the site so the next flush stamps it again. Written through the
    * table rather than the settings service because a batch spans sites.
    */
-  async function stampStart(rows: ViewCountEntry[]): Promise<void> {
+  async function stampStart(rows: ViewDayRow[]): Promise<void> {
     const firstDays = new Map<string, string>();
     for (const row of rows) {
       const known = firstDays.get(row.siteId);
@@ -544,17 +656,19 @@ export function createStatsService(
     }
     if (start > today) start = today;
     for (const row of counted) {
-      if (row.day < start) start = row.day;
+      if (row.at < start) start = row.at;
     }
     return start > since ? start : null;
   }
 
   /**
-   * Delete each touched site's rows past the retention window, once a day.
-   * The window is the last `VIEW_COUNT_RETENTION_DAYS` days, today included.
+   * Delete each touched site's rows past the retention windows, once a day:
+   * the last `VIEW_COUNT_RETENTION_DAYS` days of counters, today included,
+   * and the last `VIEW_HOUR_RETENTION_DAYS` days of hours.
    */
-  async function sweep(rows: ViewCountEntry[], today: string): Promise<void> {
+  async function sweep(rows: ViewDayRow[], today: string): Promise<void> {
     const cutoff = shiftDayKey(today, -(VIEW_COUNT_RETENTION_DAYS - 1));
+    const hourCutoff = `${shiftDayKey(today, -(VIEW_HOUR_RETENTION_DAYS - 1))}T00`;
     for (const touchedSite of new Set(rows.map((row) => row.siteId))) {
       if (state.sweptOn.get(touchedSite) === today) continue;
       state.sweptOn.set(touchedSite, today);
@@ -562,6 +676,14 @@ export function createStatsService(
         .delete(viewCounts)
         .where(
           and(eq(viewCounts.siteId, touchedSite), lt(viewCounts.day, cutoff)),
+        );
+      await db
+        .delete(viewHours)
+        .where(
+          and(
+            eq(viewHours.siteId, touchedSite),
+            lt(viewHours.hour, hourCutoff),
+          ),
         );
     }
   }
@@ -573,7 +695,7 @@ export function createStatsService(
    * at most a time zone, and the limit leaves room for that.
    */
   async function limitReached(
-    rows: ViewCountEntry[],
+    rows: ViewDayRow[],
     dailyLimit: number,
   ): Promise<boolean> {
     if (dailyLimit <= 0) return false;
@@ -605,12 +727,26 @@ export function createStatsService(
   function seriesQuery(since: string, today: string, page?: string) {
     return db
       .select({
-        day: viewCounts.day,
+        at: viewCounts.day,
         views: sql<number>`sum(${viewCounts.count})`.mapWith(Number),
       })
       .from(viewCounts)
       .where(windowCondition(since, today, page))
       .groupBy(viewCounts.day);
+  }
+
+  /** Today's hour totals, for the chart. */
+  function hoursQuery(today: string) {
+    return db
+      .select({ at: viewHours.hour, views: viewHours.count })
+      .from(viewHours)
+      .where(
+        and(
+          eq(viewHours.siteId, siteId),
+          gte(viewHours.hour, `${today}T00`),
+          lte(viewHours.hour, `${today}T23`),
+        ),
+      );
   }
 
   function referrersQuery(since: string, today: string, page?: string) {
@@ -804,30 +940,37 @@ export function createStatsService(
     async record(entries, opts) {
       const counted = await withoutSwitchedOff(entries);
       if (counted.length === 0) return { limitReached: false };
-      const rows = await capRows(counted);
-      await writeRows(rows);
+      const rows = await capRows(foldByDay(counted));
+      await writeRows(rows, foldByHour(counted));
       rememberRows(rows);
       await stampStart(rows);
       await sweep(rows, opts.today);
       return { limitReached: await limitReached(rows, opts.dailyLimit) };
     },
 
-    async getOverview({ days, today }) {
+    async getOverview({ days, today, hour }) {
       const since = shiftDayKey(today, -(days - 1));
-      const [seriesRows, topRows, referrerRows, stored] = await Promise.all([
-        seriesQuery(since, today),
-        topPagesQuery(since, today),
-        referrersQuery(since, today),
-        deps.settings.get("STATS_SINCE"),
-      ]);
+      const [seriesRows, hourRows, topRows, referrerRows, stored] =
+        await Promise.all([
+          seriesQuery(since, today),
+          days === 1 ? hoursQuery(today) : Promise.resolve([]),
+          topPagesQuery(since, today),
+          referrersQuery(since, today),
+          deps.settings.get("STATS_SINCE"),
+        ]);
       const named = await describePages(topRows.map((row) => row.key));
-      const series = fillSeries(seriesRows, today, days);
+      const dayPoints = fillDays(seriesRows, today, days);
+      const series: StatsSeries =
+        days === 1
+          ? { unit: "hour", points: fillHours(hourRows, today, hour) }
+          : { unit: "day", points: dayPoints };
       return {
         days,
         since,
         until: today,
         start: await startOfRecord(stored, { since, today }, seriesRows),
-        total: series.reduce((sum, point) => sum + point.views, 0),
+        // The day table's sum: the same rows the lists come from.
+        total: dayPoints.reduce((sum, point) => sum + point.views, 0),
         series,
         pages: topRows.flatMap((row) => {
           const page = named.get(row.key);
@@ -859,7 +1002,7 @@ export function createStatsService(
             ? page.collection !== null
             : false;
       if (!exists && !(await hasRows(key))) return null;
-      const series = fillSeries(seriesRows, today, days);
+      const points = fillDays(seriesRows, today, days);
       return {
         page,
         days,
@@ -868,14 +1011,16 @@ export function createStatsService(
         // The site's start, not the page's: the page's own first view is
         // a bar on the chart, not where the record begins.
         start: await startOfRecord(stored, { since, today }, []),
-        total: series.reduce((sum, point) => sum + point.views, 0),
-        series,
+        total: points.reduce((sum, point) => sum + point.views, 0),
+        // A page has no hours of its own: today shows its total and sources.
+        series: days === 1 ? null : { unit: "day", points },
         referrers: summarizeReferrers(referrerRows),
       };
     },
 
     async clear() {
       await db.delete(viewCounts).where(eq(viewCounts.siteId, siteId));
+      await db.delete(viewHours).where(eq(viewHours.siteId, siteId));
       await deps.settings.remove("STATS_SINCE");
       state.stamped.delete(siteId);
     },

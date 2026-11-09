@@ -1,17 +1,21 @@
 /**
- * The Stats page and its switch, through the real services: the page shows
- * what the counters hold for the window asked for, says where its record
- * begins, any page in its list opens on its own, and the switch deletes the
- * counts on the way off.
+ * The Stats page and its switch, through the real services: the page opens
+ * on today, shows what the counters hold for the window asked for, says
+ * where its record begins, ranks what it lists, any page in its list opens
+ * on its own, and the switch deletes the counts on the way off.
  */
 
 import { describe, expect, it } from "vitest";
 import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { settingsRoutes } from "../settings.js";
 import type { ViewCountEntry } from "../../../lib/view-buffer.js";
-import { shiftDayKey } from "../../../lib/view-counting.js";
+import {
+  shiftDayKey,
+  VIEW_INTERNAL_REFERRER,
+} from "../../../lib/view-counting.js";
 
 const TODAY = new Date().toISOString().slice(0, 10);
+const HOUR = `${TODAY}T00`;
 
 /** `Nov 9` the way the page writes a day in English. */
 function dayLabel(day: string): string {
@@ -38,6 +42,7 @@ function entry(
   return {
     siteId: "sit_test00000000000000000000000",
     day: TODAY,
+    hour: HOUR,
     referrer: "",
     count: 1,
     ...overrides,
@@ -45,8 +50,10 @@ function entry(
 }
 
 /**
- * A post, a collection and the home page with views, and a record that
- * began long before any window, so the total line talks about the window.
+ * A post, a collection and the home page with views today, and a record
+ * that began long before any window, so a longer window's total line talks
+ * about the window. Fifty views: 43 of the post, 4 of the home page (two of
+ * them from another page of the site), 3 of the collection.
  */
 async function seed(
   services: ReturnType<typeof createApp>["services"],
@@ -70,7 +77,8 @@ async function seed(
     [
       entry({ page: post.id, referrer: "news.ycombinator.com", count: 41 }),
       entry({ page: post.id, count: 2 }),
-      entry({ page: "/", count: 4 }),
+      entry({ page: "/", count: 2 }),
+      entry({ page: "/", referrer: VIEW_INTERNAL_REFERRER, count: 2 }),
       entry({ page: reading.id, count: 3 }),
     ],
     { dailyLimit: 0, today: TODAY },
@@ -79,22 +87,27 @@ async function seed(
 }
 
 describe("GET /settings/stats", () => {
-  it("shows the window's total, the pages of every kind, and the referrers", async () => {
+  it("opens on today: the total, the hours, the ranked pages and referrers", async () => {
     const { app, services } = createApp();
     const { post, reading } = await seed(services);
 
     const res = await app.request("/settings/stats");
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("50 views in the last 30 days");
+    expect(html).toContain("50 views today");
+    expect(html).toContain("Views per hour");
+    // The ranked list: the post first, with its share behind it.
+    expect(html).toContain('settings-stats-rank">1<');
+    expect(html).toContain("--stats-share:86%");
     expect(html).toContain("A well-read note");
-    expect(html).toContain(`/settings/stats?page=${post.id}&amp;days=30`);
+    expect(html).toContain(`/settings/stats?page=${post.id}&amp;days=1`);
     expect(html).toContain(">Home<");
-    expect(html).toContain("/settings/stats?page=%2F&amp;days=30");
     expect(html).toContain(">Reading<");
-    expect(html).toContain(`/settings/stats?page=${reading.id}&amp;days=30`);
+    expect(html).toContain(`/settings/stats?page=${reading.id}&amp;days=1`);
     expect(html).toContain(">Collection<");
+    // Referrers in order of size: the host, then direct, then internal.
     expect(html).toContain("news.ycombinator.com");
+    expect(html.indexOf(">Direct<")).toBeLessThan(html.indexOf(">Internal<"));
     expect(html).toContain("Count page views");
   });
 
@@ -115,12 +128,15 @@ describe("GET /settings/stats", () => {
   it("starts its record today when nothing was ever counted", async () => {
     const { app } = createApp();
 
-    const html = await (await app.request("/settings/stats")).text();
-    expect(html).toContain(`0 views since ${dayLabel(TODAY)}`);
-    expect(html).toContain("settings-stats-axis-single");
+    const today = await (await app.request("/settings/stats")).text();
+    expect(today).toContain("0 views today");
     // Nothing to list: the total line has said so.
-    expect(html).not.toContain("Referrers");
-    expect(html).not.toContain(">Home<");
+    expect(today).not.toContain("Referrers");
+    expect(today).not.toContain(">Home<");
+
+    const week = await (await app.request("/settings/stats?days=7")).text();
+    expect(week).toContain(`0 views since ${dayLabel(TODAY)}`);
+    expect(week).toContain("settings-stats-axis-single");
   });
 
   it("takes a window from ?days and ignores one it does not offer", async () => {
@@ -129,9 +145,13 @@ describe("GET /settings/stats", () => {
 
     const week = await (await app.request("/settings/stats?days=7")).text();
     expect(week).toContain("50 views in the last 7 days");
+    expect(week).toContain("Views per day");
 
-    const odd = await (await app.request("/settings/stats?days=45")).text();
-    expect(odd).toContain("50 views in the last 30 days");
+    const month = await (await app.request("/settings/stats?days=30")).text();
+    expect(month).toContain("50 views in the last 30 days");
+
+    const odd = await (await app.request("/settings/stats?days=90")).text();
+    expect(odd).toContain("50 views today");
   });
 
   it("opens one page of any kind, and answers 404 for a key that names nothing", async () => {
@@ -141,22 +161,30 @@ describe("GET /settings/stats", () => {
     const res = await app.request(`/settings/stats?page=${post.id}`);
     expect(res.status).toBe(200);
     const postHtml = await res.text();
-    expect(postHtml).toContain("43 views in the last 30 days");
+    expect(postHtml).toContain("43 views today");
     expect(postHtml).toContain("news.ycombinator.com");
     expect(postHtml).toContain(`href="/${post.slug}"`);
-    // One page's numbers list no pages.
+    // A page has no hours of its own, and one page's numbers list no pages.
+    expect(postHtml).not.toContain("settings-stats-chart");
     expect(postHtml).not.toContain(">Home<");
+
+    const month = await (
+      await app.request(`/settings/stats?page=${post.id}&days=30`)
+    ).text();
+    expect(month).toContain("43 views in the last 30 days");
+    expect(month).toContain("settings-stats-chart");
 
     const home = await (await app.request("/settings/stats?page=%2F")).text();
     expect(home).toContain(">Home<");
-    expect(home).toContain("4 views in the last 30 days");
+    expect(home).toContain("4 views today");
+    expect(home).toContain(">Internal<");
 
     const collection = await (
       await app.request(`/settings/stats?page=${reading.id}`)
     ).text();
     expect(collection).toContain(">Reading<");
     expect(collection).toContain(">Collection<");
-    expect(collection).toContain("3 views in the last 30 days");
+    expect(collection).toContain("3 views today");
     expect(collection).toContain('href="/reading"');
 
     for (const key of [
@@ -175,11 +203,13 @@ describe("GET /settings/stats", () => {
 
     const html = await (await app.request("/settings/stats")).text();
     expect(html).toContain("Stats are off.");
-    expect(html).not.toContain("in the last 30 days");
+    expect(html).not.toContain("views today");
   });
 });
 
 describe("POST /settings/stats", () => {
+  const window = { days: 30, today: TODAY, hour: HOUR };
+
   it("turns counting off and deletes the counts", async () => {
     const { app, services } = createApp();
     await seed(services);
@@ -195,9 +225,7 @@ describe("POST /settings/stats", () => {
     expect(res.status).toBe(200);
     expect(await services.settings.get("STATS_ENABLED")).toBe("false");
     expect(await services.settings.get("STATS_SINCE")).toBeNull();
-    expect(
-      (await services.stats.getOverview({ days: 90, today: TODAY })).total,
-    ).toBe(0);
+    expect((await services.stats.getOverview(window)).total).toBe(0);
   });
 
   it("starts a new record when turned back on", async () => {
@@ -230,8 +258,6 @@ describe("POST /settings/stats", () => {
       body: JSON.stringify({ enabled: false }),
     });
     expect(res.status).toBe(403);
-    expect(
-      (await services.stats.getOverview({ days: 90, today: TODAY })).total,
-    ).toBe(50);
+    expect((await services.stats.getOverview(window)).total).toBe(50);
   });
 });

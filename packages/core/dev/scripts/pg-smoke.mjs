@@ -807,6 +807,10 @@ async function main() {
         /^\d{4}-\d{2}-\d{2}$/,
         "the flush stamped the day counting began",
       );
+      const hours = await assertPool.query(
+        'SELECT COALESCE(SUM("count"), 0)::int AS "views" FROM "view_hour"',
+      );
+      assert.ok(hours.rows[0].views >= 1, "the flush wrote the hour total too");
     }
 
     // A snapshot written on Postgres restores on Postgres. Import once sent

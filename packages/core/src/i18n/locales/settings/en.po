@@ -33,7 +33,7 @@ msgstr "{count, plural, one {# post is} other {# posts are}} still written in {l
 msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 msgstr "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 
-#. @context: Total line on the stats page; {days} is 7, 30 or 90
+#. @context: Total line on the stats page; {days} is 7 or 30
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "{count, plural, one {# view} other {# views}} in the last {days} days"
 msgstr "{count, plural, one {# view} other {# views}} in the last {days} days"
@@ -43,12 +43,17 @@ msgstr "{count, plural, one {# view} other {# views}} in the last {days} days"
 msgid "{count, plural, one {# view} other {# views}} since {date}"
 msgstr "{count, plural, one {# view} other {# views}} since {date}"
 
+#. @context: Total line on the stats page for today
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{count, plural, one {# view} other {# views}} today"
+msgstr "{count, plural, one {# view} other {# views}} today"
+
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
 msgstr "{count} settings shown"
 
-#. @context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8
+#. @context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8 or an hour like 14:00
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "{day}: {count, plural, one {# view} other {# views}}"
 msgstr "{day}: {count, plural, one {# view} other {# views}}"
@@ -68,7 +73,7 @@ msgstr "{name} is a directory of Jant blogs, curated by hand by the Jant communi
 msgid "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
 msgstr "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
 
-#. @context: One option of the window switch on the stats page; {window} is 7, 30 or 90
+#. @context: One option of the window switch on the stats page; {window} is 7 or 30
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "{window} days"
 msgstr "{window} days"
@@ -1427,6 +1432,11 @@ msgstr "Install the GitHub App to grant access without managing personal tokens.
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Integrations"
 msgstr "Integrations"
+
+#. @context: Row on the stats page for views that followed a link from another page of the site
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Internal"
+msgstr "Internal"
 
 #. @context: Name of the Jant blog directory. Appears inside the Discover checkbox label, and in the help line under it as the link to the directory.
 #: src/ui/dash/settings/discover-copy.ts
@@ -2877,6 +2887,11 @@ msgstr "Time zone updated."
 msgid "Title"
 msgstr "Title"
 
+#. @context: The one-day option of the window switch on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Today"
+msgstr "Today"
+
 #. @context: Button to expand/collapse nav item edit
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Toggle edit panel"
@@ -3063,6 +3078,11 @@ msgstr "Views by day, most-read pages, and referrers"
 msgid "Views per day"
 msgstr "Views per day"
 
+#. @context: Accessible name of today's bar chart on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Views per hour"
+msgstr "Views per hour"
+
 #. @context: Prefix before Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Want more control?"
@@ -3163,7 +3183,7 @@ msgstr "Which layout /archive opens with. Readers can switch layouts from the pa
 msgid "Which post stream the canonical /feed URL returns."
 msgstr "Which post stream the canonical /feed URL returns."
 
-#. @context: Accessible name of the 7/30/90-day switch on the stats page
+#. @context: Accessible name of the today/7/30-day switch on the stats page
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "Window"
 msgstr "Window"

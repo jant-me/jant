@@ -29,6 +29,8 @@ export interface ViewHit {
   siteId: string;
   /** The site's calendar day, `YYYY-MM-DD`. */
   day: string;
+  /** The site's hour, `YYYY-MM-DDTHH`, for today's chart. */
+  hour: string;
   /** A post id, or the path of any other page. */
   page: string;
   /** The referring host, or `""`. */
@@ -62,7 +64,7 @@ interface ScheduledFlush {
 }
 
 function entryKey(hit: ViewHit): string {
-  return `${hit.siteId}\n${hit.day}\n${hit.page}\n${hit.referrer}`;
+  return `${hit.siteId}\n${hit.hour}\n${hit.page}\n${hit.referrer}`;
 }
 
 function nextUtcMidnight(nowMs: number): number {

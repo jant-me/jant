@@ -37,6 +37,14 @@ export type ViewTarget =
  */
 export const VIEW_OVERFLOW_KEY = "*";
 
+/**
+ * The referrer of a view that came from another page of the site itself:
+ * a reader moving on from the home page to a post. Kept apart from a direct
+ * visit so that "Direct" means what it says, and never a host, since no
+ * hostname is `/`.
+ */
+export const VIEW_INTERNAL_REFERRER = "/";
+
 /** What a counter key names, told from its shape alone. */
 export type ViewPageKind =
   "post" | "collection" | "smartCollection" | "path" | "overflow";
@@ -77,6 +85,7 @@ const HOST_MAX_LENGTH = 253;
 const REFERER_SCHEMES = new Set(["http:", "https:", "android-app:"]);
 
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+const HOUR_KEY = /^\d{4}-\d{2}-\d{2}T\d{2}$/;
 
 /**
  * Machines that run a browser engine and say so, and HTTP libraries that send
@@ -223,20 +232,20 @@ function normalizeHost(host: string): string {
  * to the address its source is listed under (`old.reddit.com` and `redd.it`
  * are both `reddit.com`), so one site is one row. A link opened from an
  * Android app names the app rather than a site; a known app folds to its
- * site, an unknown one is kept by its package id. Empty for a direct visit,
- * for a link from the site itself, and for any other scheme — browsers send
- * only the origin across sites by default, and that is all that is wanted
- * anyway.
+ * site, an unknown one is kept by its package id. A link from the site
+ * itself is {@link VIEW_INTERNAL_REFERRER}. Empty for a direct visit and for
+ * any other scheme — browsers send only the origin across sites by default,
+ * and that is all that is wanted anyway.
  *
  * @param referer - The request's `Referer` header, if any
  * @param ownHost - The host the site is being served on
- * @returns The referring host, or `""`
+ * @returns The referring host, `/` for the site itself, or `""`
  * @example
  * ```ts
  * referrerHost("https://www.Example.com/post?x=1", "blog.example"); // "example.com"
  * referrerHost("https://old.reddit.com/r/blogs", "blog.example"); // "reddit.com"
  * referrerHost("android-app://com.example.app/", "blog.example"); // "com.example.app"
- * referrerHost("https://blog.example/", "blog.example"); // ""
+ * referrerHost("https://blog.example/", "blog.example"); // "/"
  * referrerHost(null, "blog.example"); // ""
  * ```
  */
@@ -253,7 +262,8 @@ export function referrerHost(
   }
   if (!REFERER_SCHEMES.has(url.protocol)) return "";
   const host = normalizeHost(url.hostname);
-  if (!host || host === normalizeHost(ownHost)) return "";
+  if (!host) return "";
+  if (host === normalizeHost(ownHost)) return VIEW_INTERNAL_REFERRER;
   return canonicalSource(host).slice(0, HOST_MAX_LENGTH);
 }
 
@@ -279,11 +289,15 @@ const SOURCE_TOKEN = /^[a-z0-9][a-z0-9._-]{0,62}$/;
  * host decides, as in {@link referrerHost}. Both are normalized and folded
  * the same way, so a `utm_source=chatgpt.com` and a `Referer` from
  * chatgpt.com are one row, and so are `utm_source=twitter` and a `Referer`
- * from t.co.
+ * from t.co. A view with no `Referer` at all is still the site's own when
+ * the browser says so in `Sec-Fetch-Site`, which no referrer policy
+ * suppresses.
  *
  * @param input - The request's `Referer` header, its URL (for the query
- *   string), and the host the site is being served on
- * @returns The referrer key, or `""` for a direct visit
+ *   string), the host the site is being served on, and the request's
+ *   `Sec-Fetch-Site` header
+ * @returns The referrer key: a host or tag, `/` for the site itself, or
+ *   `""` for a direct visit
  * @example
  * ```ts
  * viewReferrer({
@@ -307,10 +321,15 @@ export function viewReferrer(input: {
   referer: string | null | undefined;
   requestUrl: string;
   ownHost: string;
+  fetchSite?: string | null;
 }): string {
   const tagged = taggedSource(input.requestUrl, input.ownHost);
   if (tagged !== null) return tagged;
-  return referrerHost(input.referer, input.ownHost);
+  const host = referrerHost(input.referer, input.ownHost);
+  if (host !== "") return host;
+  return input.fetchSite === "same-origin" || input.fetchSite === "same-site"
+    ? VIEW_INTERNAL_REFERRER
+    : "";
 }
 
 /**
@@ -398,6 +417,67 @@ export function formatDayKey(timestamp: number, timeZone: string): string {
   } catch {
     return date.toISOString().slice(0, 10);
   }
+}
+
+/**
+ * The hour a moment falls in, in a time zone, as `YYYY-MM-DDTHH`: the day key
+ * and the hour of the day, so a day's hours sort and compare as strings.
+ *
+ * @param timestamp - Unix timestamp in seconds
+ * @param timeZone - IANA time zone
+ * @returns The hour key
+ * @example
+ * ```ts
+ * formatHourKey(1_762_560_000, "Asia/Shanghai"); // "2025-11-08T08"
+ * ```
+ */
+export function formatHourKey(timestamp: number, timeZone: string): string {
+  const date = new Date(timestamp * 1000);
+  let hour: string;
+  try {
+    hour =
+      new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        hour: "2-digit",
+        hourCycle: "h23",
+      })
+        .formatToParts(date)
+        .find((part) => part.type === "hour")?.value ?? "00";
+  } catch {
+    hour = String(date.getUTCHours()).padStart(2, "0");
+  }
+  return `${formatDayKey(timestamp, timeZone)}T${hour}`;
+}
+
+/**
+ * Whether a string is a `YYYY-MM-DDTHH` hour key.
+ *
+ * @param value - The string to check
+ * @returns `true` for an hour key
+ * @example
+ * ```ts
+ * isHourKey("2026-11-09T14"); // true
+ * ```
+ */
+export function isHourKey(value: string): boolean {
+  return HOUR_KEY.test(value);
+}
+
+/**
+ * The 24 hour keys of a day, in order.
+ *
+ * @param day - The day key
+ * @returns `day`'s hours, `T00` through `T23`
+ * @example
+ * ```ts
+ * hourKeysOfDay("2026-11-09")[14]; // "2026-11-09T14"
+ * ```
+ */
+export function hourKeysOfDay(day: string): string[] {
+  return Array.from(
+    { length: 24 },
+    (_, hour) => `${day}T${String(hour).padStart(2, "0")}`,
+  );
 }
 
 /**
