@@ -1154,3 +1154,30 @@ export const rateLimit = pgTable(
   },
   (table) => [primaryKey({ columns: [table.key, table.windowStart] })],
 );
+
+// ---------------------------------------------------------------------------
+// View Counts
+// ---------------------------------------------------------------------------
+
+/**
+ * Page views, pre-aggregated per site, day, page and referrer host. Mirrors
+ * the SQLite `view_count` table, whose comment carries the column meanings and
+ * the bounds; `services/stats.ts` has the policy.
+ */
+export const viewCounts = pgTable(
+  "view_count",
+  {
+    siteId: text("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+    page: text("page").notNull(),
+    referrer: text("referrer").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.siteId, table.day, table.page, table.referrer],
+    }),
+  ],
+);

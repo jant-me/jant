@@ -50,6 +50,7 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
   // With feeds off there is nothing to subscribe to, and the nav entry is
   // filtered out too — so the page 404s rather than listing dead addresses.
   if (!appConfig.rssFeedsEnabled) return c.notFound();
+  c.set("viewTarget", { kind: "path" });
 
   const navData = await getNavigationData(c);
   const i18n = getI18n(c);

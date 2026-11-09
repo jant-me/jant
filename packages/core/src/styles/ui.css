@@ -56,6 +56,10 @@
   .site-page > main,
   .site-page > footer,
   .site-page > .home-branding-credit {
+    /* The narrow frame's gutters. The start side keeps room for the thread
+       rail, which hangs into it. */
+    --site-frame-gutter-start: max(5%, 28px);
+    --site-frame-gutter-end: 5%;
     width: 100%;
     /* 12.5% left + 4% right = 16.5% padding → content = 83.5% */
     max-width: calc(var(--layout-body-max-width) / 0.835);
@@ -70,14 +74,42 @@
     .site-page > main,
     .site-page > footer,
     .site-page > .home-branding-credit {
-      padding-left: max(5%, 28px);
-      padding-right: 5%;
+      padding-left: var(--site-frame-gutter-start);
+      padding-right: var(--site-frame-gutter-end);
+    }
+  }
+
+  /*
+   * Once the sidenote gutter is gone (the single-column note in tokens.css),
+   * the asymmetric padding has nothing left to make room for, and a column
+   * held to its measure would sit against the left with every spare pixel on
+   * its right — 119px against 307px on a 951px screen. So the frame narrows
+   * to the column and its auto margins center it. That is the wide-screen
+   * rule too: the frame is centered and as wide as what it holds, which there
+   * is the column plus the gutter. Inside, everything stays flush left.
+   *
+   * Settings and the full-page composer size their own content, wider than
+   * the reading measure, and keep the frame they had (`.site-page-wide`).
+   */
+  @media (max-width: 1024px) {
+    .site-page:not(.site-page-wide) > header,
+    .site-page:not(.site-page-wide) > main,
+    .site-page:not(.site-page-wide) > footer,
+    .site-page:not(.site-page-wide) > .home-branding-credit {
+      max-width: calc(
+        var(--layout-reading-measure) + var(--site-frame-gutter-start) +
+          var(--site-frame-gutter-end)
+      );
+      padding-left: var(--site-frame-gutter-start);
+      padding-right: var(--site-frame-gutter-end);
     }
   }
 
   /* --- Top header --------------------------------------------------------- */
 
   .site-header {
+    /* The nav collapses by this width (Header responsive, below). */
+    container: site-header / inline-size;
     padding-top: 24px;
   }
 
@@ -905,14 +937,21 @@
   }
 
   /*
-   * Tiered nav collapse:
-   *   ≤960px — hide the 5th+ inline link, reveal it in More (tier-lg)
-   *   ≤780px — also hide the 4th inline link (tier-md)
-   *   ≤580px — also hide the 3rd inline link (tier-sm)
-   * The first two links always stay inline until the hamburger takes over
-   * at ≤480px (handled below).
+   * Tiered nav collapse, by the header's own width rather than the
+   * viewport's: below 1024px a reader page's header is held to the reading
+   * column while a settings page's is not, so one viewport gives two widths.
+   *   < 802px   — hide the 5th+ inline link, reveal it in More (tier-lg)
+   *   < 652px   — also hide the 4th inline link (tier-md)
+   *   < 522px   — also hide the 3rd inline link (tier-sm)
+   * Each is the header's width where the viewport tiers used to switch: past
+   * 960px and 780px on the wide frame, at 580px on a phone's (one pixel
+   * early, because WebKit drops the fraction when it measures the container).
+   * A page whose header did not narrow collapses where it always did; a
+   * reader page's 35rem header sits in the middle tier. The first two links always
+   * stay inline until the hamburger takes over at ≤480px (handled below).
+   * BaseLayout inlines the same rules as critical CSS.
    */
-  @media (max-width: 960px) {
+  @container site-header (width < 802px) {
     .site-header-link-collapse-lg {
       display: none;
     }
@@ -930,7 +969,7 @@
     }
   }
 
-  @media (max-width: 780px) {
+  @container site-header (width < 652px) {
     .site-header-link-collapse-md {
       display: none;
     }
@@ -948,7 +987,7 @@
     }
   }
 
-  @media (max-width: 580px) {
+  @container site-header (width < 522px) {
     .site-header-link-collapse-sm {
       display: none;
     }
@@ -2460,10 +2499,14 @@
     margin-bottom: 1.7rem;
   }
 
+  /* Title, then the date a clear step below it, then air before the body:
+     the three tiers every well-set article page keeps (Medium, Substack,
+     Ghost). At 0.7rem the date sat on the title's descenders. */
   .post-header-block-detail {
     display: flex;
     flex-direction: column;
-    gap: 0.7rem;
+    gap: 0.9rem;
+    margin-bottom: 2.2rem;
   }
 
   .post-header-block .feed-link-title,
@@ -2497,7 +2540,7 @@
   .post-header-meta-link {
     color: var(--site-text-secondary);
     font-family: var(--font-ui);
-    font-size: var(--type-ui-hint);
+    font-size: var(--type-ui-meta);
     text-decoration: none;
     white-space: nowrap;
   }

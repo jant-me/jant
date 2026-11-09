@@ -68,6 +68,17 @@ import {
   getTelegramStatusStreamUrl,
 } from "../../lib/telegram-settings-status.js";
 import { TelegramContent } from "../../ui/dash/settings/TelegramContent.js";
+import {
+  StatsContent,
+  statsPageName,
+} from "../../ui/dash/settings/StatsContent.js";
+import {
+  DEFAULT_STATS_WINDOW,
+  STATS_WINDOWS,
+  type StatsWindow,
+} from "../../services/stats.js";
+import { formatDayKey } from "../../lib/view-counting.js";
+import { now } from "../../lib/time.js";
 import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
 import {
   ContentLanguageSchema,
@@ -89,14 +100,21 @@ import {
   getDiscoverPingUrl,
   getGitHubAppConfig,
   getHostedControlPlaneSsoSecret,
+  getSiteResolutionMode,
   getTelegramBotPool,
+  type GitHubAppEnvConfig,
+  type GitHubAppOAuthConfig,
 } from "../../lib/env.js";
 import {
+  buildAuthorizeUrl,
   buildInstallUrl,
+  createPkcePair,
   getInstallation,
   listInstallationReposPage,
+  listOwnedInstallations,
   searchInstallationRepos,
   type InstallationAccount,
+  type OwnedInstallation,
 } from "../../lib/github-app.js";
 import {
   isSyncPending,
@@ -160,6 +178,18 @@ const UpdateSearchSettingsSchema = z.object({
 const UpdateDiscoverSettingsSchema = z.object({
   discover: z.enum(["latest", "off"]),
 });
+
+const UpdateStatsSettingsSchema = z.object({
+  enabled: z.boolean(),
+});
+
+/** The stats window a `?days=` asks for, or the default for anything else. */
+function parseStatsWindow(value: string | undefined): StatsWindow {
+  const days = Number(value);
+  return (STATS_WINDOWS as readonly number[]).includes(days)
+    ? (days as StatsWindow)
+    : DEFAULT_STATS_WINDOW;
+}
 
 function publicPath(c: Context<Env>, path: string): string {
   return toPublicPath(path, c.var.appConfig.sitePathPrefix);
@@ -230,7 +260,8 @@ function breadcrumbLabel(
     | "deleteAccount"
     | "apiTokens"
     | "githubSync"
-    | "telegram",
+    | "telegram"
+    | "stats",
 ): string {
   const i18n = getI18n(c);
   switch (key) {
@@ -314,11 +345,20 @@ function breadcrumbLabel(
       return i18n._(
         msg({ message: "Telegram", comment: "@context: Breadcrumb label" }),
       );
+    case "stats":
+      return i18n._(
+        msg({ message: "Stats", comment: "@context: Breadcrumb label" }),
+      );
   }
 }
 
 type DemoRestriction =
-  "sessions" | "password" | "accountDeletion" | "customCss" | "codeInjection";
+  | "sessions"
+  | "password"
+  | "accountDeletion"
+  | "customCss"
+  | "codeInjection"
+  | "stats";
 
 function getDemoRestrictionMessage(
   c: Context<Env>,
@@ -372,6 +412,15 @@ function getDemoRestrictionMessage(
             "@context: Error shown when saving code injection is blocked in demo mode",
         }),
       );
+    case "stats":
+      return i18n._(
+        msg({
+          message:
+            "Stats settings are locked in demo mode. Every visitor shares the demo site.",
+          comment:
+            "@context: Error shown when changing the stats setting is blocked in demo mode",
+        }),
+      );
   }
 }
 
@@ -419,6 +468,88 @@ settingsRoutes.get("/", async (c) => {
       </div>
     ),
   });
+});
+
+// ===========================================================================
+// Stats
+// ===========================================================================
+
+settingsRoutes.get("/stats", async (c) => {
+  const { appConfig, services } = c.var;
+  const enabled = appConfig.stats.enabled;
+  const days = parseStatsWindow(c.req.query("days"));
+  const pageKey = c.req.query("page");
+  const today = formatDayKey(now(), appConfig.timeZone);
+  const window = { days, today };
+
+  // The chrome needs nothing from the counts, so the reads go out together.
+  const [navData, page, overview] = await Promise.all([
+    getNavigationData(c),
+    enabled && pageKey ? services.stats.getPage(pageKey, window) : null,
+    enabled && !pageKey ? services.stats.getOverview(window) : null,
+  ]);
+  if (pageKey && !page) return c.notFound();
+
+  const statsLabel = breadcrumbLabel(c, "stats");
+  const content = (
+    <StatsContent
+      enabled={enabled}
+      days={days}
+      overview={overview}
+      page={page}
+      sitePathPrefix={appConfig.sitePathPrefix}
+      demoMode={appConfig.demoMode}
+    />
+  );
+
+  return renderPublicPage(c, {
+    page: "settings",
+    title: buildPageTitle(statsLabel, navData.siteName),
+    navData,
+    content: page ? (
+      <>
+        <AdminBreadcrumb
+          ancestors={[
+            {
+              label: breadcrumbLabel(c, "settings"),
+              href: publicPath(c, "/settings"),
+            },
+            {
+              label: statsLabel,
+              href: `${publicPath(c, "/settings/stats")}?days=${days}`,
+            },
+          ]}
+          current={statsPageName(page.page, getI18n(c))}
+        />
+        {content}
+      </>
+    ) : (
+      <>
+        <AdminBreadcrumb
+          parent={breadcrumbLabel(c, "settings")}
+          parentHref={publicPath(c, "/settings")}
+          current={statsLabel}
+        />
+        {content}
+      </>
+    ),
+  });
+});
+
+settingsRoutes.post("/stats", async (c) => {
+  if (c.var.appConfig.demoMode) refuseInDemo(c, "stats");
+  const body = parseValidated(UpdateStatsSettingsSchema, await c.req.json());
+  await c.var.services.stats.setEnabled(body.enabled, {
+    today: formatDayKey(now(), c.var.appConfig.timeZone),
+  });
+
+  // Either way the page changes shape — the chart appears, or it goes with
+  // the counts — so it is shown again rather than toasted at.
+  const wantsJson = c.req.header("accept")?.includes("application/json");
+  if (wantsJson) {
+    return c.json({ status: "ok" as const });
+  }
+  return dsRedirect(publicPath(c, "/settings/stats"));
 });
 
 // ===========================================================================
@@ -2146,15 +2277,18 @@ settingsRoutes.post("/github-sync/disconnect", async (c) => {
  * Recreate installation bindings for sites that sync through the App
  * but have no row to prove it.
  *
- * GitHub is the only source for the account behind an installation id,
- * so the repair costs one call per distinct id — bounded by how many
- * sites the author has, and only ever reached when they would otherwise
- * be shown a GitHub page that cannot lead anywhere. Ids GitHub no longer
- * recognizes are skipped: an uninstalled App has nothing to rebuild.
+ * The ids come from the author's own sites' sync settings, which only
+ * the connect route writes, and only for an installation the author
+ * could already see — so trusting them proves nothing new. GitHub is the
+ * only source for the account behind an id, so the repair costs one call
+ * per distinct id, bounded by how many sites the author has, and only
+ * runs when they would otherwise be sent round GitHub. Ids GitHub no
+ * longer recognizes are skipped: an uninstalled App has nothing to
+ * rebuild.
  */
 async function rebuildInstallationBindings(
   c: Context<Env>,
-  app: import("../../lib/env.js").GitHubAppEnvConfig,
+  app: GitHubAppEnvConfig,
   userId: string,
 ): Promise<void> {
   const syncing =
@@ -2185,194 +2319,87 @@ async function rebuildInstallationBindings(
   }
 }
 
+const GITHUB_STATE_COOKIE = "jant_gh_app_state";
+const GITHUB_PKCE_COOKIE = "jant_gh_app_verifier";
+/** Long enough for an install click-through, short enough to stop mattering. */
+const GITHUB_ROUND_TRIP_SECONDS = 600;
+const GITHUB_OAUTH_NOT_CONFIGURED =
+  "Connecting a GitHub account needs the App's client credentials. Set GITHUB_APP_CLIENT_ID and GITHUB_APP_CLIENT_SECRET on this deployment.";
+
 /**
- * Redirect the user to GitHub to install the App on their account/org.
+ * Start one round trip to GitHub: mint the `state` it carries and pin it to
+ * this browser in a cookie, which the callback compares byte-for-byte.
  *
- * Only available when GitHub App env vars are configured. Uses a signed
- * state cookie for CSRF protection.
+ * Behind a hosted control plane the state is signed with the shared SSO
+ * secret, because the control plane receives GitHub's redirect and reads
+ * the site to send the browser back to from it. Self-hosted, the App's
+ * URLs point straight at this site and a plain nonce does.
+ *
+ * @param c - Request context; the cookie is set on its response.
+ * @returns The state to hand to GitHub.
  */
-settingsRoutes.get("/github-sync/app/install", async (c) => {
-  const app = getGitHubAppConfig(c.env);
-  if (!app) {
-    return c.text("GitHub App is not configured on this deployment.", 404);
-  }
-
-  // Reinstall-same-account predicate: when the signed-in author has
-  // already authorized an installation — on this site or on any other
-  // site they belong to — skip the GitHub round-trip and render the
-  // picker directly. The GitHub redirect is a dead end once the App is
-  // installed on the chosen account: GitHub shows its Configure page
-  // and never comes back with installation_id.
-  //
-  // The scope is the user's sites rather than this one because a GitHub
-  // App installs once per GitHub account. An author connecting their
-  // second blog to the same account has no binding here yet and cannot
-  // create one through GitHub, so site-scoping this check would leave
-  // them with no way in at all.
-  //
-  // `?force=new` bypasses the predicate so the picker's "Install on
-  // another account" action can still reach GitHub to add a fresh
-  // install.
-  const forceNew = c.req.query("force") === "new";
-  if (!forceNew) {
-    const userId = requireSessionUserId(c);
-    let existing =
-      await c.var.services.githubAppInstallations.listInstallationsForUser(
-        userId,
-      );
-    // An author with nothing to show but a site already syncing through
-    // the App is in the one state the redirect cannot rescue: GitHub
-    // will not install the App a second time on that account. Rebuild
-    // the binding from the sync settings instead of sending them into
-    // the dead end.
-    if (existing.length === 0) {
-      await rebuildInstallationBindings(c, app, userId);
-      existing =
-        await c.var.services.githubAppInstallations.listInstallationsForUser(
-          userId,
-        );
-    }
-    if (existing.length > 0) {
-      const navData = await getNavigationData(c);
-      const base = publicPath(c, "/settings/github-sync");
-      const suggestedRepoName = suggestSyncRepoName(c.var.appConfig.siteUrl);
-      const labels = buildRepoPickerLabels(c, suggestedRepoName);
-      return renderPublicPage(c, {
-        page: "settings",
-        title: buildPageTitle(
-          "GitHub Sync — Pick Repository",
-          navData.siteName,
-        ),
-        navData,
-        content: (
-          <>
-            <AdminBreadcrumb
-              parent={breadcrumbLabel(c, "settings")}
-              parentHref={publicPath(c, "/settings")}
-              current={breadcrumbLabel(c, "githubSync")}
-            />
-            <jant-repo-picker
-              labels={labels}
-              api-base={`${base}/app`}
-              connect-url={`${base}/app/connect`}
-              install-url={`${base}/app/install?force=new`}
-              cancel-url={publicPath(c, "/settings")}
-              create-repo-name-hint={suggestedRepoName}
-            >
-              <div class="flex flex-col gap-6 max-w-lg">
-                <div>
-                  <h2 class="text-lg font-medium mb-1">Pick a repository</h2>
-                  <p class="text-sm text-muted-foreground">
-                    Loading repositories…
-                  </p>
-                </div>
-              </div>
-            </jant-repo-picker>
-          </>
-        ),
-      });
-    }
-  }
-
-  // Build the state token. When running behind a hosted control plane we
-  // sign host+nonce with the shared SSO secret so the control plane can
-  // verify and route the callback back to the correct site host. In
-  // self-hosted single-site mode the secret is absent and a plain nonce
-  // suffices (the App's Callback URL points directly at this site).
+async function startGitHubRoundTrip(c: Context<Env>): Promise<string> {
   const nonce = generateInstallNonce();
   const ssoSecret = getHostedControlPlaneSsoSecret(c.env);
   const host = new URL(c.var.appConfig.siteUrl).host;
   const state = ssoSecret
     ? await signInstallState(host, nonce, ssoSecret)
     : nonce;
-
-  // Cookie is pinned to this host; compared byte-for-byte on the callback
-  // to defeat CSRF regardless of whether the state is signed.
-  setCookie(c, "jant_gh_app_state", state, {
+  setCookie(c, GITHUB_STATE_COOKIE, state, {
     httpOnly: true,
     sameSite: "Lax",
     path: "/",
-    maxAge: 600,
+    maxAge: GITHUB_ROUND_TRIP_SECONDS,
   });
+  return state;
+}
 
+/** Send the browser to GitHub to install the App on an account. */
+async function redirectToAppInstall(c: Context<Env>, app: GitHubAppEnvConfig) {
+  const state = await startGitHubRoundTrip(c);
   return c.redirect(buildInstallUrl(app.slug, state));
-});
+}
 
 /**
- * Landing page after the user installs the GitHub App.
- *
- * GitHub redirects here with `installation_id`, `setup_action`, and the
- * `state` we sent. We verify the state, list the installation's repos, and
- * render a repo picker that POSTs back to `/github-sync/app/connect`.
+ * Send the browser to GitHub to sign the author in, so the callback can
+ * ask GitHub which installations they own. An author who has authorized
+ * the App before passes straight through.
  */
-settingsRoutes.get("/github-sync/app/callback", async (c) => {
-  const app = getGitHubAppConfig(c.env);
-  if (!app) {
-    return c.text("GitHub App is not configured on this deployment.", 404);
-  }
-
-  const installationId = c.req.query("installation_id");
-  const state = c.req.query("state");
-  if (!installationId) {
-    return c.text("Missing installation_id.", 400);
-  }
-
-  const expected = getCookie(c, "jant_gh_app_state");
-  if (!state || !expected || expected !== state) {
-    return c.text("Invalid or expired state.", 400);
-  }
-
-  // Defense in depth: when an SSO secret is present the state should also
-  // HMAC-verify and its embedded host must match the host serving this
-  // request. This blocks a rogue control plane from redirecting a victim
-  // to the wrong site with a replayed token.
-  const ssoSecret = getHostedControlPlaneSsoSecret(c.env);
-  if (ssoSecret) {
-    const payload = await verifyInstallState(state, ssoSecret);
-    const currentHost = new URL(c.var.appConfig.siteUrl).host;
-    if (!payload || payload.host !== currentHost) {
-      return c.text("State signature invalid for this host.", 400);
-    }
-  }
-
-  // Fetch the account info for this installation and remember it. The
-  // binding is what every later step reads: the picker's account
-  // dropdown, the endpoints that authorize an installation id, and the
-  // App webhook's fan-out. Rendering the picker without it would show an
-  // empty account list and nothing to pick.
-  //
-  // So a failure here has to stay recoverable, and the only thing that
-  // makes this page replayable is the state cookie — GitHub will not
-  // hand out a second callback for an App that is now installed. Hence
-  // the clearing below sits *after* the binding is written: until then,
-  // reloading this URL is the whole retry.
-  try {
-    const installation = await getInstallation(app, installationId);
-    await c.var.services.githubAppInstallations.upsertInstallation(
-      installationId,
-      c.var.currentSite.id,
-      installation.account,
-    );
-  } catch {
-    return c.text(
-      "The App was installed, but GitHub did not answer with the account details. Reload this page to try again.",
-      502,
-    );
-  }
-
-  // One-shot: clear the cookie so it can't be replayed.
-  setCookie(c, "jant_gh_app_state", "", {
+async function redirectToGitHubSignIn(
+  c: Context<Env>,
+  oauth: GitHubAppOAuthConfig,
+) {
+  const state = await startGitHubRoundTrip(c);
+  const { verifier, challenge } = await createPkcePair();
+  setCookie(c, GITHUB_PKCE_COOKIE, verifier, {
     httpOnly: true,
     sameSite: "Lax",
     path: "/",
-    maxAge: 0,
+    maxAge: GITHUB_ROUND_TRIP_SECONDS,
   });
+  return c.redirect(buildAuthorizeUrl(oauth.clientId, state, challenge));
+}
 
+function endGitHubRoundTrip(c: Context<Env>): void {
+  for (const name of [GITHUB_STATE_COOKIE, GITHUB_PKCE_COOKIE]) {
+    setCookie(c, name, "", {
+      httpOnly: true,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: 0,
+    });
+  }
+}
+
+/**
+ * Render the repository picker, which loads the accounts the author can
+ * see and the repositories behind each.
+ */
+async function renderRepoPickerPage(c: Context<Env>) {
   const navData = await getNavigationData(c);
   const base = publicPath(c, "/settings/github-sync");
   const suggestedRepoName = suggestSyncRepoName(c.var.appConfig.siteUrl);
   const labels = buildRepoPickerLabels(c, suggestedRepoName);
-
   return renderPublicPage(c, {
     page: "settings",
     title: buildPageTitle("GitHub Sync — Pick Repository", navData.siteName),
@@ -2403,7 +2430,220 @@ settingsRoutes.get("/github-sync/app/callback", async (c) => {
       </>
     ),
   });
+}
+
+/**
+ * Start connecting GitHub Sync through the App.
+ *
+ * Only available when GitHub App env vars are configured.
+ */
+settingsRoutes.get("/github-sync/app/install", async (c) => {
+  const app = getGitHubAppConfig(c.env);
+  if (!app) {
+    return c.text("GitHub App is not configured on this deployment.", 404);
+  }
+
+  // An author who already authorized an account — on this site or on any
+  // other site they belong to — goes straight to the picker. A GitHub App
+  // installs once per GitHub account, so their second blog has no binding
+  // of its own and GitHub will not create one: its install page shows the
+  // existing installation's Configure page and never comes back.
+  //
+  // `?force=new` bypasses this so the picker's "Install on another
+  // account" action can still reach GitHub to add a fresh install.
+  const forceNew = c.req.query("force") === "new";
+  if (!forceNew) {
+    const userId = requireSessionUserId(c);
+    let existing =
+      await c.var.services.githubAppInstallations.listInstallationsForUser(
+        userId,
+      );
+    // An author with nothing to show but a site already syncing through
+    // the App lost a binding along the way. Rebuild it from the sync
+    // settings rather than sending them round GitHub for it.
+    if (existing.length === 0) {
+      await rebuildInstallationBindings(c, app, userId);
+      existing =
+        await c.var.services.githubAppInstallations.listInstallationsForUser(
+          userId,
+        );
+    }
+    if (existing.length > 0) return renderRepoPickerPage(c);
+  }
+
+  if (app.oauth) {
+    // With nothing to show yet, ask GitHub what the author owns before
+    // offering to install: the App may already be on their account, put
+    // there through another Jant account, and the install page is a dead
+    // end for that account. The callback moves on to the install page when
+    // GitHub lists nothing.
+    return forceNew
+      ? redirectToAppInstall(c, app)
+      : redirectToGitHubSignIn(c, app.oauth);
+  }
+  if (!mayBindWithoutSignIn(c.env)) {
+    return c.text(GITHUB_OAUTH_NOT_CONFIGURED, 500);
+  }
+  return redirectToAppInstall(c, app);
 });
+
+/**
+ * Whether the callback may bind the installation the install page names
+ * without asking GitHub who installed it. Only an App without client
+ * credentials needs this.
+ *
+ * GitHub warns that the id can be forged: it rides in a URL anyone can
+ * type. On a single-site deployment that buys nothing. Its one account
+ * belongs to whoever runs the deployment, who holds the App's private key
+ * and can already act on every installation of the App. A host-based
+ * deployment serves many authors, and a forged id would let one of them
+ * take over another's installation.
+ */
+function mayBindWithoutSignIn(env: Bindings): boolean {
+  return getSiteResolutionMode(env) === "single-site";
+}
+
+/**
+ * Check that the callback carries the `state` this browser's round trip
+ * started with.
+ *
+ * The cookie stops a forged callback from binding the attacker's GitHub
+ * account to this author's site, where their posts would then be pushed.
+ * Behind a control plane the state must also verify and name this host,
+ * which stops a rogue control plane from sending a replayed token to
+ * another site.
+ *
+ * @param c - Request context carrying the callback query and cookies.
+ * @returns The response to stop with, or `null` when the state is good.
+ */
+async function rejectRoundTripState(c: Context<Env>): Promise<Response | null> {
+  const state = c.req.query("state");
+  const expected = getCookie(c, GITHUB_STATE_COOKIE);
+  if (!state || !expected || expected !== state) {
+    return c.text("Invalid or expired state.", 400);
+  }
+
+  const ssoSecret = getHostedControlPlaneSsoSecret(c.env);
+  if (ssoSecret) {
+    const payload = await verifyInstallState(state, ssoSecret);
+    const currentHost = new URL(c.var.appConfig.siteUrl).host;
+    if (!payload || payload.host !== currentHost) {
+      return c.text("State signature invalid for this host.", 400);
+    }
+  }
+  return null;
+}
+
+/**
+ * Where GitHub sends the browser back, from either kind of trip.
+ *
+ * With the App's client credentials set, the installation id the install
+ * page (the App's Setup URL) sends back is never read, since anyone can
+ * type it into this URL. The author signs in with GitHub instead, and only
+ * the installations GitHub says they own are bound. Without credentials, a
+ * single-site deployment binds the id the install page sent, after GitHub
+ * confirms the App has that installation.
+ */
+settingsRoutes.get("/github-sync/app/callback", async (c) => {
+  const app = getGitHubAppConfig(c.env);
+  if (!app) {
+    return c.text("GitHub App is not configured on this deployment.", 404);
+  }
+  if (app.oauth) return completeGitHubSignIn(c, app, app.oauth);
+  if (mayBindWithoutSignIn(c.env)) return completeAppInstall(c, app);
+  return c.text(GITHUB_OAUTH_NOT_CONFIGURED, 500);
+});
+
+/**
+ * Finish a round trip through GitHub sign-in.
+ *
+ * From the install page it arrives with `installation_id` and no `code`,
+ * and the author is sent on to sign in. From sign-in (the App's redirect
+ * URI) it arrives with `code` and our `state`. The code buys a user token,
+ * the token answers which installations this person owns, and those alone
+ * are bound to this site.
+ */
+async function completeGitHubSignIn(
+  c: Context<Env>,
+  app: GitHubAppEnvConfig,
+  oauth: GitHubAppOAuthConfig,
+) {
+  // Sign-in turned down on GitHub's side. Sending the browser back to
+  // sign-in would only show the same prompt again.
+  if (c.req.query("error")) {
+    endGitHubRoundTrip(c);
+    return c.text(
+      "GitHub sign-in was declined, so no account was connected. Start again from GitHub Sync settings to connect one.",
+      400,
+    );
+  }
+
+  const code = c.req.query("code");
+  if (!code) return redirectToGitHubSignIn(c, oauth);
+
+  const rejected = await rejectRoundTripState(c);
+  if (rejected) return rejected;
+  const verifier = getCookie(c, GITHUB_PKCE_COOKIE);
+  if (!verifier) return c.text("Invalid or expired state.", 400);
+
+  let owned: OwnedInstallation[];
+  try {
+    owned = await listOwnedInstallations(oauth, code, verifier);
+  } catch {
+    return c.text(
+      "GitHub did not confirm which accounts you own. Start again from GitHub Sync settings.",
+      502,
+    );
+  }
+
+  // Nothing installed on an account this person owns: the install page is
+  // the way on, and it comes back here once the App is installed. This
+  // replaces the state cookie with the install trip's own.
+  if (owned.length === 0) return redirectToAppInstall(c, app);
+
+  endGitHubRoundTrip(c);
+  for (const { installationId, account } of owned) {
+    await c.var.services.githubAppInstallations.upsertInstallation(
+      installationId,
+      c.var.currentSite.id,
+      account,
+    );
+  }
+  return renderRepoPickerPage(c);
+}
+
+/**
+ * Finish an install trip on a deployment that may bind the installation
+ * GitHub names (see `mayBindWithoutSignIn`).
+ */
+async function completeAppInstall(c: Context<Env>, app: GitHubAppEnvConfig) {
+  const installationId = c.req.query("installation_id");
+  if (!installationId) return c.text("Missing installation_id.", 400);
+
+  const rejected = await rejectRoundTripState(c);
+  if (rejected) return rejected;
+
+  // The binding is what every later step reads, so the round trip ends
+  // only once it is written: GitHub won't send a second callback for an
+  // App that is now installed, and until then reloading this URL is the
+  // retry.
+  try {
+    const installation = await getInstallation(app, installationId);
+    await c.var.services.githubAppInstallations.upsertInstallation(
+      installationId,
+      c.var.currentSite.id,
+      installation.account,
+    );
+  } catch {
+    return c.text(
+      "The App was installed, but GitHub did not answer with the account details. Reload this page to try again.",
+      502,
+    );
+  }
+
+  endGitHubRoundTrip(c);
+  return renderRepoPickerPage(c);
+}
 
 /**
  * Values that keep a placeholder literal for the client to fill in.
@@ -2828,7 +3068,7 @@ settingsRoutes.post("/github-sync/app/connect", async (c) => {
  * Helper: load the GitHub App config or short-circuit with a 404 JSON error.
  */
 type RequireAppResult =
-  | { app: import("../../lib/env.js").GitHubAppEnvConfig; response: null }
+  | { app: GitHubAppEnvConfig; response: null }
   | { app: null; response: Response };
 
 function requireGitHubApp(c: Context<Env>): RequireAppResult {
@@ -2851,7 +3091,7 @@ function requireGitHubApp(c: Context<Env>): RequireAppResult {
  * top-level imports (the module already lazy-imports github-api).
  */
 async function getInstallationTokenFromApp(
-  app: import("../../lib/env.js").GitHubAppEnvConfig,
+  app: GitHubAppEnvConfig,
   installationId: string,
 ): Promise<string> {
   const { getInstallationToken } = await import("../../lib/github-app.js");

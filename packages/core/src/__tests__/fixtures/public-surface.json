@@ -175,6 +175,8 @@
         "off"
       ],
       "DISCOVER_PING_URL": [],
+      "GITHUB_APP_CLIENT_ID": [],
+      "GITHUB_APP_CLIENT_SECRET": [],
       "GITHUB_APP_ID": [],
       "GITHUB_APP_PRIVATE_KEY": [],
       "GITHUB_APP_SLUG": [],
@@ -229,6 +231,8 @@
       "SITE_ORIGIN": [],
       "SITE_PATH_PREFIX": [],
       "SLUG_ID_LENGTH": [],
+      "STATS_DAILY_LIMIT": [],
+      "STATS_ENABLED": [],
       "STORAGE_DRIVER": [
         "local",
         "r2",

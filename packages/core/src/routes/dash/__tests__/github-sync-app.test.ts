@@ -6,6 +6,12 @@
  * existing installation's Configure page and never calls back. These
  * tests pin the way out of that: installations follow the author across
  * the sites they belong to, and stop at every other tenant.
+ *
+ * With the App's client credentials set, a new binding needs GitHub's
+ * word that the author owns the installation. The id in the callback URL
+ * is anyone's to type, so the callback tests pin that it is never what
+ * gets bound. Without them, only a single-site deployment, whose one
+ * account holds the App's private key anyway, binds that id.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +28,7 @@ const setupWebhook = vi.fn();
 const pushFullSync = vi.fn();
 const classifyRepoForSync = vi.fn();
 const getInstallation = vi.fn();
+const listOwnedInstallations = vi.fn();
 
 vi.mock("../../../services/github-sync.js", () => ({
   classifyRepoForSync: (...args: unknown[]) => classifyRepoForSync(...args),
@@ -39,9 +46,17 @@ vi.mock("../../../lib/github-api.js", async (importOriginal) => ({
 vi.mock("../../../lib/github-app.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../lib/github-app.js")>()),
   getInstallation: (...args: unknown[]) => getInstallation(...args),
+  listOwnedInstallations: (...args: unknown[]) =>
+    listOwnedInstallations(...args),
 }));
 
-function createGitHubApp(options: { authenticated?: boolean } = {}) {
+function createGitHubApp(
+  options: {
+    authenticated?: boolean;
+    oauth?: boolean;
+    mode?: "single-site" | "host-based";
+  } = {},
+) {
   const harness = createTestApp({
     authenticated: options.authenticated ?? true,
   });
@@ -50,6 +65,11 @@ function createGitHubApp(options: { authenticated?: boolean } = {}) {
     c.env.GITHUB_APP_PRIVATE_KEY =
       "-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----";
     c.env.GITHUB_APP_SLUG = "jant-sync";
+    if (options.oauth ?? true) {
+      c.env.GITHUB_APP_CLIENT_ID = "Iv1.client";
+      c.env.GITHUB_APP_CLIENT_SECRET = "client-secret";
+    }
+    if (options.mode) c.env.SITE_RESOLUTION_MODE = options.mode;
     await next();
   });
   harness.app.route("/settings", settingsRoutes);
@@ -126,8 +146,22 @@ describe("GitHub App connect flow", () => {
   });
 
   describe("GET /settings/github-sync/app/install", () => {
-    it("sends a first-time author to GitHub to install the App", async () => {
+    it("asks GitHub what a first-time author owns before installing", async () => {
+      // The App may already be on their GitHub account, put there through
+      // another Jant account, and GitHub's install page is a dead end for
+      // an account that has it.
       const { app } = createGitHubApp();
+
+      const res = await app.request("/settings/github-sync/app/install");
+
+      expect(res.status).toBe(302);
+      expect(res.headers.get("location")).toMatch(
+        /^https:\/\/github\.com\/login\/oauth\/authorize\?client_id=Iv1\.client&/,
+      );
+    });
+
+    it("installs straight away on a single-site deployment without client credentials", async () => {
+      const { app } = createGitHubApp({ oauth: false });
 
       const res = await app.request("/settings/github-sync/app/install");
 
@@ -135,6 +169,25 @@ describe("GitHub App connect flow", () => {
       expect(res.headers.get("location")).toContain(
         "https://github.com/apps/jant-sync/installations/new",
       );
+    });
+
+    it("names the missing variables on a host-based deployment without client credentials", async () => {
+      const { app } = createGitHubApp({ oauth: false, mode: "host-based" });
+
+      const res = await app.request("/settings/github-sync/app/install");
+
+      expect(res.status).toBe(500);
+      expect(await res.text()).toContain("GITHUB_APP_CLIENT_SECRET");
+    });
+
+    it("still opens the picker without client credentials when the author has an account", async () => {
+      const { app, sqlite } = createGitHubApp({ oauth: false });
+      insertSiblingSiteInstallation(sqlite);
+
+      const res = await app.request("/settings/github-sync/app/install");
+
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain("<jant-repo-picker");
     });
 
     it("renders the picker when the author authorized an account on another of their sites", async () => {
@@ -156,7 +209,9 @@ describe("GitHub App connect flow", () => {
       );
 
       expect(res.status).toBe(302);
-      expect(res.headers.get("location")).toContain("github.com");
+      expect(res.headers.get("location")).toContain(
+        "https://github.com/apps/jant-sync/installations/new",
+      );
     });
 
     it("ignores an installation bound to another tenant's site", async () => {
@@ -166,6 +221,228 @@ describe("GitHub App connect flow", () => {
       const res = await app.request("/settings/github-sync/app/install");
 
       expect(res.status).toBe(302);
+    });
+  });
+
+  describe("GET /settings/github-sync/app/callback", () => {
+    /** Start a trip to GitHub the way the settings page does, keeping its cookies. */
+    async function startTrip(
+      app: ReturnType<typeof createGitHubApp>["app"],
+      path = "/settings/github-sync/app/install",
+    ) {
+      const res = await app.request(path);
+      const location = new URL(res.headers.get("location") ?? "");
+      const cookie = res.headers
+        .getSetCookie()
+        .map((header) => header.split(";")[0])
+        .join("; ");
+      return { state: location.searchParams.get("state") ?? "", cookie };
+    }
+
+    it("never binds the installation id GitHub's install page passes along", async () => {
+      // The attack: start an install trip of your own, so the state and
+      // cookie are genuine, then come back with someone else's id.
+      const { app, sqlite, services } = createGitHubApp();
+      insertOtherTenantInstallation(sqlite);
+      getInstallation.mockResolvedValue({
+        account: { login: "stranger", type: "User", avatarUrl: "" },
+      });
+      const { state, cookie } = await startTrip(
+        app,
+        "/settings/github-sync/app/install?force=new",
+      );
+
+      const res = await app.request(
+        `/settings/github-sync/app/callback?installation_id=inst-theirs&setup_action=install&state=${encodeURIComponent(state)}`,
+        { headers: { cookie } },
+      );
+
+      expect(res.status).toBe(302);
+      expect(res.headers.get("location")).toContain(
+        "https://github.com/login/oauth/authorize",
+      );
+      expect(getInstallation).not.toHaveBeenCalled();
+      expect(
+        await services.githubAppInstallations.listInstallationsForSite(
+          DEFAULT_TEST_SITE_ID,
+        ),
+      ).toEqual([]);
+    });
+
+    it("binds the installations GitHub says the author owns, and nothing else", async () => {
+      const { app, sqlite, services } = createGitHubApp();
+      insertOtherTenantInstallation(sqlite);
+      listOwnedInstallations.mockResolvedValue([
+        {
+          installationId: "inst-owned",
+          account: { login: "octo", type: "User", avatarUrl: "" },
+        },
+      ]);
+      const { state, cookie } = await startTrip(app);
+
+      const res = await app.request(
+        `/settings/github-sync/app/callback?code=gh-code&state=${encodeURIComponent(state)}&installation_id=inst-theirs`,
+        { headers: { cookie } },
+      );
+
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain("<jant-repo-picker");
+      expect(listOwnedInstallations).toHaveBeenCalledWith(
+        { clientId: "Iv1.client", clientSecret: "client-secret" },
+        "gh-code",
+        expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+      );
+      expect(
+        await services.githubAppInstallations.listInstallationsForSite(
+          DEFAULT_TEST_SITE_ID,
+        ),
+      ).toMatchObject([{ installationId: "inst-owned" }]);
+    });
+
+    it("sends an author who owns no installation on to the install page", async () => {
+      const { app, services } = createGitHubApp();
+      listOwnedInstallations.mockResolvedValue([]);
+      const { state, cookie } = await startTrip(app);
+
+      const res = await app.request(
+        `/settings/github-sync/app/callback?code=gh-code&state=${encodeURIComponent(state)}`,
+        { headers: { cookie } },
+      );
+
+      expect(res.status).toBe(302);
+      expect(res.headers.get("location")).toContain(
+        "https://github.com/apps/jant-sync/installations/new",
+      );
+      expect(
+        await services.githubAppInstallations.listInstallationsForSite(
+          DEFAULT_TEST_SITE_ID,
+        ),
+      ).toEqual([]);
+    });
+
+    it("turns away a code that arrives without this browser's state", async () => {
+      // Otherwise a forged link could bind the attacker's GitHub account to
+      // this author's site, and their posts would be pushed there.
+      const { app } = createGitHubApp();
+      const { cookie } = await startTrip(app);
+
+      const res = await app.request(
+        "/settings/github-sync/app/callback?code=attacker-code&state=forged",
+        { headers: { cookie } },
+      );
+
+      expect(res.status).toBe(400);
+      expect(listOwnedInstallations).not.toHaveBeenCalled();
+    });
+
+    it("stops when the author declines sign-in instead of asking again", async () => {
+      const { app } = createGitHubApp();
+      const { state, cookie } = await startTrip(app);
+
+      const res = await app.request(
+        `/settings/github-sync/app/callback?error=access_denied&state=${encodeURIComponent(state)}`,
+        { headers: { cookie } },
+      );
+
+      expect(res.status).toBe(400);
+      expect(await res.text()).toContain("declined");
+    });
+
+    it("says what to do when GitHub does not confirm the accounts", async () => {
+      const { app } = createGitHubApp();
+      listOwnedInstallations.mockRejectedValue(
+        new Error(
+          "GitHub OAuth code exchange failed (200): bad_verification_code",
+        ),
+      );
+      const { state, cookie } = await startTrip(app);
+
+      const res = await app.request(
+        `/settings/github-sync/app/callback?code=stale&state=${encodeURIComponent(state)}`,
+        { headers: { cookie } },
+      );
+
+      expect(res.status).toBe(502);
+      expect(await res.text()).toContain("Start again");
+    });
+
+    describe("without client credentials", () => {
+      it("binds the installation the install page names on a single-site deployment", async () => {
+        // Its one account runs the deployment and holds the App's private
+        // key, so a forged id gets it nothing it couldn't reach already.
+        const { app, services } = createGitHubApp({ oauth: false });
+        getInstallation.mockResolvedValue({
+          account: { login: "octo", type: "User", avatarUrl: "" },
+        });
+        const { state, cookie } = await startTrip(app);
+
+        const res = await app.request(
+          `/settings/github-sync/app/callback?installation_id=inst-new&setup_action=install&state=${encodeURIComponent(state)}`,
+          { headers: { cookie } },
+        );
+
+        expect(res.status).toBe(200);
+        expect(await res.text()).toContain("<jant-repo-picker");
+        expect(getInstallation).toHaveBeenCalledWith(
+          expect.anything(),
+          "inst-new",
+        );
+        expect(
+          await services.githubAppInstallations.listInstallationsForSite(
+            DEFAULT_TEST_SITE_ID,
+          ),
+        ).toMatchObject([{ installationId: "inst-new" }]);
+      });
+
+      it("turns away an install callback without this browser's state", async () => {
+        const { app } = createGitHubApp({ oauth: false });
+        const { cookie } = await startTrip(app);
+
+        const res = await app.request(
+          "/settings/github-sync/app/callback?installation_id=inst-new&state=forged",
+          { headers: { cookie } },
+        );
+
+        expect(res.status).toBe(400);
+        expect(getInstallation).not.toHaveBeenCalled();
+      });
+
+      it("keeps the trip open when GitHub doesn't answer, so a reload retries", async () => {
+        // GitHub won't call back a second time for an App now installed.
+        const { app } = createGitHubApp({ oauth: false });
+        getInstallation.mockRejectedValue(
+          new Error("Fetching installation failed (500)"),
+        );
+        const { state, cookie } = await startTrip(app);
+
+        const res = await app.request(
+          `/settings/github-sync/app/callback?installation_id=inst-new&state=${encodeURIComponent(state)}`,
+          { headers: { cookie } },
+        );
+
+        expect(res.status).toBe(502);
+        expect(res.headers.getSetCookie()).toEqual([]);
+      });
+
+      it("binds nothing on a host-based deployment", async () => {
+        const { app, sqlite, services } = createGitHubApp({
+          oauth: false,
+          mode: "host-based",
+        });
+        insertOtherTenantInstallation(sqlite);
+
+        const res = await app.request(
+          "/settings/github-sync/app/callback?installation_id=inst-theirs&state=any",
+        );
+
+        expect(res.status).toBe(500);
+        expect(getInstallation).not.toHaveBeenCalled();
+        expect(
+          await services.githubAppInstallations.listInstallationsForSite(
+            DEFAULT_TEST_SITE_ID,
+          ),
+        ).toEqual([]);
+      });
     });
   });
 

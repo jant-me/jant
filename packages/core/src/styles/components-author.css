@@ -1619,4 +1619,152 @@
   .skel-section-lg {
     min-height: 300px;
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Stats page: a window switch, a bar chart, two lists, one switch         */
+  /* ---------------------------------------------------------------------- */
+
+  .settings-stats {
+    @apply flex flex-col;
+    gap: 2rem;
+    max-width: var(--form-max-width);
+  }
+
+  .settings-stats-header {
+    @apply flex flex-wrap items-baseline justify-between;
+    gap: 0.75rem 1.5rem;
+  }
+
+  .settings-stats-title {
+    margin: 0;
+    font-size: var(--type-title);
+    font-weight: var(--fw-semibold);
+    line-height: var(--type-heading-leading);
+  }
+
+  .settings-stats-windows {
+    @apply flex;
+    gap: 0.25rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-sm);
+  }
+
+  .settings-stats-window {
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    color: var(--site-text-secondary);
+    text-decoration: none;
+    transition:
+      color 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .settings-stats-window:hover {
+    color: var(--foreground);
+  }
+
+  .settings-stats-window[aria-current="page"] {
+    color: var(--foreground);
+    background: var(--muted);
+  }
+
+  .settings-stats-total {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-subtitle);
+    font-weight: var(--fw-medium);
+  }
+
+  .settings-stats-figure {
+    margin: 0;
+    color: var(--primary);
+  }
+
+  .settings-stats-chart {
+    display: block;
+    width: 100%;
+    height: 9rem;
+  }
+
+  .settings-stats-bar {
+    fill: currentColor;
+    opacity: 0.8;
+    transition: opacity 150ms ease;
+  }
+
+  .settings-stats-bar:hover {
+    opacity: 1;
+  }
+
+  /* The baseline under the bars. It starts where the record does: the chart
+     sets `--stats-start` to the share of the window that was never counted. */
+  .settings-stats-axis {
+    @apply flex justify-between;
+    margin-left: var(--stats-start, 0%);
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-ui);
+    font-size: var(--type-xs);
+    color: var(--site-text-secondary);
+  }
+
+  .settings-stats-axis > span {
+    white-space: nowrap;
+  }
+
+  /* Today's date alone, under the end of the baseline. */
+  .settings-stats-axis-single {
+    @apply justify-end;
+  }
+
+  .settings-stats-section {
+    @apply flex flex-col;
+    gap: 0.5rem;
+  }
+
+  .settings-stats-heading {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: 0.02em;
+    color: var(--site-text-secondary);
+  }
+
+  .settings-stats-list {
+    @apply flex flex-col;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .settings-stats-row {
+    @apply flex items-center;
+    gap: 0.75rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-stats-row:last-child {
+    border-bottom: none;
+  }
+
+  .settings-stats-label {
+    @apply flex-1 min-w-0 truncate;
+  }
+
+  .settings-stats-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .settings-stats-link:hover {
+    text-decoration: underline;
+  }
+
+  .settings-stats-count {
+    font-family: var(--font-ui);
+    font-variant-numeric: tabular-nums;
+    color: var(--site-text-secondary);
+  }
 }

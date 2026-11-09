@@ -431,6 +431,14 @@ location /_assets/ {
 | ---------------- | ------- | ------------------------------------------------------------------------ |
 | `SLUG_ID_LENGTH` | `5`     | Length of the random slug auto-generated for untitled posts, `3` to `32` |
 
+### Stats (optional)
+
+| Variable            | Default | Description                                                                                                                 |
+| ------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `STATS_DAILY_LIMIT` | `20000` | Views counted in one day before counting pauses until the next. `0` means no limit, and is the default with Node and Docker |
+
+The limit keeps a well-read day inside Cloudflare's free-tier D1 write quota. See [Stats](stats.md).
+
 ### Upload size limits (optional)
 
 | Variable                  | Default | Description                             |
@@ -495,7 +503,8 @@ version control.
 
 ### GitHub App (optional)
 
-`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`, and
+`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`,
+`GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and
 `GITHUB_APP_WEBHOOK_SECRET` connect GitHub Sync through your own GitHub App
 instead of a personal access token. See [GitHub Sync](github-sync.md).
 
@@ -531,6 +540,7 @@ These settings can be changed on Jant's Settings page after setup. Each one can 
 | `PUBLIC_API_ENABLED`         | Allow JSON reads without a session or API token  |
 | `RSS_FEEDS_ENABLED`          | Publish Atom feeds and built-in feed links       |
 | `DISCOVER`                   | Whether the site appears in Jant Discover        |
+| `STATS_ENABLED`              | Count page views; off deletes the counts         |
 
 Multilingual sites carry two more settings, `ADDITIONAL_LANGUAGES` and `MULTILINGUAL_ENABLED`. Both are written by the Language page rather than set by hand, because their values have to stay consistent with the language stamped on your posts — see [Multilingual content](multilingual.md).
 

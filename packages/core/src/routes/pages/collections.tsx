@@ -37,6 +37,7 @@ export const collectionsPageRoutes = new Hono<Env>();
 export async function renderCollectionsDirectory(
   c: Context<Env>,
 ): Promise<Response> {
+  c.set("viewTarget", { kind: "path" });
   // The numbers have to match the collection pages these rows link to, so they
   // carry this reader's visibility and this view's language. Both come from the
   // request rather than from `navData` — `navData.isAuthenticated` is

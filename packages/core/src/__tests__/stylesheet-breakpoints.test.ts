@@ -15,12 +15,10 @@ import { readAllStylesheets } from "./helpers/component-css.js";
  */
 const LEDGER = [
   480, // Header hamburger; the composer's post-meta pill sheds its words.
-  580, // Nav collapse tier-sm.
   640, // Media grid and lightbox chrome.
   700, // The phone switch.
-  780, // Nav collapse tier-md.
-  960, // Nav collapse tier-lg.
-  1024, // Tufte two-column → single-column.
+  960, // The full-screen composer tightens its padding and title sizes.
+  1024, // Tufte two-column → single-column; the page frame narrows to the column.
   1079, // Collections sidebar drops out.
   1200, // Header search collapses to an icon.
 ] as const;
@@ -163,14 +161,14 @@ describe("stylesheet breakpoints", () => {
     // The regression this file exists for. Touch sizing and the mobile type
     // scale used to ride on 760px while the layout they sit inside switched at
     // 700px; anything between the two was a desktop window wearing phone
-    // controls. Any width breakpoint in the 700s that is not the nav ladder's
-    // 780px is that drift coming back.
+    // controls. Any other width breakpoint in the 700s is that drift coming
+    // back.
     const nearMisses = collectConditions()
       .filter(
         (condition) =>
           condition.axis === "width" &&
           condition.value > 700 &&
-          condition.value < 780,
+          condition.value < 800,
       )
       .map(
         (condition) =>

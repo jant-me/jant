@@ -15,6 +15,7 @@ import type { MediaContext } from "../view.js";
 import type {
   PostWithMedia,
   Media,
+  MediaAttachment,
   NavItem,
   SearchResult,
   Post,
@@ -438,6 +439,97 @@ describe("toPostView", () => {
     expect(view.bodyHtml).toBe(
       "<p>Lead</p><span data-note-break></span><!--more--><p>tiny</p>",
     );
+  });
+
+  describe("inline image in a titled post's excerpt", () => {
+    const leadImageBody = JSON.stringify({
+      type: "doc",
+      content: [
+        { type: "image", attrs: { src: "https://example.com/lead.png" } },
+        { type: "paragraph", content: [{ type: "text", text: "Intro" }] },
+      ],
+    });
+    const leadFigure =
+      '<figure><img src="https://example.com/lead.png"></figure>';
+
+    it("keeps the lead image", () => {
+      const view = toPostView(
+        makePostWithMedia({ title: "Article", body: leadImageBody }),
+        EMPTY_CTX,
+      );
+      expect(view.summaryHtml).toBe(`${leadFigure}<p>Intro</p>`);
+      expect(view.summaryHasMore).toBe(false);
+    });
+
+    const attachment = (mimeType: string): MediaAttachment => ({
+      id: "med_attachment",
+      url: "https://cdn.example.com/a",
+      previewUrl: "https://cdn.example.com/a",
+      alt: null,
+      blurhash: null,
+      waveform: null,
+      posterUrl: null,
+      width: null,
+      height: null,
+      durationSeconds: null,
+      position: "a0",
+      mimeType,
+      originalName: "a",
+      size: 1000,
+      summary: null,
+      chars: null,
+    });
+
+    it.each(["image/webp", "video/mp4"])(
+      "stays text only when the post has a %s attachment",
+      (mimeType) => {
+        const view = toPostView(
+          makePostWithMedia({
+            title: "Article",
+            body: leadImageBody,
+            mediaAttachments: [attachment(mimeType)],
+          }),
+          EMPTY_CTX,
+        );
+        expect(view.summaryHtml).toBe("<p>Intro</p>");
+      },
+    );
+
+    it("keeps the lead image when the only attachment is audio", () => {
+      const view = toPostView(
+        makePostWithMedia({
+          title: "Article",
+          body: leadImageBody,
+          mediaAttachments: [attachment("audio/mpeg")],
+        }),
+        EMPTY_CTX,
+      );
+      expect(view.summaryHtml).toBe(`${leadFigure}<p>Intro</p>`);
+    });
+
+    it("places the #continue anchor after a kept image at the cut", () => {
+      const textA = "A".repeat(450);
+      const textB = "B".repeat(100);
+      const body = JSON.stringify({
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: textA }] },
+          { type: "image", attrs: { src: "https://example.com/mid.png" } },
+          { type: "paragraph", content: [{ type: "text", text: textB }] },
+        ],
+      });
+      const bodyHtml = renderTiptapJson(body, { namespace: UUID_1 });
+      const view = toPostView(
+        makePostWithMedia({ title: "Article", body, bodyHtml }),
+        EMPTY_CTX,
+      );
+      const figure = '<figure><img src="https://example.com/mid.png"></figure>';
+      expect(view.summaryHtml).toBe(`<p>${textA}</p>${figure}`);
+      expect(view.summaryHasMore).toBe(true);
+      expect(view.bodyHtml).toBe(
+        `<p>${textA}</p>${figure}<span id="continue"></span><p>${textB}</p>`,
+      );
+    });
   });
 
   it("does not compute summaryHtml for posts without body", () => {

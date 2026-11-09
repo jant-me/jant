@@ -416,6 +416,7 @@ export async function renderArchivePage(
   c: Context<Env>,
   queryOverrides?: Record<string, string>,
 ): Promise<Response> {
+  c.set("viewTarget", { kind: "path" });
   const { services, appConfig } = c.var;
   const pageSize = appConfig.archivePageSize;
   const { params, collections: preloadedCollections } =

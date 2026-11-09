@@ -30,6 +30,7 @@ const ICONS = {
   send: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>`,
   cloud: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>`,
   sliders: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="8" y2="8"/><line x1="17" x2="23" y1="16" y2="16"/></svg>`,
+  barChart: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>`,
 };
 
 export function SettingsRootContent({
@@ -138,19 +139,19 @@ export function SettingsRootContent({
           )}
         />
         <SettingsDirectoryLink
-          href={toPublicPath("/settings/custom-urls", sitePathPrefix)}
-          icon={ICONS.arrowRightLeft}
+          href={toPublicPath("/settings/stats", sitePathPrefix)}
+          icon={ICONS.barChart}
           tone="subtle"
           name={i18n._(
             msg({
-              message: "Custom URLs",
-              comment: "@context: Settings item — custom URL settings",
+              message: "Stats",
+              comment: "@context: Settings item — view stats",
             }),
           )}
           description={i18n._(
             msg({
-              message: "Redirects, vanity paths, and URL control",
-              comment: "@context: Settings item description for custom URLs",
+              message: "Views by day, most-read pages, and referrers",
+              comment: "@context: Settings item description for stats",
             }),
           )}
         />
@@ -303,6 +304,23 @@ export function SettingsRootContent({
           }),
         )}
       >
+        <SettingsDirectoryLink
+          href={toPublicPath("/settings/custom-urls", sitePathPrefix)}
+          icon={ICONS.arrowRightLeft}
+          tone="subtle"
+          name={i18n._(
+            msg({
+              message: "Custom URLs",
+              comment: "@context: Settings item — custom URL settings",
+            }),
+          )}
+          description={i18n._(
+            msg({
+              message: "Redirects, vanity paths, and URL control",
+              comment: "@context: Settings item description for custom URLs",
+            }),
+          )}
+        />
         <SettingsDirectoryLink
           href={toPublicPath("/settings/code-injection", sitePathPrefix)}
           icon={ICONS.terminal}

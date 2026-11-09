@@ -86,6 +86,7 @@ export const ENV_RULES = {
   RATE_LIMIT_SEARCH_PER_MIN: { kind: "integer", min: 0 },
   UPLOAD_MAX_FILE_SIZE_MB: { kind: "integer", min: 1 },
   SLUG_ID_LENGTH: { kind: "integer", min: 3, max: 32 },
+  STATS_DAILY_LIMIT: { kind: "integer", min: 0 },
   STORAGE_DRIVER: { kind: "enum", options: STORAGE_DRIVERS },
   SITE_RESOLUTION_MODE: {
     kind: "enum",
@@ -601,6 +602,21 @@ export interface GitHubAppEnvConfig {
   privateKey: string;
   slug: string;
   webhookSecret?: string;
+  /**
+   * The App's OAuth client credentials, or `null` when either is unset.
+   *
+   * Syncing never needs them — installation tokens come from the private
+   * key. Connecting an account uses them: they are the only way to learn
+   * which installations the person in front of the browser actually owns.
+   * A host-based deployment can't connect one without them.
+   */
+  oauth: GitHubAppOAuthConfig | null;
+}
+
+/** OAuth client credentials of a GitHub App (not the App ID). */
+export interface GitHubAppOAuthConfig {
+  clientId: string;
+  clientSecret: string;
 }
 
 export function getGitHubAppConfig(env: EnvSource): GitHubAppEnvConfig | null {
@@ -614,11 +630,15 @@ export function getGitHubAppConfig(env: EnvSource): GitHubAppEnvConfig | null {
     ? rawKey.replace(/\\n/g, "\n")
     : rawKey;
 
+  const clientId = getEnvString(env, "GITHUB_APP_CLIENT_ID");
+  const clientSecret = getEnvString(env, "GITHUB_APP_CLIENT_SECRET");
+
   return {
     appId,
     privateKey,
     slug,
     webhookSecret: getEnvString(env, "GITHUB_APP_WEBHOOK_SECRET"),
+    oauth: clientId && clientSecret ? { clientId, clientSecret } : null,
   };
 }
 

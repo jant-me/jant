@@ -252,7 +252,13 @@ function reevaluateAutoplay(): void {
 function scheduleReevaluate(): void {
   if (reevaluateTimer !== null) {
     globalThis.clearTimeout(reevaluateTimer);
+    reevaluateTimer = null;
   }
+
+  // A page without a feed video has nothing to choose between, so it gets no
+  // timer: one set anyway would fire after the document is gone, which in
+  // the test runner's torn-down environment is a crash.
+  if (registeredVideos.size === 0) return;
 
   reevaluateTimer = globalThis.setTimeout(
     reevaluateAutoplay,

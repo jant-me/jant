@@ -85,6 +85,7 @@ export async function renderCollectionPage(
   slugExpressionOrSelection: string | ResolvedCollectionSelection,
   pagePathOverride?: string,
 ): Promise<Response | null> {
+  c.set("viewTarget", { kind: "path" });
   const page = parsePageNumber(c.req.query("page"));
   const paginatedPageTitle = formatPageLabel(page);
   const isAuthenticated = c.var.isAuthenticated;
@@ -122,6 +123,11 @@ export async function renderCollectionPage(
     (collection) => collection.id,
   );
   const isAggregate = selection.collections.length > 1;
+  // One collection is counted by id, whatever address it was opened at; an
+  // aggregate selection is a page of its own, counted by its path.
+  if (!isAggregate) {
+    c.set("viewTarget", { kind: "collection", id: primaryCollection.id });
+  }
   const requestedDefaultSort = isAggregate
     ? "newest"
     : primaryCollection.sortOrder;

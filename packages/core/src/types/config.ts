@@ -308,6 +308,14 @@ export const CONFIG_FIELDS = {
     envOnly: true,
     envKeys: ["SLUG_ID_LENGTH"],
   },
+  // Views one instance records per day before counting pauses until the next
+  // UTC day. The registry default is the Cloudflare one; `resolveConfig`
+  // reads an unset variable as no limit on Node, where no write quota exists.
+  STATS_DAILY_LIMIT: {
+    defaultValue: "20000",
+    envOnly: true,
+    envKeys: ["STATS_DAILY_LIMIT"],
+  },
   RSS_FEED_LIMIT: {
     defaultValue: "50",
     envOnly: false,
@@ -466,6 +474,25 @@ export const CONFIG_FIELDS = {
     envOnly: false,
     envKeys: ["RSS_FEEDS_ENABLED"],
     editor: { type: "boolean" },
+  },
+  // Whether page views are counted. Edited on the Stats page, which deletes
+  // the counts on the way off, and deliberately kept out of Config Editor: a
+  // `false` saved there would stop the counting and leave ninety days of rows
+  // behind, which is not what "off" promises.
+  STATS_ENABLED: {
+    defaultValue: "true",
+    envOnly: false,
+    envKeys: ["STATS_ENABLED"],
+  },
+  // The day counting began, a `YYYY-MM-DD` key in the site's time zone.
+  // Written by the stats service alone: when the switch is turned on, or by
+  // the first flush that writes the site's counts when nobody ever touched
+  // the switch; deleted with the counts on the way off. The Stats page says
+  // where its record starts instead of drawing the days before as zero.
+  STATS_SINCE: {
+    defaultValue: "",
+    envOnly: false,
+    internal: true,
   },
   // No default value, and deliberately no `editor`. "Never chosen" has to stay
   // tellable apart from an explicit choice — an unset site falls through to
@@ -627,6 +654,21 @@ export const CONFIG_FIELDS = {
     defaultValue: "",
     envOnly: true,
     envKeys: ["GITHUB_APP_WEBHOOK_SECRET"],
+  },
+  /**
+   * The App's OAuth client credentials. With them, connecting an account
+   * signs the author in with GitHub to learn which installations they own.
+   * Required on a host-based deployment; recommended on a single-site one.
+   */
+  GITHUB_APP_CLIENT_ID: {
+    defaultValue: "",
+    envOnly: true,
+    envKeys: ["GITHUB_APP_CLIENT_ID"],
+  },
+  GITHUB_APP_CLIENT_SECRET: {
+    defaultValue: "",
+    envOnly: true,
+    envKeys: ["GITHUB_APP_CLIENT_SECRET"],
   },
 
   // Telegram bot pool (env-only). When TELEGRAM_BOT_TOKENS is set the bot
@@ -839,6 +881,18 @@ export interface AppConfig {
    *  transform is configured. */
   siteAvatarThumbUrl: string;
   faviconVersion: string;
+
+  // View stats
+  stats: {
+    /** When false, no view is counted and the Stats page offers to turn it on. */
+    enabled: boolean;
+    /**
+     * Views this instance records in one UTC day before counting pauses until
+     * the next. `0` is no limit. Guards the free-tier D1 write quota, which
+     * refuses every query once spent; see `services/stats.ts`.
+     */
+    dailyLimit: number;
+  };
 
   // Rate limiting (ENV only)
   rateLimit: {

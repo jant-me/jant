@@ -17,11 +17,12 @@
    * otherwise drop the text to the OS last-resort font.
    */
   --font-cjk-serif-fallback:
-    "Songti SC", STSong, SimSun, "Noto Serif SC", "Noto Serif CJK SC",
-    "Songti TC", PMingLiU, MingLiU, "Noto Serif TC", "Noto Serif CJK TC",
-    "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho", YuMincho,
-    "Noto Serif JP", "Noto Serif CJK JP", "MS PMincho", "MS Mincho", Batang,
-    "Noto Serif KR", "Noto Serif CJK KR", NanumMyeongjo;
+    "Songti SC", "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC",
+    STSong, SimSun, "Songti TC", "Noto Serif TC", "Noto Serif CJK TC",
+    "Source Han Serif TC", PMingLiU, MingLiU, "Hiragino Mincho ProN",
+    "Hiragino Mincho Pro", "Yu Mincho", YuMincho, "Noto Serif JP",
+    "Noto Serif CJK JP", "MS PMincho", "MS Mincho", Batang, "Noto Serif KR",
+    "Noto Serif CJK KR", NanumMyeongjo;
   --font-cjk-sans-fallback:
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
     "Noto Sans CJK SC", "PingFang TC", "Hiragino Sans CNS",
@@ -97,8 +98,12 @@
   /* Content reading tokens — desktop maps to core scale,
      mobile overrides below cap sizes for small screens.
      --type-content-scale uniformly scales all content sizes
-     without affecting UI controls. */
-  --type-content-scale: 0.8;
+     without affecting UI controls.
+
+     0.86 puts the body at 18px (21px × 0.86), the floor that reading
+     surfaces settled on: Medium 21, Substack 20, Ghost 17–19, sspai 17 for
+     Chinese. Titles and headings keep their ratios to it. */
+  --type-content-scale: 0.86;
   --type-content-display: calc(var(--type-display) * var(--type-content-scale));
   --type-content-title: calc(var(--type-title) * var(--type-content-scale));
   --type-content-subtitle: calc(
@@ -126,12 +131,24 @@
   --type-thread-context-meta: var(--type-sm);
   --feed-note-title-size: calc(var(--type-content-body) * 1.36);
   --feed-note-title-leading: var(--type-heading-leading);
+  /*
+   * Reading rhythm. A page in Chinese, Japanese or Korean raises both
+   * leadings (`getCjkFontCssVariables` in ui/font-themes.ts): Han glyphs fill
+   * the em box, so the same line-height packs CJK lines tighter than Latin.
+   */
   --type-body-leading: 1.7;
   --type-display-leading: 1.15;
-  --type-heading-leading: 1.15;
-  --type-heading-weight: var(--fw-medium);
+  --type-heading-leading: 1.2;
+  /*
+   * Semibold, not medium: a heading has to outweigh bold body text, and the
+   * CJK serif faces have no 500 — Songti SC resolves 500 to Regular and 600
+   * to Bold, so medium headings came out lighter than the <strong> runs
+   * beneath them. Latin faces with a 500 (New York, Literata, Source Sans)
+   * step up half a weight. Tufte opts back out to Regular, its own look.
+   */
+  --type-heading-weight: var(--fw-semibold);
   --type-heading-tracking: 0;
-  --type-display-weight: var(--fw-medium);
+  --type-display-weight: var(--fw-semibold);
   --type-display-tracking: 0;
   --type-label-weight: var(--fw-medium);
   --type-label-tracking: 0.08em;
@@ -152,15 +169,16 @@
    *
    * `--layout-reading-width` is the reading column a post's text actually
    * gets. It tracks the proportion while the gutter exists, then keeps a
-   * measure of its own instead of going full-width. Anything that must line
-   * up with body copy — the text blocks in preset.css, a lone image
-   * (MediaGallery `getSingleVisualWidth`), a link preview, the feed divider
-   * that centers over the column — reads this one. Before it existed those
-   * consumers capped on the proportion and quietly outgrew the text between
-   * 700px and 1024px.
+   * measure of its own, `--layout-reading-measure`, instead of going
+   * full-width. Anything that must line up with body copy — the text blocks
+   * in preset.css, a lone image (MediaGallery `getSingleVisualWidth`), a link
+   * preview, the feed divider that centers over the column — reads this one.
+   * Before it existed those consumers capped on the proportion and quietly
+   * outgrew the text between 700px and 1024px.
    */
   --layout-content-width: 55%;
   --layout-reading-width: var(--layout-content-width);
+  --layout-reading-measure: 35rem;
   --layout-sidenote-width: 50%;
   --layout-sidenote-gap: 10%;
   --layout-sidenote-margin: -60%;
@@ -477,18 +495,21 @@
  * dialog.
  *
  *   480px   Header hamburger; the composer's post-meta pill sheds its words.
- *   580px   Nav collapse tier-sm (hides the 3rd inline link).
  *   640px   Media grid and lightbox chrome.
  *   700px   THE PHONE SWITCH. Below it the layout is a phone's: the composer
  *           is a full-screen sheet, the compose FAB appears, page gutters and
  *           the content type scale go narrow. Written `max-width: 699px` on
  *           the phone side and `min-width: 700px` on the desktop side, so the
  *           two never both match at 700px itself.
- *   780px   Nav collapse tier-md (also hides the 4th inline link).
- *   960px   Nav collapse tier-lg (hides the 5th+ inline link into More).
- *   1024px  Tufte two-column → single-column (see the note below).
+ *   960px   The full-screen composer tightens its padding and title sizes.
+ *   1024px  Tufte two-column → single-column, and the page frame narrows to
+ *           the reading column (see the note below).
  *   1079px  Collections sidebar drops out.
  *   1200px  Header search collapses to an icon.
+ *
+ * The header's nav links are not on this list: they collapse into More by the
+ * header's own width (`@container site-header` in ui.css), because the same
+ * viewport gives a reader page a narrower header than a settings page.
  *
  * Touch is NOT a width. Thumb-sized controls and always-visible affordances
  * belong to `(hover: none) and (pointer: coarse)`, which is what actually
@@ -505,17 +526,19 @@
 /* Tufte two-column → single-column collapse.
  *
  * There is no room for a 45% sidenote gutter here, so page shells go
- * full-width — but the reading column does not follow them. It keeps a 35rem
- * measure, and everything sized to the text (preset.css blocks, single images,
- * link previews, the feed divider) tracks that through
- * `--layout-reading-width` rather than restating the number.
+ * full-width — but the reading column does not follow them. It keeps
+ * `--layout-reading-measure`, and everything sized to the text (preset.css
+ * blocks, single images, link previews, the feed divider) tracks that through
+ * `--layout-reading-width` rather than restating the number. The page frame
+ * narrows to the same measure and centers (ui.css), so the column has no
+ * leftover width piled up on its right.
  *
  * Keep this breakpoint in sync with the sidenote float→inline collapse
  * (ui.css). They are one layout switch; do not let them drift apart. */
 @media (max-width: 1024px) {
   :root {
     --layout-content-width: 100%;
-    --layout-reading-width: min(100%, 35rem);
+    --layout-reading-width: min(100%, var(--layout-reading-measure));
   }
 }
 
@@ -629,7 +652,7 @@
   :root {
     /* Content layer — tighter scale for mobile reading.
        Ratio ≈ 1.88 : 1.42 : 1.15 : 1 (display:title:subtitle:body).
-       At 15px root × 0.8 content-scale: 29.4 / 22.2 / 18 / 15.6px.
+       At 15px root × 0.86 content-scale: 31.6 / 23.9 / 19.4 / 16.8px.
        Body is floored to a 16px minimum below (max()) for readability;
        the floor still yields to calc() when the user zooms the root up. */
     --type-content-display: calc(2.45rem * var(--type-content-scale));

@@ -80,6 +80,8 @@ export interface Bindings {
   GITHUB_APP_PRIVATE_KEY?: EnvBindingValue;
   GITHUB_APP_SLUG?: EnvBindingValue;
   GITHUB_APP_WEBHOOK_SECRET?: EnvBindingValue;
+  GITHUB_APP_CLIENT_ID?: EnvBindingValue;
+  GITHUB_APP_CLIENT_SECRET?: EnvBindingValue;
   // Rate limits
   RATE_LIMIT_ENABLED?: EnvBindingValue;
   RATE_LIMIT_SEARCH_PER_MIN?: EnvBindingValue;
@@ -108,6 +110,9 @@ export interface Bindings {
   SUMMARY_MAX_CHARS?: EnvBindingValue;
   // Slug generation
   SLUG_ID_LENGTH?: EnvBindingValue;
+  // View stats
+  STATS_ENABLED?: EnvBindingValue;
+  STATS_DAILY_LIMIT?: EnvBindingValue;
   // RSS feed
   RSS_FEED_LIMIT?: EnvBindingValue;
   RSS_PUBLISH_DELAY_SECONDS?: EnvBindingValue;

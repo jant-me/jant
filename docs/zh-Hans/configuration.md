@@ -402,6 +402,14 @@ location /_assets/ {
 | ---------------- | ------ | ------------------------------------------------------- |
 | `SLUG_ID_LENGTH` | `5`    | 对无标题帖子自动生成随机 slug 时使用的长度，`3` 到 `32` |
 
+### 统计（可选）
+
+| 变量                | 默认值  | 说明                                                                                    |
+| ------------------- | ------- | --------------------------------------------------------------------------------------- |
+| `STATS_DAILY_LIMIT` | `20000` | 一天统计到这个浏览次数后停止，第二天恢复。`0` 表示不限制，Node 和 Docker 部署默认不限制 |
+
+这个上限让访问量大的一天也不会超出 Cloudflare 免费档 D1 的每日写入额度。见[统计](stats.md)。
+
 ### 上传大小限制（可选）
 
 | 变量                      | 默认值 | 说明                       |
@@ -455,7 +463,8 @@ token 调用站点，见 [命令行](cli.md#维护)。不设置时，`/api/inter
 
 ### GitHub App（可选）
 
-`GITHUB_APP_ID`、`GITHUB_APP_PRIVATE_KEY`、`GITHUB_APP_SLUG` 和
+`GITHUB_APP_ID`、`GITHUB_APP_PRIVATE_KEY`、`GITHUB_APP_SLUG`、
+`GITHUB_APP_CLIENT_ID`、`GITHUB_APP_CLIENT_SECRET` 和
 `GITHUB_APP_WEBHOOK_SECRET` 让 GitHub 同步通过你自己的 GitHub App 连接，
 不用个人访问令牌。见 [GitHub 同步](github-sync.md)。
 
@@ -490,6 +499,7 @@ token 调用站点，见 [命令行](cli.md#维护)。不设置时，`/api/inter
 | `PUBLIC_API_ENABLED`         | 是否允许无 session 或 API token 读取 JSON |
 | `RSS_FEEDS_ENABLED`          | 是否发布 Atom feeds 和内置 feed 入口      |
 | `DISCOVER`                   | 站点是否出现在 Jant Discover              |
+| `STATS_ENABLED`              | 是否统计页面浏览，关闭即删除全部计数      |
 
 多语言站点还有两项设置：`ADDITIONAL_LANGUAGES` 和 `MULTILINGUAL_ENABLED`。它们由语言页写入，不建议手工设置——它们的值必须和帖子上标记的语言保持一致，见[多语言内容](multilingual.md)。
 

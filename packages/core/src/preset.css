@@ -249,6 +249,10 @@ html {
     margin-bottom: 1.4rem;
   }
 
+  /* A heading binds to the text it introduces: the space above it is two to
+     three times the space below, and the space below is less than a paragraph
+     gap. With equal margins on both sides, as before, a heading floated
+     halfway between the sections. */
   :where(h1) {
     font-size: var(--type-content-display);
     margin-top: 4rem;
@@ -257,23 +261,34 @@ html {
 
   :where(h2) {
     font-size: var(--type-content-title);
-    margin-top: 2.1rem;
-    margin-bottom: 1.4rem;
+    margin-top: 2.6rem;
+    margin-bottom: 0.9rem;
   }
 
   :where(h3) {
     font-size: var(--type-content-subtitle);
-    margin-top: 2rem;
-    margin-bottom: 1.4rem;
+    margin-top: 2.2rem;
+    margin-bottom: 0.75rem;
   }
 
-  :where(h4, h5, h6) {
+  :where(h4) {
     font-size: var(--type-content-body);
-    font-weight: var(--fw-medium);
+    margin-top: 1.8rem;
+    margin-bottom: 0.6rem;
   }
 
   :where(h5, h6) {
+    font-size: var(--type-content-body);
+    font-weight: var(--fw-medium);
     color: var(--site-reading-meta);
+  }
+
+  /* The block after a heading gives up its own top margin, so the heading's
+     bottom margin is the whole gap. Left in place, a paragraph's 1.4rem wins
+     the margin collapse against any smaller heading margin, and the heading
+     floats 1.4rem from both neighbours whatever its margins say. */
+  :where(h1, h2, h3, h4, h5, h6) + :where(*) {
+    margin-top: 0;
   }
 
   :where(ul, ol) {
@@ -507,17 +522,19 @@ html {
  */
 [data-post]:not(.post-detail) [data-post-body].prose {
   :where(h1, h2) {
-    font-size: calc(var(--type-content-body) * 1.12);
-    font-weight: var(--fw-medium);
-    margin-top: 1.45rem;
-    margin-bottom: 0.55rem;
+    font-size: calc(var(--type-content-body) * 1.2);
+    font-weight: var(--type-heading-weight);
+    margin-top: 1.6rem;
+    margin-bottom: 0.6rem;
   }
 
+  /* Still a step above the body: at body size in the medium weight these
+     read as a stray line, since the CJK serif faces render 500 as Regular. */
   :where(h3, h4) {
-    font-size: var(--type-content-body);
-    font-weight: var(--fw-medium);
-    margin-top: 1.2rem;
-    margin-bottom: 0.45rem;
+    font-size: calc(var(--type-content-body) * 1.08);
+    font-weight: var(--type-heading-weight);
+    margin-top: 1.4rem;
+    margin-bottom: 0.5rem;
   }
 
   :where(h5, h6) {
