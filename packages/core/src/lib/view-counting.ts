@@ -14,22 +14,55 @@
  * (`referrer-aliases.ts`).
  */
 
+import { ID_PREFIX, isTypeId } from "./ids.js";
 import { canonicalSource } from "./referrer-aliases.js";
 
 /**
- * What the page a route rendered counts as: a post, by id, or any other
- * public page, by its path. Routes set it on the context (`viewTarget`) and
- * `middleware/view-counter.ts` reads it after the response.
+ * What the page a route rendered counts as: a post, a collection or a smart
+ * collection, by id, so a count survives a change of address and an alias
+ * and its canonical path are one page; or any other public page — the home
+ * page, the archive, an aggregate selection — by its path. Routes set it on
+ * the context (`viewTarget`) and `middleware/view-counter.ts` reads it after
+ * the response.
  */
-export type ViewTarget = { kind: "post"; id: string } | { kind: "path" };
+export type ViewTarget =
+  | { kind: "post" | "collection" | "smartCollection"; id: string }
+  | { kind: "path" };
 
 /**
  * The `page` and `referrer` of a site-day's overflow row, where new
  * page-referrer pairs land once the day has `VIEW_COUNT_ROWS_PER_SITE_DAY`
- * rows. Never a real page or host: a path starts with `/`, a post id with
- * `pst_`, and a hostname has no `*`.
+ * rows. Never a real page or host: a path starts with `/`, an id with its
+ * TypeID prefix, and a hostname has no `*`.
  */
 export const VIEW_OVERFLOW_KEY = "*";
+
+/** What a counter key names, told from its shape alone. */
+export type ViewPageKind =
+  "post" | "collection" | "smartCollection" | "path" | "overflow";
+
+/**
+ * What a counter key names. A key is self-describing: the overflow key,
+ * a path, or a TypeID whose prefix says which table the entity is in. The
+ * table needs no kind column for it.
+ *
+ * @param key - A `view_count.page` value
+ * @returns Its kind, or `null` for a string that could never be a key
+ * @example
+ * ```ts
+ * viewPageKind("/archive"); // "path"
+ * viewPageKind("pst_01h455vb4pex5vsknk084sn02q"); // "post"
+ * viewPageKind("nonsense"); // null
+ * ```
+ */
+export function viewPageKind(key: string): ViewPageKind | null {
+  if (key === VIEW_OVERFLOW_KEY) return "overflow";
+  if (key.startsWith("/")) return "path";
+  if (isTypeId(key, ID_PREFIX.post)) return "post";
+  if (isTypeId(key, ID_PREFIX.collection)) return "collection";
+  if (isTypeId(key, ID_PREFIX.smartCollection)) return "smartCollection";
+  return null;
+}
 
 /** Longest page key stored; a path past this is nothing a site links to. */
 const PAGE_KEY_MAX_LENGTH = 512;

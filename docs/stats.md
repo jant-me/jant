@@ -1,6 +1,6 @@
 # Stats
 
-Jant counts page views and shows them under **Settings → Stats**: views per day for the last 7, 30, or 90 days, the ten most-read posts in that window, the other pages opened in it (the home page, the archive, collections), and the sites readers came from. Open a post in the list to see its own days and referrers.
+Jant counts page views and shows them under **Settings → Stats**: views per day for the last 7, 30, or 90 days, the ten most-opened pages in that window (posts, collections, the home page, the archive), and the sites readers came from. Open any page in the list to see its own days and referrers.
 
 The counts are the whole record. Jant stores nothing about any reader, sets no cookie, and adds no script to your pages. Counts older than 90 days are deleted. There is no lifetime total and no comparison with the window before.
 
@@ -10,7 +10,7 @@ While the day counting began falls inside the window, the total says since when,
 
 A view is a reader's browser opening a page: the home page, a post, a collection, the archive, `/featured`, or `/subscribe`. Feeds, search, and anything you open while signed in do not count. Neither do crawlers, link previews, and prefetches.
 
-A post's number is how often its own page was opened. A note read on the home page counts toward the home page, not the note.
+A post's number is how often its own page was opened. A note read on the home page counts toward the home page, not the note. The later pages of the home feed and a filtered archive count toward the home page and the archive. A post or a collection keeps its count when its address changes.
 
 ## Referrers
 

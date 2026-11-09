@@ -209,8 +209,9 @@ export type { SettingsService } from "./settings.js";
 export type {
   StatsService,
   StatsOverview,
-  StatsPostDetail,
-  StatsPostRow,
+  StatsPage,
+  StatsPageDetail,
+  StatsPageRow,
   StatsReferrerRow,
   StatsReferrers,
   StatsSeriesPoint,

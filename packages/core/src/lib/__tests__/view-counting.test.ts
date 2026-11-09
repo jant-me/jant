@@ -7,6 +7,8 @@ import {
   referrerHost,
   shiftDayKey,
   shouldCountView,
+  VIEW_OVERFLOW_KEY,
+  viewPageKind,
   viewPathKey,
   viewReferrer,
 } from "../view-counting.js";
@@ -350,5 +352,25 @@ describe("day keys", () => {
     expect(isDayKey("2026-11-08")).toBe(true);
     expect(isDayKey("2026-11-8")).toBe(false);
     expect(isDayKey("yesterday")).toBe(false);
+  });
+});
+
+describe("viewPageKind", () => {
+  it("tells a key's kind from its shape", () => {
+    expect(viewPageKind("/")).toBe("path");
+    expect(viewPageKind("/collections/a+b")).toBe("path");
+    expect(viewPageKind("pst_01h455vb4pex5vsknk084sn02q")).toBe("post");
+    expect(viewPageKind("col_01h455vb4pex5vsknk084sn02q")).toBe("collection");
+    expect(viewPageKind("smc_01h455vb4pex5vsknk084sn02q")).toBe(
+      "smartCollection",
+    );
+    expect(viewPageKind(VIEW_OVERFLOW_KEY)).toBe("overflow");
+  });
+
+  it("knows no other shape", () => {
+    expect(viewPageKind("nonsense")).toBeNull();
+    expect(viewPageKind("med_01h455vb4pex5vsknk084sn02q")).toBeNull();
+    expect(viewPageKind("pst_not-an-id")).toBeNull();
+    expect(viewPageKind("")).toBeNull();
   });
 });

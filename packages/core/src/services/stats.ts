@@ -2,7 +2,7 @@
  * View stats: what is kept, how it is written, and what the Stats page reads.
  *
  * Jant counts page views so an author can see, on one quiet page, which days
- * and which posts were read and where readers came from — and nothing else.
+ * and which pages were read and where readers came from — and nothing else.
  * No reader is identified: there are no uniques, no countries, no devices,
  * and no record of any visit. What exists is one counter per site, day, page
  * and referring host (`view_count`), and this file is the whole policy for
@@ -11,6 +11,11 @@
  * - **A row is a counter.** Ten thousand readers opening one post from one
  *   link are one row. The table grows with the variety of a day's traffic,
  *   never its volume.
+ * - **A key names a page.** A post, a collection or a smart collection is
+ *   counted by id, so its count survives a change of address; the home page,
+ *   the archive and an aggregate selection are counted by path. The key's
+ *   shape says which (`viewPageKind`), and the list is named from it when
+ *   read, never stored.
  * - **Ninety days.** Rows older than `VIEW_COUNT_RETENTION_DAYS` are deleted,
  *   once a day per site, by whichever flush comes first. Nothing is rolled up:
  *   a lifetime total is exactly the scoreboard this feature is not.
@@ -42,9 +47,9 @@ import {
   eq,
   gte,
   inArray,
-  like,
   lt,
   lte,
+  ne,
   sql,
 } from "drizzle-orm";
 import { supportsDrizzleTransaction, type Database } from "../db/index.js";
@@ -53,6 +58,7 @@ import {
   sqliteSchemaBundle,
   type DatabaseSchema,
 } from "../db/schema-bundle.js";
+import { getPostDisplayTitle } from "../lib/post-meta.js";
 import { now } from "../lib/time.js";
 import type { ViewCountEntry, ViewRecordResult } from "../lib/view-buffer.js";
 import {
@@ -60,6 +66,7 @@ import {
   isDayKey,
   shiftDayKey,
   VIEW_OVERFLOW_KEY,
+  viewPageKind,
 } from "../lib/view-counting.js";
 import type { Format } from "../types/constants.js";
 import type { SettingsService } from "./settings.js";
@@ -70,7 +77,7 @@ export const VIEW_COUNT_RETENTION_DAYS = 90;
 /** Rows one site may hold for one day before new pairs fold into overflow. */
 export const VIEW_COUNT_ROWS_PER_SITE_DAY = 5_000;
 
-/** How many posts and how many referrers the page lists. */
+/** How many pages and how many referrers the page lists. */
 export const STATS_TOP_LIMIT = 10;
 
 /** The windows the Stats page offers, in days. */
@@ -127,26 +134,45 @@ export interface StatsSeriesPoint {
   views: number;
 }
 
-/** A post in the top list, with what a link to it needs. */
-export interface StatsPostRow {
-  id: string;
-  title: string | null;
-  slug: string;
-  format: Format;
-  views: number;
-}
-
 /** Views from one referring host. */
 export interface StatsReferrerRow {
   host: string;
   views: number;
 }
 
-/** A page that is not a post, by the path it was opened at. */
-export interface StatsPageRow {
-  path: string;
-  views: number;
+/**
+ * A post among the pages. `post` is `null` once the post is deleted: its
+ * rows stay until the sweep, and the list still accounts for them.
+ */
+export interface StatsPostPage {
+  kind: "post";
+  key: string;
+  post: {
+    /** The post's name as the rest of Jant writes it; empty when nothing gives one. */
+    title: string;
+    slug: string;
+    format: Format;
+  } | null;
 }
+
+/** A collection or smart collection among the pages; `null` once deleted. */
+export interface StatsCollectionPage {
+  kind: "collection";
+  key: string;
+  collection: { title: string; slug: string } | null;
+}
+
+/** Any other page, by the path it was opened at. */
+export interface StatsPathPage {
+  kind: "path";
+  key: string;
+}
+
+/** One counted page, named. */
+export type StatsPage = StatsPostPage | StatsCollectionPage | StatsPathPage;
+
+/** A page in the top list. */
+export type StatsPageRow = StatsPage & { views: number };
 
 /** Where views came from, in the shape the page shows. */
 export interface StatsReferrers {
@@ -174,16 +200,14 @@ export interface StatsOverview {
   total: number;
   /** One point per day of the window, oldest first, zero where nothing was counted. */
   series: StatsSeriesPoint[];
-  /** The most-viewed posts, most views first. */
-  posts: StatsPostRow[];
-  /** The most-viewed pages that are not posts, most views first. */
+  /** The most-viewed pages, posts among them, most views first. */
   pages: StatsPageRow[];
   referrers: StatsReferrers;
 }
 
-/** One post over a window of days. */
-export interface StatsPostDetail {
-  post: Omit<StatsPostRow, "views">;
+/** One page over a window of days. */
+export interface StatsPageDetail {
+  page: StatsPage;
   days: number;
   since: string;
   until: string;
@@ -220,17 +244,19 @@ export interface StatsService {
    */
   getOverview(opts: { days: number; today: string }): Promise<StatsOverview>;
   /**
-   * One post's views over the last `days` days.
+   * One page's views over the last `days` days, by its counter key: a
+   * post's or collection's id, or a path.
    *
-   * @param postId - The post
+   * @param key - The page's counter key
    * @param opts.days - Length of the window
    * @param opts.today - The site's current day key, the window's last day
-   * @returns The detail, or `null` when the site has no such post
+   * @returns The detail, or `null` for a key that names nothing the site
+   *   has or ever counted
    */
-  getPost(
-    postId: string,
+  getPage(
+    key: string,
     opts: { days: number; today: string },
-  ): Promise<StatsPostDetail | null>;
+  ): Promise<StatsPageDetail | null>;
   /**
    * Delete every counter row the site has, and the day its record began:
    * whatever is counted next starts a new record.
@@ -325,7 +351,14 @@ export function createStatsService(
     rowsPerSiteDay?: number;
   },
 ): StatsService {
-  const { viewCounts, posts, pathRegistry, settings } = schema;
+  const {
+    viewCounts,
+    posts,
+    collections,
+    smartCollections,
+    pathRegistry,
+    settings,
+  } = schema;
   const state = deps.writerState ?? sharedWriterState;
   const rowsPerSiteDay = deps.rowsPerSiteDay ?? VIEW_COUNT_ROWS_PER_SITE_DAY;
 
@@ -564,44 +597,180 @@ export function createStatsService(
       .groupBy(viewCounts.referrer);
   }
 
-  function topPostsQuery(since: string, today: string) {
-    const views = sql<number>`sum(${viewCounts.count})`;
-    return db
-      .select({
-        id: viewCounts.page,
-        title: posts.title,
-        slug: pathRegistry.path,
-        format: posts.format,
-        views: views.mapWith(Number),
-      })
-      .from(viewCounts)
-      .innerJoin(
-        posts,
-        and(eq(posts.id, viewCounts.page), eq(posts.siteId, viewCounts.siteId)),
-      )
-      .innerJoin(pathRegistry, postSlugJoin)
-      .where(windowCondition(since, today))
-      .groupBy(viewCounts.page, posts.title, pathRegistry.path, posts.format)
-      .orderBy(desc(views), asc(viewCounts.page))
-      .limit(STATS_TOP_LIMIT);
-  }
-
   /**
-   * Pages that are not posts are keyed by their path, so a key that starts
-   * with `/` is one of them; post ids and the overflow key do not.
+   * The busiest keys of the window, whatever they name; the overflow row is
+   * a remainder, not a page. Names come after, by kind.
    */
   function topPagesQuery(since: string, today: string) {
     const views = sql<number>`sum(${viewCounts.count})`;
     return db
-      .select({
-        path: viewCounts.page,
-        views: views.mapWith(Number),
-      })
+      .select({ key: viewCounts.page, views: views.mapWith(Number) })
       .from(viewCounts)
-      .where(and(windowCondition(since, today), like(viewCounts.page, "/%")))
+      .where(
+        and(
+          windowCondition(since, today),
+          ne(viewCounts.page, VIEW_OVERFLOW_KEY),
+        ),
+      )
       .groupBy(viewCounts.page)
       .orderBy(desc(views), asc(viewCounts.page))
       .limit(STATS_TOP_LIMIT);
+  }
+
+  /** The posts among some ids, named and addressed; a deleted one is absent. */
+  async function describePosts(
+    ids: string[],
+  ): Promise<Map<string, NonNullable<StatsPostPage["post"]>>> {
+    if (ids.length === 0) return new Map();
+    const rows = await db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        format: posts.format,
+        url: posts.url,
+        body: posts.body,
+        bodyText: posts.bodyText,
+        quoteText: posts.quoteText,
+        summary: posts.summary,
+        slug: pathRegistry.path,
+      })
+      .from(posts)
+      .innerJoin(pathRegistry, postSlugJoin)
+      .where(and(eq(posts.siteId, siteId), inArray(posts.id, ids)));
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        {
+          title: getPostDisplayTitle(row),
+          slug: row.slug,
+          format: row.format,
+        },
+      ]),
+    );
+  }
+
+  /** The collections among some ids, with their address; a deleted one is absent. */
+  async function describeCollections(
+    ids: string[],
+  ): Promise<Map<string, NonNullable<StatsCollectionPage["collection"]>>> {
+    if (ids.length === 0) return new Map();
+    const rows = await db
+      .select({
+        id: collections.id,
+        title: collections.title,
+        slug: pathRegistry.path,
+      })
+      .from(collections)
+      .innerJoin(
+        pathRegistry,
+        and(
+          eq(pathRegistry.siteId, collections.siteId),
+          eq(pathRegistry.collectionId, collections.id),
+          eq(pathRegistry.kind, "slug"),
+        ),
+      )
+      .where(and(eq(collections.siteId, siteId), inArray(collections.id, ids)));
+    return new Map(
+      rows.map((row) => [row.id, { title: row.title, slug: row.slug }]),
+    );
+  }
+
+  /** The smart collections among some ids, the same way. */
+  async function describeSmartCollections(
+    ids: string[],
+  ): Promise<Map<string, NonNullable<StatsCollectionPage["collection"]>>> {
+    if (ids.length === 0) return new Map();
+    const rows = await db
+      .select({
+        id: smartCollections.id,
+        title: smartCollections.title,
+        slug: pathRegistry.path,
+      })
+      .from(smartCollections)
+      .innerJoin(
+        pathRegistry,
+        and(
+          eq(pathRegistry.siteId, smartCollections.siteId),
+          eq(pathRegistry.smartCollectionId, smartCollections.id),
+          eq(pathRegistry.kind, "slug"),
+        ),
+      )
+      .where(
+        and(
+          eq(smartCollections.siteId, siteId),
+          inArray(smartCollections.id, ids),
+        ),
+      );
+    return new Map(
+      rows.map((row) => [row.id, { title: row.title, slug: row.slug }]),
+    );
+  }
+
+  /**
+   * Name each key: a post or a collection from its table, a path as itself.
+   * Three lookups at most, side by side; a key of no known shape is left out.
+   */
+  async function describePages(
+    keys: string[],
+  ): Promise<Map<string, StatsPage>> {
+    const ids = {
+      post: [] as string[],
+      collection: [] as string[],
+      smart: [] as string[],
+    };
+    for (const key of keys) {
+      const kind = viewPageKind(key);
+      if (kind === "post") ids.post.push(key);
+      else if (kind === "collection") ids.collection.push(key);
+      else if (kind === "smartCollection") ids.smart.push(key);
+    }
+    const [postRows, collectionRows, smartRows] = await Promise.all([
+      describePosts(ids.post),
+      describeCollections(ids.collection),
+      describeSmartCollections(ids.smart),
+    ]);
+    const pages = new Map<string, StatsPage>();
+    for (const key of keys) {
+      switch (viewPageKind(key)) {
+        case "path":
+          pages.set(key, { kind: "path", key });
+          break;
+        case "post":
+          pages.set(key, {
+            kind: "post",
+            key,
+            post: postRows.get(key) ?? null,
+          });
+          break;
+        case "collection":
+          pages.set(key, {
+            kind: "collection",
+            key,
+            collection: collectionRows.get(key) ?? null,
+          });
+          break;
+        case "smartCollection":
+          pages.set(key, {
+            kind: "collection",
+            key,
+            collection: smartRows.get(key) ?? null,
+          });
+          break;
+        default:
+          break;
+      }
+    }
+    return pages;
+  }
+
+  /** Whether the site ever counted a key, on any day still kept. */
+  async function hasRows(key: string): Promise<boolean> {
+    const [row] = await db
+      .select({ page: viewCounts.page })
+      .from(viewCounts)
+      .where(and(eq(viewCounts.siteId, siteId), eq(viewCounts.page, key)))
+      .limit(1);
+    return row !== undefined;
   }
 
   return {
@@ -617,14 +786,13 @@ export function createStatsService(
 
     async getOverview({ days, today }) {
       const since = shiftDayKey(today, -(days - 1));
-      const [seriesRows, postRows, pageRows, referrerRows, stored] =
-        await Promise.all([
-          seriesQuery(since, today),
-          topPostsQuery(since, today),
-          topPagesQuery(since, today),
-          referrersQuery(since, today),
-          deps.settings.get("STATS_SINCE"),
-        ]);
+      const [seriesRows, topRows, referrerRows, stored] = await Promise.all([
+        seriesQuery(since, today),
+        topPagesQuery(since, today),
+        referrersQuery(since, today),
+        deps.settings.get("STATS_SINCE"),
+      ]);
+      const named = await describePages(topRows.map((row) => row.key));
       const series = fillSeries(seriesRows, today, days);
       return {
         days,
@@ -633,38 +801,43 @@ export function createStatsService(
         start: await startOfRecord(stored, { since, today }, seriesRows),
         total: series.reduce((sum, point) => sum + point.views, 0),
         series,
-        posts: postRows,
-        pages: pageRows,
+        pages: topRows.flatMap((row) => {
+          const page = named.get(row.key);
+          return page ? [{ ...page, views: row.views }] : [];
+        }),
         referrers: summarizeReferrers(referrerRows),
       };
     },
 
-    async getPost(postId, { days, today }) {
+    async getPage(key, { days, today }) {
+      const kind = viewPageKind(key);
+      if (kind === null || kind === "overflow") return null;
       const since = shiftDayKey(today, -(days - 1));
-      const [post, seriesRows, referrerRows, stored] = await Promise.all([
-        db
-          .select({
-            id: posts.id,
-            title: posts.title,
-            slug: pathRegistry.path,
-            format: posts.format,
-          })
-          .from(posts)
-          .innerJoin(pathRegistry, postSlugJoin)
-          .where(and(eq(posts.id, postId), eq(posts.siteId, siteId)))
-          .then((rows) => rows[0] ?? null),
-        seriesQuery(since, today, postId),
-        referrersQuery(since, today, postId),
+      const [named, seriesRows, referrerRows, stored] = await Promise.all([
+        describePages([key]),
+        seriesQuery(since, today, key),
+        referrersQuery(since, today, key),
         deps.settings.get("STATS_SINCE"),
       ]);
-      if (!post) return null;
+      const page = named.get(key);
+      if (!page) return null;
+      // A path, or an id whose entity is gone, is a page of this site only
+      // if something was ever counted under it; anything else typed into
+      // the address bar is not.
+      const exists =
+        page.kind === "post"
+          ? page.post !== null
+          : page.kind === "collection"
+            ? page.collection !== null
+            : false;
+      if (!exists && !(await hasRows(key))) return null;
       const series = fillSeries(seriesRows, today, days);
       return {
-        post,
+        page,
         days,
         since,
         until: today,
-        // The site's start, not the post's: the post's own first view is
+        // The site's start, not the page's: the page's own first view is
         // a bar on the chart, not where the record begins.
         start: await startOfRecord(stored, { since, today }, []),
         total: series.reduce((sum, point) => sum + point.views, 0),

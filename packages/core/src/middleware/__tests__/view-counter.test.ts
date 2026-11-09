@@ -61,7 +61,7 @@ describe("viewCounter", () => {
     expect(buffer.size).toBe(1);
 
     await buffer.flush();
-    const detail = await services.stats.getPost(post.id, {
+    const detail = await services.stats.getPage(post.id, {
       days: 1,
       today: TODAY,
     });
@@ -80,15 +80,58 @@ describe("viewCounter", () => {
       }),
     });
     expect(res.status).toBe(200);
+    // The second page of the feed is the same page.
+    const second = await app.request("/?page=2", {
+      headers: navigationHeaders(),
+    });
+    expect(second.status).toBe(200);
 
     await buffer.flush();
     const overview = await services.stats.getOverview({
       days: 1,
       today: TODAY,
     });
-    expect(overview.total).toBe(1);
-    expect(overview.referrers).toEqual({ direct: 1, top: [], other: 0 });
-    expect(overview.posts).toEqual([]);
+    expect(overview.total).toBe(2);
+    expect(overview.referrers).toEqual({ direct: 2, top: [], other: 0 });
+    expect(overview.pages).toEqual([{ kind: "path", key: "/", views: 2 }]);
+  });
+
+  it("counts a collection and a smart collection under their ids", async () => {
+    const { app, services, buffer } = fixture;
+    const reading = await services.collections.create({
+      slug: "reading",
+      title: "Reading",
+    });
+    const quotes = await services.smartCollections.create({
+      slug: "quotes",
+      title: "Quotes",
+      selection: { format: "quote" },
+    });
+
+    for (const path of ["/reading", "/quotes"]) {
+      const res = await app.request(path, { headers: navigationHeaders() });
+      expect(res.status).toBe(200);
+    }
+
+    await buffer.flush();
+    const overview = await services.stats.getOverview({
+      days: 1,
+      today: TODAY,
+    });
+    expect(overview.pages).toEqual([
+      {
+        kind: "collection",
+        key: reading.id,
+        collection: { title: "Reading", slug: "reading" },
+        views: 1,
+      },
+      {
+        kind: "collection",
+        key: quotes.id,
+        collection: { title: "Quotes", slug: "quotes" },
+        views: 1,
+      },
+    ]);
   });
 
   it("files a tagged link under its tag, even without a referrer", async () => {
@@ -111,7 +154,7 @@ describe("viewCounter", () => {
     expect(buffer.size).toBe(2);
 
     await buffer.flush();
-    const detail = await services.stats.getPost(post.id, {
+    const detail = await services.stats.getPage(post.id, {
       days: 1,
       today: TODAY,
     });

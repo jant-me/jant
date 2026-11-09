@@ -68,7 +68,10 @@ import {
   getTelegramStatusStreamUrl,
 } from "../../lib/telegram-settings-status.js";
 import { TelegramContent } from "../../ui/dash/settings/TelegramContent.js";
-import { StatsContent } from "../../ui/dash/settings/StatsContent.js";
+import {
+  StatsContent,
+  statsPageName,
+} from "../../ui/dash/settings/StatsContent.js";
 import {
   DEFAULT_STATS_WINDOW,
   STATS_WINDOWS,
@@ -475,17 +478,17 @@ settingsRoutes.get("/stats", async (c) => {
   const { appConfig, services } = c.var;
   const enabled = appConfig.stats.enabled;
   const days = parseStatsWindow(c.req.query("days"));
-  const postId = c.req.query("post");
+  const pageKey = c.req.query("page");
   const today = formatDayKey(now(), appConfig.timeZone);
   const window = { days, today };
 
   // The chrome needs nothing from the counts, so the reads go out together.
-  const [navData, post, overview] = await Promise.all([
+  const [navData, page, overview] = await Promise.all([
     getNavigationData(c),
-    enabled && postId ? services.stats.getPost(postId, window) : null,
-    enabled && !postId ? services.stats.getOverview(window) : null,
+    enabled && pageKey ? services.stats.getPage(pageKey, window) : null,
+    enabled && !pageKey ? services.stats.getOverview(window) : null,
   ]);
-  if (postId && !post) return c.notFound();
+  if (pageKey && !page) return c.notFound();
 
   const statsLabel = breadcrumbLabel(c, "stats");
   const content = (
@@ -493,7 +496,7 @@ settingsRoutes.get("/stats", async (c) => {
       enabled={enabled}
       days={days}
       overview={overview}
-      post={post}
+      page={page}
       sitePathPrefix={appConfig.sitePathPrefix}
       demoMode={appConfig.demoMode}
     />
@@ -503,7 +506,7 @@ settingsRoutes.get("/stats", async (c) => {
     page: "settings",
     title: buildPageTitle(statsLabel, navData.siteName),
     navData,
-    content: post ? (
+    content: page ? (
       <>
         <AdminBreadcrumb
           ancestors={[
@@ -516,7 +519,7 @@ settingsRoutes.get("/stats", async (c) => {
               href: `${publicPath(c, "/settings/stats")}?days=${days}`,
             },
           ]}
-          current={post.post.title || post.post.slug}
+          current={statsPageName(page.page, getI18n(c))}
         />
         {content}
       </>

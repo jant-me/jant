@@ -6,6 +6,16 @@ const TITLE_MAX_CHARS = 72;
 const DESCRIPTION_MAX_CHARS = 160;
 
 /**
+ * The columns a Post's name is derived from. A caller that has only these,
+ * such as a list joined from another table, can name a Post without loading
+ * the rest of it.
+ */
+export type PostNameSource = Pick<
+  Post,
+  "format" | "title" | "url" | "body" | "bodyText" | "quoteText" | "summary"
+>;
+
+/**
  * Derive a clean plain-text projection of the body for human-facing meta.
  *
  * We cannot reuse `post.bodyText` here: that column is written with
@@ -13,7 +23,7 @@ const DESCRIPTION_MAX_CHARS = 160;
  * pollutes the stored text with trailing URLs. Re-derive from the source
  * TipTap JSON (`post.body`) without that option.
  */
-function getCleanBodyText(post: Post): string {
+function getCleanBodyText(post: PostNameSource): string {
   // Prefer re-derivation from `post.body` (TipTap JSON). Fall back to
   // `post.bodyText` only when `body` is absent (legacy rows / fixtures);
   // without link marks in the source, there is no URL pollution to worry
@@ -48,7 +58,7 @@ function clipText(text: string, maxChars: number): string {
   return `${clipped.trimEnd()}...`;
 }
 
-function getTitleCandidate(post: Post): string {
+function getTitleCandidate(post: PostNameSource): string {
   if (post.format === "quote") {
     const quoteSnippet = getFirstParagraph(post.quoteText);
     const attribution = normalizeText(
@@ -112,7 +122,7 @@ function getDescriptionCandidate(post: Post): string {
  * @example
  * getPostDisplayTitle(untitledNote); // "An untitled note about espresso."
  */
-export function getPostDisplayTitle(post: Post): string {
+export function getPostDisplayTitle(post: PostNameSource): string {
   return getTitleCandidate(post);
 }
 

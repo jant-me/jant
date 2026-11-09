@@ -1,16 +1,18 @@
 /**
- * Stats: views by day, the most-viewed posts and pages, and where readers
- * came from.
+ * Stats: views by day, the most-viewed pages, and where readers came from.
  *
  * One quiet page of aggregates for the author. It shows a window of days and
  * nothing beyond it — no lifetime total, no comparison with the window before
  * — because a number to beat is the one social mechanic this page must not
  * grow into. When counting began inside the window, the page says so and the
  * chart starts on that day: the days before were not counted, which is not
- * the same as a month of zeros. `services/stats.ts` has the policy behind
- * the numbers.
+ * the same as a month of zeros. Posts, collections and the site's own pages
+ * share one list, since the question is what was read, not what kind of
+ * thing it was; a badge says the kind. `services/stats.ts` has the policy
+ * behind the numbers.
  */
 
+import type { I18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../../i18n/context.js";
 import { toPublicPath } from "../../../lib/url.js";
@@ -18,8 +20,9 @@ import {
   STATS_WINDOWS,
   VIEW_COUNT_RETENTION_DAYS,
   type StatsOverview,
+  type StatsPage,
+  type StatsPageDetail,
   type StatsPageRow,
-  type StatsPostDetail,
   type StatsReferrers,
   type StatsSeriesPoint,
   type StatsWindow,
@@ -30,22 +33,22 @@ export interface StatsContentProps {
   /** Whether views are being counted; off means no numbers to show. */
   enabled: boolean;
   days: StatsWindow;
-  /** The site over the window; `null` when stats are off or a post is shown. */
+  /** The site over the window; `null` when stats are off or one page is shown. */
   overview: StatsOverview | null;
-  /** One post over the window, when the page is about one post. */
-  post: StatsPostDetail | null;
+  /** One page over the window, when the page is about one page. */
+  page: StatsPageDetail | null;
   sitePathPrefix: string;
   demoMode: boolean;
 }
 
-/** The address of the stats page for a window, and optionally one post. */
+/** The address of the stats page for a window, and optionally one page. */
 function statsHref(
   sitePathPrefix: string,
   days: StatsWindow,
-  postId?: string,
+  pageKey?: string,
 ): string {
   const params = new URLSearchParams();
-  if (postId) params.set("post", postId);
+  if (pageKey) params.set("page", pageKey);
   params.set("days", String(days));
   return `${toPublicPath("/settings/stats", sitePathPrefix)}?${params}`;
 }
@@ -60,14 +63,136 @@ function formatDayLabel(day: string, locale: string): string {
   }).format(new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, date ?? 1)));
 }
 
+/** The site's own pages by name; any other path as itself. */
+function pathName(path: string, i18n: I18n): string {
+  switch (path) {
+    case "/":
+      return i18n._(
+        msg({
+          message: "Home",
+          comment:
+            "@context: Row for the home page in the pages list on the stats page",
+        }),
+      );
+    case "/archive":
+      return i18n._(
+        msg({
+          message: "Archive",
+          comment:
+            "@context: Row for the archive page in the pages list on the stats page",
+        }),
+      );
+    case "/collections":
+      return i18n._(
+        msg({
+          message: "Collections",
+          comment:
+            "@context: Row for the collections directory in the pages list on the stats page",
+        }),
+      );
+    case "/featured":
+      return i18n._(
+        msg({
+          message: "Featured",
+          comment:
+            "@context: Row for the Featured page in the pages list on the stats page",
+        }),
+      );
+    case "/subscribe":
+      return i18n._(
+        msg({
+          message: "Subscribe",
+          comment:
+            "@context: Row for the subscribe page in the pages list on the stats page",
+        }),
+      );
+    default:
+      return path;
+  }
+}
+
+/**
+ * What a page is called on the stats page: a post by the name the rest of
+ * Jant gives it, or its address when nothing gives one; a collection by its
+ * title; the site's own pages by name; any other path as itself. A deleted
+ * post or collection is said to be one.
+ *
+ * @param page - The page
+ * @param i18n - The dashboard's locale
+ * @returns The name
+ * @example
+ * statsPageName({ kind: "path", key: "/" }, i18n); // "Home"
+ */
+export function statsPageName(page: StatsPage, i18n: I18n): string {
+  switch (page.kind) {
+    case "post":
+      if (!page.post) {
+        return i18n._(
+          msg({
+            message: "Deleted post",
+            comment:
+              "@context: Name on the stats page of a post whose views remain after it was deleted",
+          }),
+        );
+      }
+      return page.post.title || page.post.slug;
+    case "collection":
+      if (!page.collection) {
+        return i18n._(
+          msg({
+            message: "Deleted collection",
+            comment:
+              "@context: Name on the stats page of a collection whose views remain after it was deleted",
+          }),
+        );
+      }
+      return page.collection.title;
+    case "path":
+      return pathName(page.key, i18n);
+  }
+}
+
+/** The public address of a page, while it still has one. */
+function pagePublicPath(page: StatsPage): string | null {
+  switch (page.kind) {
+    case "post":
+      return page.post ? `/${page.post.slug}` : null;
+    case "collection":
+      return page.collection ? `/${page.collection.slug}` : null;
+    case "path":
+      return page.key;
+  }
+}
+
+/** The kind of a page, where the name alone does not say: a post's format, or that it is a collection. */
+function PageBadge({ page }: { page: StatsPage }) {
+  const { i18n } = useLingui();
+  if (page.kind === "post" && page.post) {
+    return <FormatBadge type={page.post.format} />;
+  }
+  if (page.kind === "collection") {
+    return (
+      <span class="badge-outline">
+        {i18n._(
+          msg({
+            message: "Collection",
+            comment: "@context: Badge on a collection's row on the stats page",
+          }),
+        )}
+      </span>
+    );
+  }
+  return null;
+}
+
 function WindowSwitch({
   days,
   sitePathPrefix,
-  postId,
+  pageKey,
 }: {
   days: StatsWindow;
   sitePathPrefix: string;
-  postId?: string;
+  pageKey?: string;
 }) {
   const { i18n } = useLingui();
   return (
@@ -84,7 +209,7 @@ function WindowSwitch({
       {STATS_WINDOWS.map((window) => (
         <a
           key={window}
-          href={statsHref(sitePathPrefix, window, postId)}
+          href={statsHref(sitePathPrefix, window, pageKey)}
           class="settings-stats-window"
           aria-current={window === days ? "page" : undefined}
         >
@@ -237,75 +362,17 @@ function ReferrerList({ referrers }: { referrers: StatsReferrers }) {
   );
 }
 
-function PostList({
-  overview,
+/** The most-viewed pages of the window, each a link to its own numbers. */
+function PageList({
+  pages,
   days,
   sitePathPrefix,
 }: {
-  overview: StatsOverview;
+  pages: StatsPageRow[];
   days: StatsWindow;
   sitePathPrefix: string;
 }) {
   const { i18n } = useLingui();
-  const untitled = i18n._(
-    msg({
-      message: "Untitled",
-      comment:
-        "@context: Stand-in title for a post with no title on the stats page",
-    }),
-  );
-
-  return (
-    <section class="settings-stats-section">
-      <h2 class="settings-stats-heading">
-        {i18n._(
-          msg({
-            message: "Posts",
-            comment:
-              "@context: Heading of the most-viewed posts on the stats page",
-          }),
-        )}
-      </h2>
-      {overview.posts.length === 0 ? (
-        <p class="text-sm text-muted-foreground">
-          {i18n._(
-            msg({
-              message: "No post was viewed.",
-              comment:
-                "@context: Empty state of the posts list on the stats page when the window's views were all of other pages",
-            }),
-          )}
-        </p>
-      ) : (
-        <ol class="settings-stats-list">
-          {overview.posts.map((post) => (
-            <li key={post.id} class="settings-stats-row">
-              <a
-                href={statsHref(sitePathPrefix, days, post.id)}
-                class="settings-stats-label settings-stats-link"
-              >
-                {post.title || untitled}
-              </a>
-              <FormatBadge type={post.format} />
-              <span class="settings-stats-count">{post.views}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </section>
-  );
-}
-
-/** The pages that are not posts: the home page, the archive, collections. */
-function PageList({ pages }: { pages: StatsPageRow[] }) {
-  const { i18n } = useLingui();
-  const home = i18n._(
-    msg({
-      message: "Home",
-      comment:
-        "@context: Row for the home page in the pages list on the stats page",
-    }),
-  );
 
   return (
     <section class="settings-stats-section">
@@ -314,32 +381,24 @@ function PageList({ pages }: { pages: StatsPageRow[] }) {
           msg({
             message: "Pages",
             comment:
-              "@context: Heading of the most-viewed pages other than posts on the stats page",
+              "@context: Heading of the most-viewed pages on the stats page",
           }),
         )}
       </h2>
-      {pages.length === 0 ? (
-        <p class="text-sm text-muted-foreground">
-          {i18n._(
-            msg({
-              message: "No other page was viewed.",
-              comment:
-                "@context: Empty state of the pages list on the stats page when the window's views were all of posts",
-            }),
-          )}
-        </p>
-      ) : (
-        <ol class="settings-stats-list">
-          {pages.map((page) => (
-            <li key={page.path} class="settings-stats-row">
-              <span class="settings-stats-label">
-                {page.path === "/" ? home : page.path}
-              </span>
-              <span class="settings-stats-count">{page.views}</span>
-            </li>
-          ))}
-        </ol>
-      )}
+      <ol class="settings-stats-list">
+        {pages.map((row) => (
+          <li key={row.key} class="settings-stats-row">
+            <a
+              href={statsHref(sitePathPrefix, days, row.key)}
+              class="settings-stats-label settings-stats-link"
+            >
+              {statsPageName(row, i18n)}
+            </a>
+            <PageBadge page={row} />
+            <span class="settings-stats-count">{row.views}</span>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -435,7 +494,7 @@ function TotalLine({
   shown,
   locale,
 }: {
-  shown: StatsOverview | StatsPostDetail;
+  shown: StatsOverview | StatsPageDetail;
   locale: string;
 }) {
   const { i18n } = useLingui();
@@ -464,38 +523,51 @@ function TotalLine({
   );
 }
 
+/** The heading of one page's numbers: its name, linked to it while it exists, and its kind. */
+function PageHeading({
+  page,
+  sitePathPrefix,
+}: {
+  page: StatsPage;
+  sitePathPrefix: string;
+}) {
+  const { i18n } = useLingui();
+  const name = statsPageName(page, i18n);
+  const path = pagePublicPath(page);
+  return (
+    <h1 class="settings-stats-title">
+      {path ? (
+        <a
+          href={toPublicPath(path, sitePathPrefix)}
+          class="settings-stats-link"
+        >
+          {name}
+        </a>
+      ) : (
+        name
+      )}{" "}
+      <PageBadge page={page} />
+    </h1>
+  );
+}
+
 export function StatsContent({
   enabled,
   days,
   overview,
-  post,
+  page,
   sitePathPrefix,
   demoMode,
 }: StatsContentProps) {
   const { i18n } = useLingui();
   const locale = i18n.locale;
-  const untitled = i18n._(
-    msg({
-      message: "Untitled",
-      comment:
-        "@context: Stand-in title for a post with no title on the stats page",
-    }),
-  );
-  const shown = post ?? overview;
+  const shown = page ?? overview;
 
   return (
     <div class="settings-stats">
       <header class="settings-stats-header">
-        {post ? (
-          <h1 class="settings-stats-title">
-            <a
-              href={toPublicPath(`/${post.post.slug}`, sitePathPrefix)}
-              class="settings-stats-link"
-            >
-              {post.post.title || untitled}
-            </a>{" "}
-            <FormatBadge type={post.post.format} />
-          </h1>
+        {page ? (
+          <PageHeading page={page.page} sitePathPrefix={sitePathPrefix} />
         ) : (
           <h1 class="settings-stats-title">
             {i18n._(
@@ -510,7 +582,7 @@ export function StatsContent({
           <WindowSwitch
             days={days}
             sitePathPrefix={sitePathPrefix}
-            postId={post?.post.id}
+            pageKey={page?.page.key}
           />
         )}
       </header>
@@ -535,21 +607,18 @@ export function StatsContent({
             />
             {/* The total line has already said there is nothing to list. */}
             {shown.total > 0 && overview && (
-              <>
-                <PostList
-                  overview={overview}
-                  days={days}
-                  sitePathPrefix={sitePathPrefix}
-                />
-                <PageList pages={overview.pages} />
-              </>
+              <PageList
+                pages={overview.pages}
+                days={days}
+                sitePathPrefix={sitePathPrefix}
+              />
             )}
             {shown.total > 0 && <ReferrerList referrers={shown.referrers} />}
           </>
         )
       )}
 
-      {!post && (
+      {!page && (
         <Toggle
           enabled={enabled}
           sitePathPrefix={sitePathPrefix}
