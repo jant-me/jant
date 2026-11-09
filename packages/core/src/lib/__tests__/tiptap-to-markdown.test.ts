@@ -481,7 +481,7 @@ describe("tiptapJsonToMarkdown", () => {
       [
         "an equals rule after a hard break",
         [text("Title"), br, text("===")],
-        "Title  \n\\===",
+        "Title  \n\\=\\=\\=",
       ],
     ])("escapes %s", (_label, content, expected) => {
       const json = doc(p(...content));

@@ -65,6 +65,8 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 | `--site-footnote-marker`        | 由 `--site-text-secondary` 派生 | 侧栏里的脚注编号                                                       |
 | `--site-search-mark-bg`         | 内置黄底                        | 搜索结果高亮背景                                                       |
 | `--site-search-mark-color`      | 内置深字                        | 搜索结果高亮文字                                                       |
+| `--site-highlight-bg`           | `var(--site-search-mark-bg)`    | 帖子高亮（`==文字==`）背景                                             |
+| `--site-highlight-color`        | `var(--site-search-mark-color)` | 帖子高亮文字                                                           |
 
 ### 示例：自定义主色和站点强调色
 
