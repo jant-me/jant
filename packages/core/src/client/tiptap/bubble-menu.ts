@@ -332,8 +332,8 @@ export const BubbleMenu = Extension.create({
         b.className = "tiptap-bubble-btn";
         b.addEventListener("mousedown", (e) => {
           e.preventDefault();
+          btn.action(editor.view);
         });
-        b.addEventListener("click", () => btn.action(editor.view));
         el.appendChild(b);
         btnEls.set(btn.key, b);
       }

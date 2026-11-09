@@ -120,6 +120,27 @@ describe("highlight editing", () => {
     expect(editor.getHTML()).toBe("<p>word next</p>");
   });
 
+  it("toggles a highlight with Mod-Shift-H", () => {
+    const editor = createEditor("<p>word</p>");
+    const press = () =>
+      editor.view.someProp("handleKeyDown", (fn) =>
+        fn(
+          editor.view,
+          new KeyboardEvent("keydown", {
+            key: "h",
+            code: "KeyH",
+            shiftKey: true,
+            ctrlKey: true,
+          }),
+        ),
+      );
+    editor.commands.setTextSelection({ from: 1, to: 5 });
+    expect(press()).toBe(true);
+    expect(editor.getHTML()).toBe("<p><mark>word</mark></p>");
+    press();
+    expect(editor.getHTML()).toBe("<p>word</p>");
+  });
+
   it("accepts semantic mark HTML when reopening or pasting content", () => {
     const editor = createEditor("<p><mark>重点</mark></p>");
     expect(marksOfLastText(editor)).toEqual(["highlight"]);

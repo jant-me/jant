@@ -129,7 +129,9 @@ describe("highlight toolbar", () => {
       expect(button?.previousElementSibling?.getAttribute("title")).toBe(
         "Italic",
       );
-      button?.click();
+      button?.dispatchEvent(
+        new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+      );
       expect(editor.getHTML()).toBe("<p><mark>重点</mark></p>");
       expect(editor.state.selection.empty).toBe(true);
       expect(editor.state.storedMarks ?? []).toHaveLength(0);

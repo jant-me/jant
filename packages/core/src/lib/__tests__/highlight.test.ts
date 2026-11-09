@@ -85,3 +85,51 @@ describe("highlight literal content", () => {
     expect(JSON.stringify(doc)).toBe(original);
   });
 });
+
+describe("equals escaping", () => {
+  const text = (value: string, highlighted = false) => ({
+    type: "text",
+    text: value,
+    ...(highlighted ? { marks: [{ type: "highlight" }] } : {}),
+  });
+  const paragraph = (...content: ReturnType<typeof text>[]) => ({
+    type: "doc",
+    content: [{ type: "paragraph", content }],
+  });
+
+  it.each([
+    ["a = b", "a = b"],
+    ["E=mc²", "E=mc²"],
+    ["x=1, y=2", "x=1, y=2"],
+    ["a==b and c==d", "a\\=\\=b and c\\=\\=d"],
+  ])("writes %s as %s", (value, markdown) => {
+    const doc = paragraph(text(value));
+    expect(serializeMarkdownDocument(doc)).toBe(markdown);
+    expect(parseMarkdownDocument(markdown)).toEqual(doc);
+  });
+
+  it.each([
+    [
+      "plain text ending in = before a highlight",
+      [text("a="), text("b", true)],
+    ],
+    ["a highlight starting with =", [text("=x", true)]],
+    [
+      "a highlight after plain text ending in a space and =",
+      [text("a ="), text("b", true)],
+    ],
+    ["= on both sides of a highlight", [text("="), text("b", true), text("=")]],
+  ])("round trips %s", (_label, content) => {
+    const doc = paragraph(...content);
+    expect(parseMarkdownDocument(serializeMarkdownDocument(doc))).toEqual(doc);
+  });
+
+  it("keeps a highlight ending in = when its trailing space moves outside", () => {
+    // The serializer writes a mark's trailing whitespace after the closing
+    // delimiter, so the space comes back as plain text.
+    const doc = paragraph(text("x= ", true), text("y"));
+    expect(parseMarkdownDocument(serializeMarkdownDocument(doc))).toEqual(
+      paragraph(text("x=", true), text(" y")),
+    );
+  });
+});

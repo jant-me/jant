@@ -335,3 +335,9 @@ collapses the selection to its end and leaves subsequent typing unhighlighted.
 Selecting highlighted text and pressing Highlight again removes it; Clear
 Formatting also removes highlights. Rich HTML paste accepts `<mark>` elements,
 and Markdown paste and full-document copy use the shared `==text==` syntax.
+`Mod-Shift-H` toggles a highlight on the selection, as `Mod-B` toggles bold.
+
+Serialization escapes a literal `=` only where it could become part of a `==`
+delimiter: inside a run of two or more, and at either end of a text node, where
+a highlight's own `==` can land beside it. Every other `=`, such as `x = 1`, is
+written as it is, so `bodyMarkdown` and exports stay readable.

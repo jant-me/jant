@@ -470,6 +470,12 @@ const MarkdownHighlight = Mark.create({
     return ["mark", 0];
   },
 
+  addKeyboardShortcuts() {
+    return {
+      "Mod-Shift-h": () => this.editor.commands.toggleMark(this.name),
+    };
+  },
+
   addInputRules() {
     return [
       markInputRule({
@@ -1445,17 +1451,40 @@ function expandCodeBlockFences(markdown: string): string {
   return markdown;
 }
 
-// The upstream serializer escapes CommonMark delimiters, but does not know
-// about Jant's == extension. Escape literal equals in text before mark wrappers
-// are added, so plain text never turns into a highlight on export or copy.
+/**
+ * Swap each `=` in a text node that could take part in a `==` delimiter for
+ * a sentinel, which the serializer later writes as `\=`.
+ *
+ * Only two kinds of `=` can: one in a run of two or more, and one at either
+ * end of the text (leading and trailing whitespace aside, since the
+ * serializer moves it outside a mark), where a highlight's own `==` lands
+ * right beside it. `a = b` and `E=mc²` stay as they are.
+ *
+ * @param text - A text node's text, outside code
+ * @param sentinel - A string the document doesn't contain
+ * @returns The text with those `=` replaced by the sentinel
+ * @example
+ * protectHighlightDelimiters("a==b and c = d=", "S"); // "aSSb and c = dS"
+ */
+function protectHighlightDelimiters(text: string, sentinel: string): string {
+  return text
+    .replace(/={2,}/g, (run) => sentinel.repeat(run.length))
+    .replace(/^(\s*)=/, (_match, space: string) => `${space}${sentinel}`)
+    .replace(/=(\s*)$/, (_match, space: string) => `${sentinel}${space}`);
+}
+
+/**
+ * The upstream serializer escapes CommonMark delimiters but not `==`, so
+ * literal text such as `a==b and c==d` came back as a highlight. Its escaping
+ * hook is private: the `=` that need it go through a sentinel instead.
+ */
 class JantMarkdownManager extends MarkdownManager {
   override serialize(doc: JSONContent): string {
-    // A per-document sentinel keeps literal equals separate from the delimiters
-    // written by renderMarkdown. Never change code or mutate the stored JSON.
     const source = JSON.stringify(doc);
     let sentinel = "JANTLITERALEQUALS";
     while (source.includes(sentinel)) sentinel += "X";
 
+    // Builds a copy: the stored JSON is never changed, and code keeps its `=`.
     const protect = (node: JSONContent, insideCode = false): JSONContent => {
       const code =
         insideCode ||
@@ -1464,7 +1493,7 @@ class JantMarkdownManager extends MarkdownManager {
       return {
         ...node,
         ...(node.text && !code
-          ? { text: node.text.replace(/=/g, sentinel) }
+          ? { text: protectHighlightDelimiters(node.text, sentinel) }
           : {}),
         ...(node.content
           ? { content: node.content.map((child) => protect(child, code)) }
