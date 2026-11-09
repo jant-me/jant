@@ -3055,8 +3055,8 @@ msgstr "查看這些貼文"
 
 #. @context: Settings item description for stats
 #: src/ui/dash/settings/SettingsRootContent.tsx
-msgid "Views by day, most-read posts, and referrers"
-msgstr "每日瀏覽量、讀得最多的貼文和來源"
+msgid "Views by day, most-read pages, and referrers"
+msgstr "每日瀏覽量、讀得最多的頁面和來源"
 
 #. @context: Accessible name of the bar chart on the stats page
 #: src/ui/dash/settings/StatsContent.tsx

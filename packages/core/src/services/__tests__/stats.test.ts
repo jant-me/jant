@@ -506,6 +506,16 @@ describe("StatsService", () => {
       expect(await settings.get("STATS_SINCE")).toBe(later);
     });
 
+    it("drops a flush that arrives after the switch was turned off", async () => {
+      await stats.setEnabled(false, { today: TODAY });
+      // Hits buffered before the switch reach the service after it.
+      await expect(
+        stats.record([entry({ page: "/" })], { dailyLimit: 3, today: TODAY }),
+      ).resolves.toEqual({ limitReached: false });
+      expect(await rowCount()).toBe(0);
+      expect(await settings.get("STATS_SINCE")).toBeNull();
+    });
+
     it("keeps an existing start when turned on again", async () => {
       await settings.set("STATS_SINCE", shiftDayKey(TODAY, -40));
       await stats.setEnabled(true, { today: TODAY });
