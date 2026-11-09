@@ -1,17 +1,19 @@
 /**
  * What counts as a page view, and the keys a view is filed under.
  *
- * Views are counted on the server from the facts of one request and its
- * response: no script, no cookie, no stored address. That makes two things
- * matter here. First, telling a reader from a machine without ever seeing the
- * reader: a browser's top-level navigation announces itself in the
- * `Sec-Fetch-*` headers every current engine sends and almost no crawler does,
- * and the short User-Agent list below is only a backstop for the headless
- * browsers that still say what they are. Second, reducing what is kept to a
- * counter key: the site's calendar day, the page, and where the reader came
- * from — the source the link was tagged with, or else the referring host,
- * either one folded to the address its source is listed under
- * (`referrer-aliases.ts`).
+ * A view is decided in two steps. Here, from the facts of one request and
+ * its response, whether it may count at all: a browser's top-level navigation
+ * announces itself in the `Sec-Fetch-*` headers every current engine sends
+ * and almost no crawler does, and the short User-Agent list below is only a
+ * backstop for the headless browsers that still say what they are. Then, in
+ * the browser, whether the page was seen: the reader bundle confirms the
+ * view after a few seconds in front of the reader or on the first
+ * interaction (`lib/view-token.ts`), which a crawler running a real browser
+ * never gets to. No cookie, no stored address. This module also reduces what
+ * is kept to a counter key: the site's calendar day and hour, the page, and
+ * where the reader came from — the source the link was tagged with, or else
+ * the referring host, either one folded to the address its source is listed
+ * under (`referrer-aliases.ts`), or the site itself.
  */
 
 import { ID_PREFIX, isTypeId } from "./ids.js";
