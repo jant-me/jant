@@ -263,6 +263,25 @@ export interface StatsPageDetail {
   referrers: StatsReferrers;
 }
 
+/** One referrer over a window of days: the pages it sent readers to. */
+export interface StatsReferrerDetail {
+  /** The referrer's counter key: a host or a tag, `""` for Direct, `/` for Internal. */
+  referrer: string;
+  days: number;
+  since: string;
+  until: string;
+  /** As on the overview: the first counted day when inside the window. */
+  start: string | null;
+  total: number;
+  /**
+   * By the day; `null` for today, since hours are kept for the site as a
+   * whole and not per referrer.
+   */
+  series: StatsSeries | null;
+  /** The pages its readers opened most, most views first. */
+  pages: StatsPageRow[];
+}
+
 export interface StatsService {
   /**
    * Write a batch of counted views, for any site: the day table by page and
@@ -311,6 +330,22 @@ export interface StatsService {
     key: string,
     opts: { days: number; today: string; hour: string },
   ): Promise<StatsPageDetail | null>;
+  /**
+   * One referrer's views over the last `days` days, by its counter key: a
+   * host or a tag as the referrer list shows it, `""` for direct visits,
+   * `/` for internal navigation. Direct and Internal are referrers every
+   * site has; a host or a tag is one of this site's once something was
+   * counted under it, on any day still kept.
+   *
+   * @param key - The referrer's counter key
+   * @param opts.days - Length of the window; `1` is today
+   * @param opts.today - The site's current day key, the window's last day
+   * @returns The detail, or `null` for a referrer the site never counted
+   */
+  getReferrer(
+    key: string,
+    opts: { days: number; today: string },
+  ): Promise<StatsReferrerDetail | null>;
   /**
    * Delete every counter row the site has, and the day its record began:
    * whatever is counted next starts a new record.
@@ -715,23 +750,34 @@ export function createStatsService(
     return (summed?.total ?? 0) >= dailyLimit;
   }
 
-  function windowCondition(since: string, today: string, page?: string) {
+  /** What a window query is narrowed to: one page, or one referrer. */
+  interface WindowFilter {
+    page?: string;
+    referrer?: string;
+  }
+
+  function windowCondition(
+    since: string,
+    today: string,
+    { page, referrer }: WindowFilter = {},
+  ) {
     return and(
       eq(viewCounts.siteId, siteId),
       gte(viewCounts.day, since),
       lte(viewCounts.day, today),
       page === undefined ? undefined : eq(viewCounts.page, page),
+      referrer === undefined ? undefined : eq(viewCounts.referrer, referrer),
     );
   }
 
-  function seriesQuery(since: string, today: string, page?: string) {
+  function seriesQuery(since: string, today: string, filter?: WindowFilter) {
     return db
       .select({
         at: viewCounts.day,
         views: sql<number>`sum(${viewCounts.count})`.mapWith(Number),
       })
       .from(viewCounts)
-      .where(windowCondition(since, today, page))
+      .where(windowCondition(since, today, filter))
       .groupBy(viewCounts.day);
   }
 
@@ -749,14 +795,14 @@ export function createStatsService(
       );
   }
 
-  function referrersQuery(since: string, today: string, page?: string) {
+  function referrersQuery(since: string, today: string, filter?: WindowFilter) {
     return db
       .select({
         host: viewCounts.referrer,
         views: sql<number>`sum(${viewCounts.count})`.mapWith(Number),
       })
       .from(viewCounts)
-      .where(windowCondition(since, today, page))
+      .where(windowCondition(since, today, filter))
       .groupBy(viewCounts.referrer);
   }
 
@@ -764,14 +810,14 @@ export function createStatsService(
    * The busiest keys of the window, whatever they name; the overflow row is
    * a remainder, not a page. Names come after, by kind.
    */
-  function topPagesQuery(since: string, today: string) {
+  function topPagesQuery(since: string, today: string, filter?: WindowFilter) {
     const views = sql<number>`sum(${viewCounts.count})`;
     return db
       .select({ key: viewCounts.page, views: views.mapWith(Number) })
       .from(viewCounts)
       .where(
         and(
-          windowCondition(since, today),
+          windowCondition(since, today, filter),
           ne(viewCounts.page, VIEW_OVERFLOW_KEY),
         ),
       )
@@ -936,6 +982,16 @@ export function createStatsService(
     return row !== undefined;
   }
 
+  /** Whether the site ever counted a view from a referrer, on any day still kept. */
+  async function hasReferrerRows(key: string): Promise<boolean> {
+    const [row] = await db
+      .select({ referrer: viewCounts.referrer })
+      .from(viewCounts)
+      .where(and(eq(viewCounts.siteId, siteId), eq(viewCounts.referrer, key)))
+      .limit(1);
+    return row !== undefined;
+  }
+
   return {
     async record(entries, opts) {
       const counted = await withoutSwitchedOff(entries);
@@ -986,8 +1042,8 @@ export function createStatsService(
       const since = shiftDayKey(today, -(days - 1));
       const [named, seriesRows, referrerRows, stored] = await Promise.all([
         describePages([key]),
-        seriesQuery(since, today, key),
-        referrersQuery(since, today, key),
+        seriesQuery(since, today, { page: key }),
+        referrersQuery(since, today, { page: key }),
         deps.settings.get("STATS_SINCE"),
       ]);
       const page = named.get(key);
@@ -1015,6 +1071,40 @@ export function createStatsService(
         // A page has no hours of its own: today shows its total and sources.
         series: days === 1 ? null : { unit: "day", points },
         referrers: summarizeReferrers(referrerRows),
+      };
+    },
+
+    async getReferrer(key, { days, today }) {
+      // The overflow row is a remainder, not somewhere readers came from.
+      if (key === VIEW_OVERFLOW_KEY) return null;
+      const since = shiftDayKey(today, -(days - 1));
+      const [seriesRows, topRows, stored] = await Promise.all([
+        seriesQuery(since, today, { referrer: key }),
+        topPagesQuery(since, today, { referrer: key }),
+        deps.settings.get("STATS_SINCE"),
+      ]);
+      // Direct and Internal exist for every site. A host or a tag typed into
+      // the address bar is a referrer of this site only if it ever sent a
+      // view, inside the window or on an older day still kept.
+      const known =
+        key === "" || key === VIEW_INTERNAL_REFERRER || topRows.length > 0;
+      if (!known && !(await hasReferrerRows(key))) return null;
+      const named = await describePages(topRows.map((row) => row.key));
+      const points = fillDays(seriesRows, today, days);
+      return {
+        referrer: key,
+        days,
+        since,
+        until: today,
+        // The site's start, as on a page's own numbers.
+        start: await startOfRecord(stored, { since, today }, []),
+        total: points.reduce((sum, point) => sum + point.views, 0),
+        // A referrer has no hours of its own: today shows its total and pages.
+        series: days === 1 ? null : { unit: "day", points },
+        pages: topRows.flatMap((row) => {
+          const page = named.get(row.key);
+          return page ? [{ ...page, views: row.views }] : [];
+        }),
       };
     },
 

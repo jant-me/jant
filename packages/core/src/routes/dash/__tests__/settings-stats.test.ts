@@ -1,8 +1,8 @@
 /**
  * The Stats page and its switch, through the real services: the page opens
  * on today, shows what the counters hold for the window asked for, says
- * where its record begins, ranks what it lists, any page in its list opens
- * on its own, and the switch deletes the counts on the way off.
+ * where its record begins, ranks what it lists, any page or referrer in its
+ * lists opens on its own, and the switch deletes the counts on the way off.
  */
 
 import { describe, expect, it } from "vitest";
@@ -193,6 +193,76 @@ describe("GET /settings/stats", () => {
       "nonsense",
     ]) {
       const missing = await app.request(`/settings/stats?page=${key}`);
+      expect(missing.status).toBe(404);
+    }
+  });
+
+  it("opens one referrer with the pages it sent readers to, and answers 404 for one never seen", async () => {
+    const { app, services } = createApp();
+    const { post, reading } = await seed(services);
+
+    // Every referrer row of the site's list is a link, Other apart.
+    const overview = await (await app.request("/settings/stats")).text();
+    expect(overview).toContain(
+      'href="/settings/stats?referrer=news.ycombinator.com&amp;days=1"',
+    );
+    expect(overview).toContain('href="/settings/stats?referrer=&amp;days=1"');
+    expect(overview).toContain(
+      'href="/settings/stats?referrer=%2F&amp;days=1"',
+    );
+    // And so is every referrer row of one page's numbers.
+    const postPage = await (
+      await app.request(`/settings/stats?page=${post.id}&days=7`)
+    ).text();
+    expect(postPage).toContain(
+      'href="/settings/stats?referrer=news.ycombinator.com&amp;days=7"',
+    );
+
+    const res = await app.request(
+      "/settings/stats?referrer=news.ycombinator.com",
+    );
+    expect(res.status).toBe(200);
+    const hn = await res.text();
+    expect(hn).toContain("41 views today");
+    expect(hn).toContain('settings-stats-rank">1<');
+    expect(hn).toContain("A well-read note");
+    expect(hn).toContain(`href="/settings/stats?page=${post.id}&amp;days=1"`);
+    // The window switch stays on this referrer.
+    expect(hn).toContain(
+      'href="/settings/stats?referrer=news.ycombinator.com&amp;days=7"',
+    );
+    // A referrer has no hours of its own, and one referrer's numbers list no referrers.
+    expect(hn).not.toContain("settings-stats-chart");
+    expect(hn).not.toContain(">Referrers<");
+    expect(hn).not.toContain("Count page views");
+
+    const month = await (
+      await app.request("/settings/stats?referrer=news.ycombinator.com&days=30")
+    ).text();
+    expect(month).toContain("41 views in the last 30 days");
+    expect(month).toContain("settings-stats-chart");
+
+    // Direct, by its empty key: the home page, the collection and the post.
+    const direct = await (
+      await app.request("/settings/stats?referrer=")
+    ).text();
+    expect(direct).toContain(">Direct<");
+    expect(direct).toContain("7 views today");
+    expect(direct).toContain(">Home<");
+    expect(direct).toContain(">Reading<");
+    expect(direct).toContain(
+      `href="/settings/stats?page=${reading.id}&amp;days=1"`,
+    );
+
+    const internal = await (
+      await app.request("/settings/stats?referrer=%2F")
+    ).text();
+    expect(internal).toContain(">Internal<");
+    expect(internal).toContain("2 views today");
+    expect(internal).toContain(">Home<");
+
+    for (const key of ["reddit.com", "%2A"]) {
+      const missing = await app.request(`/settings/stats?referrer=${key}`);
       expect(missing.status).toBe(404);
     }
   });
