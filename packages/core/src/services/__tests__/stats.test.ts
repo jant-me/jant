@@ -525,6 +525,96 @@ describe("StatsService", () => {
       expect(await stats.getPage(VIEW_OVERFLOW_KEY, window)).toBeNull();
     });
 
+    it("answers for one referrer by its key, ranking the pages it sent readers to", async () => {
+      const post = await posts.create({
+        format: "note",
+        title: "Read me",
+        bodyMarkdown: "Body",
+        status: "published",
+      });
+      const reading = await collections.create({
+        slug: "reading",
+        title: "Reading",
+      });
+      await stats.record(
+        [
+          entry({ page: post.id, referrer: "news.ycombinator.com", count: 30 }),
+          entry({
+            page: reading.id,
+            referrer: "news.ycombinator.com",
+            count: 2,
+          }),
+          entry({ page: post.id, count: 4 }),
+          entry({ page: "/", count: 50 }),
+          entry({ page: "/", referrer: VIEW_INTERNAL_REFERRER, count: 7 }),
+        ],
+        { dailyLimit: 0, today: TODAY },
+      );
+      const window = { days: 7, today: TODAY };
+
+      const fromHn = await stats.getReferrer("news.ycombinator.com", window);
+      expect(fromHn).toMatchObject({
+        referrer: "news.ycombinator.com",
+        total: 32,
+        pages: [
+          { kind: "post", key: post.id, views: 30 },
+          { kind: "collection", key: reading.id, views: 2 },
+        ],
+      });
+      expect(fromHn?.series?.points.at(-1)).toEqual({ at: TODAY, views: 32 });
+
+      // Direct and Internal are referrers too, by their stored keys.
+      expect(await stats.getReferrer("", window)).toMatchObject({
+        total: 54,
+        pages: [
+          { kind: "path", key: "/", views: 50 },
+          { kind: "post", key: post.id, views: 4 },
+        ],
+      });
+      expect(
+        await stats.getReferrer(VIEW_INTERNAL_REFERRER, window),
+      ).toMatchObject({
+        total: 7,
+        pages: [{ kind: "path", key: "/", views: 7 }],
+      });
+
+      // A referrer has no hours of its own: today is its total and its pages.
+      const today = await stats.getReferrer("news.ycombinator.com", {
+        days: 1,
+        today: TODAY,
+      });
+      expect(today?.total).toBe(32);
+      expect(today?.series).toBeNull();
+
+      // Nothing the site ever counted a view from, and the overflow row.
+      expect(await stats.getReferrer("reddit.com", window)).toBeNull();
+      expect(await stats.getReferrer(VIEW_OVERFLOW_KEY, window)).toBeNull();
+    });
+
+    it("keeps a referrer whose views fall outside the window", async () => {
+      await stats.record(
+        [
+          entry({
+            page: "/",
+            referrer: "bing.com",
+            day: shiftDayKey(TODAY, -10),
+            count: 3,
+          }),
+        ],
+        { dailyLimit: 0, today: TODAY },
+      );
+
+      const week = await stats.getReferrer("bing.com", {
+        days: 7,
+        today: TODAY,
+      });
+      expect(week).toMatchObject({ referrer: "bing.com", total: 0, pages: [] });
+      // Direct exists before anything direct was counted.
+      expect(
+        await stats.getReferrer("", { days: 7, today: TODAY }),
+      ).toMatchObject({ total: 0, pages: [] });
+    });
+
     it("keeps a deleted post's page while its rows last", async () => {
       const post = await posts.create({
         format: "note",
