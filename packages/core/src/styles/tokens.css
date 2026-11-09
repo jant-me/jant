@@ -478,6 +478,11 @@
   --site-search-mark-bg: oklch(0.92 0.14 90 / 0.55);
   --site-search-mark-color: oklch(0.35 0.09 70);
 
+  /* Highlighted text in posts (`==text==`). Follows each theme's search
+     colors until a theme sets it, and every theme sets those on :root. */
+  --site-highlight-bg: var(--site-search-mark-bg);
+  --site-highlight-color: var(--site-search-mark-color);
+
   /* Admin */
   --dash-bg: oklch(0.97 0.005 80);
   --dash-card-radius: 10px;

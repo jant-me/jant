@@ -1,5 +1,8 @@
 import {
   Extension,
+  Mark,
+  markInputRule,
+  markPasteRule,
   Node,
   getSchema,
   type AnyExtension,
@@ -452,6 +455,71 @@ const MarkdownItalic = Italic.extend({
 const MarkdownStrike = Strike.extend({
   renderMarkdown(node, helpers) {
     return renderEmphasis(node, helpers.renderChildren(node), "strike", "~~");
+  },
+});
+
+/** Shared highlight mark for editing, Markdown interchange, and rich HTML paste. */
+const MarkdownHighlight = Mark.create({
+  name: "highlight",
+
+  parseHTML() {
+    return [{ tag: "mark" }];
+  },
+
+  renderHTML() {
+    return ["mark", 0];
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      "Mod-Shift-h": () => this.editor.commands.toggleMark(this.name),
+    };
+  },
+
+  addInputRules() {
+    return [
+      markInputRule({
+        find: /(?:^|[^=])(==([^=\s](?:(?:=(?!=)|[^=\n])*?[^=\s])?)==)$/,
+        type: this.type,
+      }),
+    ];
+  },
+
+  addPasteRules() {
+    return [
+      markPasteRule({
+        find: /(?:^|[^=])(==([^=\s](?:(?:=(?!=)|[^=\n])*?[^=\s])?)==)(?![=])/g,
+        type: this.type,
+      }),
+    ];
+  },
+
+  markdownTokenName: "highlight",
+
+  parseMarkdown(token, helpers) {
+    return helpers.applyMark(
+      "highlight",
+      helpers.parseInline(token.tokens ?? []),
+    );
+  },
+
+  renderMarkdown(node, helpers) {
+    return `==${helpers.renderChildren(node)}==`;
+  },
+
+  markdownTokenizer: {
+    name: "highlight",
+    level: "inline",
+    start(src: string) {
+      return src.indexOf("==");
+    },
+    tokenize(src: string, _tokens, helpers) {
+      const match = /^==((?:\\[^\n]|=(?!=)|[^=\\\n])+?)==(?![=])/.exec(src);
+      if (!match) return undefined;
+      const [raw, text = ""] = match;
+      if (text.trim() !== text) return undefined;
+      return { type: "highlight", raw, tokens: helpers.inlineTokens(text) };
+    },
   },
 });
 
@@ -1172,6 +1240,7 @@ export function createMarkdownContentExtensions(
     MarkdownBold,
     MarkdownItalic,
     MarkdownStrike,
+    MarkdownHighlight,
     MarkdownHtmlEmphasis,
     CommonMarkOrderedList,
     SemanticLink.configure({
@@ -1382,10 +1451,64 @@ function expandCodeBlockFences(markdown: string): string {
   return markdown;
 }
 
+/**
+ * Swap each `=` in a text node that could take part in a `==` delimiter for
+ * a sentinel, which the serializer later writes as `\=`.
+ *
+ * Only two kinds of `=` can: one in a run of two or more, and one at either
+ * end of the text (leading and trailing whitespace aside, since the
+ * serializer moves it outside a mark), where a highlight's own `==` lands
+ * right beside it. `a = b` and `E=mc²` stay as they are.
+ *
+ * @param text - A text node's text, outside code
+ * @param sentinel - A string the document doesn't contain
+ * @returns The text with those `=` replaced by the sentinel
+ * @example
+ * protectHighlightDelimiters("a==b and c = d=", "S"); // "aSSb and c = dS"
+ */
+function protectHighlightDelimiters(text: string, sentinel: string): string {
+  return text
+    .replace(/={2,}/g, (run) => sentinel.repeat(run.length))
+    .replace(/^(\s*)=/, (_match, space: string) => `${space}${sentinel}`)
+    .replace(/=(\s*)$/, (_match, space: string) => `${sentinel}${space}`);
+}
+
+/**
+ * The upstream serializer escapes CommonMark delimiters but not `==`, so
+ * literal text such as `a==b and c==d` came back as a highlight. Its escaping
+ * hook is private: the `=` that need it go through a sentinel instead.
+ */
+class JantMarkdownManager extends MarkdownManager {
+  override serialize(doc: JSONContent): string {
+    const source = JSON.stringify(doc);
+    let sentinel = "JANTLITERALEQUALS";
+    while (source.includes(sentinel)) sentinel += "X";
+
+    // Builds a copy: the stored JSON is never changed, and code keeps its `=`.
+    const protect = (node: JSONContent, insideCode = false): JSONContent => {
+      const code =
+        insideCode ||
+        node.type === "codeBlock" ||
+        node.marks?.some((mark) => mark.type === "code");
+      return {
+        ...node,
+        ...(node.text && !code
+          ? { text: protectHighlightDelimiters(node.text, sentinel) }
+          : {}),
+        ...(node.content
+          ? { content: node.content.map((child) => protect(child, code)) }
+          : {}),
+      };
+    };
+
+    return super.serialize(protect(doc)).split(sentinel).join("\\=");
+  }
+}
+
 export function createMarkdownManager(
   extensions: Extensions = createMarkdownContentExtensions(),
 ): MarkdownManager {
-  return new MarkdownManager({
+  return new JantMarkdownManager({
     extensions,
     markedOptions: MARKDOWN_MARKED_OPTIONS,
   });

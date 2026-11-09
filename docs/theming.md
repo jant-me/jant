@@ -65,6 +65,8 @@ These derive from the core palette by default. Built-in themes set `--site-accen
 | `--site-footnote-marker`        | Derived from `--site-text-secondary` | Footnote numbers in the rail                                                                              |
 | `--site-search-mark-bg`         | Built-in yellow                      | Search result highlight background                                                                        |
 | `--site-search-mark-color`      | Built-in dark text                   | Search result highlight text                                                                              |
+| `--site-highlight-bg`           | `var(--site-search-mark-bg)`         | Post highlight (`==text==`) background                                                                    |
+| `--site-highlight-color`        | `var(--site-search-mark-color)`      | Post highlight text                                                                                       |
 
 ### Example: custom primary and site accent
 

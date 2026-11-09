@@ -10,12 +10,20 @@
  * see the note in `style-author.css`.
  */
 
-/* Search result highlight */
+/* Highlighted text in a post */
 mark {
-  background-color: var(--site-search-mark-bg);
-  color: var(--site-search-mark-color);
+  background-color: var(--site-highlight-bg);
+  color: var(--site-highlight-color);
   border-radius: 2px;
   padding: 0 2px;
+}
+
+/* Search result highlight. The search page renders snippets, never post
+   HTML, so every mark on it is a match. */
+.search-page mark,
+.search-snippet mark {
+  background-color: var(--site-search-mark-bg);
+  color: var(--site-search-mark-color);
 }
 
 /* Config Editor — a quiet utility list, not a stack of nested cards. */
