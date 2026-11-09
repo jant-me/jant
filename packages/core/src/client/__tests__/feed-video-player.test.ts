@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   chooseAutoplayVideo,
+  initFeedVideoPlayer,
   shouldSuppressFeedVideoAutoplay,
 } from "../feed-video-player.js";
 import { setMediaVideoPlaybackPaused } from "../media-lightbox-events.js";
@@ -55,5 +56,21 @@ describe("chooseAutoplayVideo", () => {
 
     setMediaVideoPlaybackPaused("media-paused", false);
     expect(shouldSuppressFeedVideoAutoplay("media-paused")).toBe(false);
+  });
+});
+
+describe("initFeedVideoPlayer", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sets no timer on a page without a feed video", () => {
+    // The module also initializes itself on import; a timer left behind by
+    // either would fire after a test's document is torn down.
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+
+    initFeedVideoPlayer(document);
+
+    expect(setTimeoutSpy).not.toHaveBeenCalled();
   });
 });
