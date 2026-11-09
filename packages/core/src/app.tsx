@@ -80,6 +80,7 @@ import { requireOnboarding } from "./middleware/onboarding.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { prefetchSettings, withConfig } from "./middleware/config.js";
 import { viewCounter } from "./middleware/view-counter.js";
+import { viewConfirmRoutes } from "./routes/view-confirm.js";
 import { secureHeadersMiddleware } from "./middleware/secure-headers.js";
 import { apiCors } from "./middleware/cors.js";
 import { rejectCrossOriginWrites } from "./middleware/cross-origin.js";
@@ -550,9 +551,10 @@ export function createApp(): HonoApp {
   app.use("*", withConfig());
   app.use("*", i18nMiddleware());
 
-  // Page views, counted after the response from the page routes below that
-  // name what they rendered (`c.var.viewTarget`). Needs the config above for
-  // the site's time zone and the stats switch.
+  // Page views: the page routes below name what they rendered
+  // (`c.var.viewTarget`), this marks the response with a view token, and
+  // `/_/seen` counts the view once the browser confirms it. Needs the
+  // config above for the stats switch.
   app.use("*", viewCounter());
 
   // --- Routes that need config ---
@@ -612,6 +614,7 @@ export function createApp(): HonoApp {
   app.route("/subscribe", subscribeRoutes);
   app.route("/latest", latestRoutes);
   app.route("/", partialPageRoutes);
+  app.route("/_", viewConfirmRoutes);
   app.route("/_", brandRoutes);
   app.route("/_", themeSampleRoutes);
   app.route("/collections", collectionsPageRoutes);

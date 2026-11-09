@@ -307,10 +307,11 @@ function ViewsChart({
     unit === "hour"
       ? formatHourLabel(0, locale)
       : points[startIndex] && formatDayLabel(points[startIndex].at, locale);
+  const last = points.at(-1);
   const lastLabel =
     unit === "hour"
       ? formatHourLabel(23, locale)
-      : points.at(-1) && formatDayLabel(points.at(-1)!.at, locale);
+      : last && formatDayLabel(last.at, locale);
 
   return (
     <figure class="settings-stats-figure">

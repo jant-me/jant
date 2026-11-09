@@ -9,6 +9,7 @@ import "./vendor/datastar.js";
 import { installPrefixedFetch } from "./client/runtime-paths.js";
 import "./client/audio-player.js";
 import "./client/feed-video-player.js";
+import "./client/view-confirm.js";
 import "./client/media-scroll-hint.js";
 import "./client/form-enter-submit.js";
 import "./client/copy-field.js";
