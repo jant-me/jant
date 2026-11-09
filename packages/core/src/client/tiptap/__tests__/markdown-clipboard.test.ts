@@ -1012,3 +1012,17 @@ describe("highlight clipboard", () => {
     expect(editor.getHTML()).toBe("<p><mark>重点</mark></p>");
   });
 });
+
+describe("highlight paste beside other text", () => {
+  it.each([
+    ["这是==重点==，继续", ""],
+    ["这是==重点==，继续", "<p>这是==重点==，继续</p>"],
+  ])("keeps the text around a pasted highlight (%s, %s)", (plain, html) => {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = createTiptapEditor({ element });
+    editors.push(editor);
+    dispatchMarkdownPaste(editor, plain, html);
+    expect(editor.getHTML()).toBe("<p>这是<mark>重点</mark>，继续</p>");
+  });
+});
