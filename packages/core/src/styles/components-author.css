@@ -535,7 +535,10 @@
     opacity: 0.5;
   }
 
+  /* The current page's name is the one piece that can be long (a post's
+     derived title); it takes the rest of the line and is cut, never wrapped. */
   .dash-breadcrumb-current {
+    @apply flex-1 min-w-0 truncate;
     color: var(--color-foreground);
     font-weight: var(--fw-medium);
   }
@@ -1636,10 +1639,22 @@
   }
 
   .settings-stats-title {
+    @apply flex flex-wrap items-baseline;
+    gap: 0.5rem;
     margin: 0;
     font-size: var(--type-title);
     font-weight: var(--fw-semibold);
     line-height: var(--type-heading-leading);
+  }
+
+  /* A page's name on its own stats page: at most two lines, then cut. An
+     untitled note is named by its opening words, which can run long. */
+  .settings-stats-title-name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
   }
 
   .settings-stats-windows {
@@ -1733,20 +1748,34 @@
 
   .settings-stats-list {
     @apply flex flex-col;
+    gap: 0.125rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
+  /* A ranked row. The bar behind it is its share of the window's total,
+     set by the row as `--stats-share`; the text sits on top of it. */
   .settings-stats-row {
     @apply flex items-center;
     gap: 0.75rem;
-    padding: 0.55rem 0;
-    border-bottom: 1px solid var(--border);
+    padding: 0.45rem 0.625rem;
+    border-radius: var(--radius-sm, 0.375rem);
+    background: linear-gradient(
+      to right,
+      var(--muted) var(--stats-share, 0%),
+      transparent var(--stats-share, 0%)
+    );
   }
 
-  .settings-stats-row:last-child {
-    border-bottom: none;
+  .settings-stats-rank {
+    flex: none;
+    min-width: 1.25rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-sm);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--site-text-secondary);
   }
 
   .settings-stats-label {

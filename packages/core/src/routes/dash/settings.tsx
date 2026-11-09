@@ -77,7 +77,7 @@ import {
   STATS_WINDOWS,
   type StatsWindow,
 } from "../../services/stats.js";
-import { formatDayKey } from "../../lib/view-counting.js";
+import { formatDayKey, formatHourKey } from "../../lib/view-counting.js";
 import { now } from "../../lib/time.js";
 import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
 import {
@@ -479,8 +479,12 @@ settingsRoutes.get("/stats", async (c) => {
   const enabled = appConfig.stats.enabled;
   const days = parseStatsWindow(c.req.query("days"));
   const pageKey = c.req.query("page");
-  const today = formatDayKey(now(), appConfig.timeZone);
-  const window = { days, today };
+  const at = now();
+  const window = {
+    days,
+    today: formatDayKey(at, appConfig.timeZone),
+    hour: formatHourKey(at, appConfig.timeZone),
+  };
 
   // The chrome needs nothing from the counts, so the reads go out together.
   const [navData, page, overview] = await Promise.all([

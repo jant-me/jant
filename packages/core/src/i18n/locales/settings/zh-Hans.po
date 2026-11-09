@@ -33,7 +33,7 @@ msgstr "{count, plural, other {还有 # 篇{language}帖子。先修改它们的
 msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 msgstr "{count, plural, other {还有 # 篇{language}帖子，但列表里没有这个语言。把它加回列表，或先修改这些帖子的语言。}}"
 
-#. @context: Total line on the stats page; {days} is 7, 30 or 90
+#. @context: Total line on the stats page; {days} is 7 or 30
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "{count, plural, one {# view} other {# views}} in the last {days} days"
 msgstr "{count, plural, other {最近 {days} 天共 # 次浏览}}"
@@ -43,12 +43,17 @@ msgstr "{count, plural, other {最近 {days} 天共 # 次浏览}}"
 msgid "{count, plural, one {# view} other {# views}} since {date}"
 msgstr "{count, plural, other {{date}起 # 次浏览}}"
 
+#. @context: Total line on the stats page for today
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "{count, plural, one {# view} other {# views}} today"
+msgstr "{count, plural, other {今天 # 次浏览}}"
+
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
 msgstr "{count} 个设置已显示"
 
-#. @context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8
+#. @context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8 or an hour like 14:00
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "{day}: {count, plural, one {# view} other {# views}}"
 msgstr "{count, plural, other {{day}：# 次浏览}}"
@@ -68,7 +73,7 @@ msgstr "{name} 是 Jant 社区人工维护的目录，旨在帮助用户发现�
 msgid "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
 msgstr "根地址（/、/feed、/archive）将改为提供「{next}」的内容，「{previous}」移至 {prefix}。帖子地址不会改变，但订阅了 /feed 的读者从此收到的是「{next}」的帖子。"
 
-#. @context: One option of the window switch on the stats page; {window} is 7, 30 or 90
+#. @context: One option of the window switch on the stats page; {window} is 7 or 30
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "{window} days"
 msgstr "{window} 天"
@@ -1427,6 +1432,11 @@ msgstr "安装 GitHub App 以在无需管理个人令牌的情况下授予访问
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Integrations"
 msgstr "集成"
+
+#. @context: Row on the stats page for views that followed a link from another page of the site
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Internal"
+msgstr "站内"
 
 #. @context: Name of the Jant blog directory. Appears inside the Discover checkbox label, and in the help line under it as the link to the directory.
 #: src/ui/dash/settings/discover-copy.ts
@@ -2877,6 +2887,11 @@ msgstr "时区已更新。"
 msgid "Title"
 msgstr "标题"
 
+#. @context: The one-day option of the window switch on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Today"
+msgstr "今天"
+
 #. @context: Button to expand/collapse nav item edit
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Toggle edit panel"
@@ -3063,6 +3078,11 @@ msgstr "每日浏览量、读得最多的页面和来源"
 msgid "Views per day"
 msgstr "每日浏览量"
 
+#. @context: Accessible name of today's bar chart on the stats page
+#: src/ui/dash/settings/StatsContent.tsx
+msgid "Views per hour"
+msgstr "每小时浏览量"
+
 #. @context: Prefix before Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Want more control?"
@@ -3163,7 +3183,7 @@ msgstr "/archive 打开时用哪种版式。读者可以在页面上自行切换
 msgid "Which post stream the canonical /feed URL returns."
 msgstr "规范的 /feed URL 返回哪个帖子流。"
 
-#. @context: Accessible name of the 7/30/90-day switch on the stats page
+#. @context: Accessible name of the today/7/30-day switch on the stats page
 #: src/ui/dash/settings/StatsContent.tsx
 msgid "Window"
 msgstr "时间范围"

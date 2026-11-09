@@ -253,6 +253,13 @@
       "when": 1794074955534,
       "tag": "0035_brainy_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1794216332906,
+      "tag": "0036_gorgeous_smasher",
+      "breakpoints": true
     }
   ]
 }

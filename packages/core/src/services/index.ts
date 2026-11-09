@@ -214,6 +214,7 @@ export type {
   StatsPageRow,
   StatsReferrerRow,
   StatsReferrers,
+  StatsSeries,
   StatsSeriesPoint,
   StatsWindow,
 } from "./stats.js";
