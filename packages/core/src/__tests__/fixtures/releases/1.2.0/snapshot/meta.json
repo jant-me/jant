@@ -1,0 +1,11 @@
+{
+  "format": "jant-site-snapshot",
+  "version": 2,
+  "dialect": "sqlite",
+  "jant": "1.2.0",
+  "schema": "0036_gorgeous_smasher",
+  "site": {
+    "id": "sit_01kn8jq3t4famtyg9hjd074ckr",
+    "key": "default"
+  }
+}
