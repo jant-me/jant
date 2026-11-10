@@ -143,10 +143,11 @@
   --type-heading-leading: 1.2;
   /*
    * Semibold, not medium: a heading has to outweigh bold body text, and the
-   * CJK serif faces have no 500 — Songti SC resolves 500 to Regular and 600
-   * to Bold, so medium headings came out lighter than the <strong> runs
-   * beneath them. Latin faces with a 500 (New York, Literata, Source Sans)
-   * step up half a weight. Tufte opts back out to Regular, its own look.
+   * Latin faces with a 500 (New York, Literata, Source Sans) would step up
+   * only half a weight. A page in Chinese, Japanese or Korean sets both
+   * weights to medium instead (`getCjkFontCssVariables` in
+   * ui/font-themes.ts): its serif faces have no 500 or 600 and would turn
+   * semibold into Bold. Tufte opts back out to Regular, its own look.
    */
   --type-heading-weight: var(--fw-semibold);
   --type-heading-tracking: 0;

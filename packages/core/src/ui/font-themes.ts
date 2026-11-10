@@ -157,32 +157,49 @@ export function resolveCjkFontProfile(
 }
 
 /*
- * Reading rhythm for a CJK page. Han, kana and hangul glyphs fill the em box
- * where Latin lowercase sits at the x-height, so the Latin leadings in
- * tokens.css pack CJK lines visibly tighter: 1.7 reads as 1.5 does in Latin.
- * The surfaces Chinese readers hold up as well set — sspai, WeChat articles —
- * run 1.75 to 1.8, and a multi-line Chinese title at 1.2 has its rows touching.
+ * Reading rhythm and heading weight for a CJK page.
+ *
+ * Han, kana and hangul glyphs fill the em box where Latin lowercase sits at
+ * the x-height, so the Latin leadings in tokens.css pack CJK lines visibly
+ * tighter: 1.7 reads as 1.5 does in Latin. The surfaces Chinese readers hold
+ * up as well set — sspai, WeChat articles — run 1.75 to 1.8, and a multi-line
+ * Chinese title at 1.2 has its rows touching.
+ *
+ * Headings step down from the semibold tokens.css sets for Latin faces to
+ * medium. The Chinese serif faces have no 500 or 600: Songti SC and the Noto
+ * Serif the site ships resolve 600 to Bold, two full steps above the body and
+ * far heavier than the New York Semibold beside it, so a bold Song title over
+ * a regular sans paragraph reads as a newspaper headline, on a phone most of
+ * all. At 500 those faces fall to Regular and the title's size and face carry
+ * the hierarchy, as Chinese books set a chapter title; the sans faces
+ * (PingFang, Hiragino Sans, Noto Sans CJK) have a Medium and take the half
+ * step. A `<strong>` run under a Regular heading is the darker of the two;
+ * the heading's size still reads it as the heading.
  */
-const CJK_READING_RHYTHM = {
+const CJK_READING_PROFILE = {
   "--type-body-leading": "1.75",
   "--type-heading-leading": "1.3",
+  "--type-heading-weight": "var(--fw-medium)",
+  "--type-display-weight": "var(--fw-medium)",
 };
 
 /**
  * Build the CSS variables a page in a CJK language needs: the serif and sans
- * fallback stacks for its script, and the reading rhythm its glyphs call for.
+ * fallback stacks for its script, the reading rhythm its glyphs call for, and
+ * the heading weight its faces have.
  *
  * Empty for a language with no profile: `tokens.css` already carries a real
- * script-neutral stack in both variables and the Latin leadings, so there is
- * nothing to override. `BaseLayout` writes these on `:root` ahead of the theme
- * style, so a font theme or custom CSS that sets a leading still wins.
+ * script-neutral stack in both variables and the Latin leadings and weights,
+ * so there is nothing to override. `BaseLayout` writes these on `:root` ahead
+ * of the theme style, so a font theme or custom CSS that sets a leading or a
+ * weight still wins.
  *
  * @param language - BCP 47 content language tag
  * @returns CSS variables consumed by every font theme, empty when the token
  *   defaults already apply
  * @example
  * getCjkFontCssVariables("zh-Hans")
- * // => { "--font-cjk-serif-fallback": '"Songti SC", ...', ..., "--type-body-leading": "1.8", ... }
+ * // => { "--font-cjk-serif-fallback": '"Songti SC", ...', ..., "--type-body-leading": "1.75", "--type-heading-weight": "var(--fw-medium)", ... }
  */
 export function getCjkFontCssVariables(
   language?: string,
@@ -192,25 +209,25 @@ export function getCjkFontCssVariables(
       return {
         "--font-cjk-serif-fallback": HANS_CJK_SERIF_FALLBACK,
         "--font-cjk-sans-fallback": HANS_CJK_SANS_FALLBACK,
-        ...CJK_READING_RHYTHM,
+        ...CJK_READING_PROFILE,
       };
     case "zh-Hant":
       return {
         "--font-cjk-serif-fallback": HANT_CJK_SERIF_FALLBACK,
         "--font-cjk-sans-fallback": HANT_CJK_SANS_FALLBACK,
-        ...CJK_READING_RHYTHM,
+        ...CJK_READING_PROFILE,
       };
     case "ja":
       return {
         "--font-cjk-serif-fallback": JP_CJK_SERIF_FALLBACK,
         "--font-cjk-sans-fallback": JP_CJK_SANS_FALLBACK,
-        ...CJK_READING_RHYTHM,
+        ...CJK_READING_PROFILE,
       };
     case "ko":
       return {
         "--font-cjk-serif-fallback": KO_CJK_SERIF_FALLBACK,
         "--font-cjk-sans-fallback": KO_CJK_SANS_FALLBACK,
-        ...CJK_READING_RHYTHM,
+        ...CJK_READING_PROFILE,
       };
     default:
       return {};

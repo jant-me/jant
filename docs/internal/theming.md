@@ -133,8 +133,12 @@ page in sans. `DEFAULT_FONT_CJK_SERIF_FALLBACK` and
 and a test fails if the two drift.
 
 Every font theme retains control over whether a surface uses serif or sans.
-Profiles only fill `--font-cjk-serif-fallback` and
-`--font-cjk-sans-fallback`; they never change a theme's pairing. The profile
+Profiles fill `--font-cjk-serif-fallback` and `--font-cjk-sans-fallback`,
+raise `--type-body-leading` and `--type-heading-leading` for glyphs that fill
+the em box, and set `--type-heading-weight` and `--type-display-weight` to
+medium, since the CJK serif faces have no semibold and would render Bold.
+They never change a theme's pairing, and they are written ahead of the theme
+style, so a font theme that sets a leading or a weight still wins. The profile
 stylesheet supplies the self-hosted serif face, while the sans profile prefers
 locale-appropriate system families before falling back across CJK variants.
 
