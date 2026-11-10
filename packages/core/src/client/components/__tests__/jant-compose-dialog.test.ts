@@ -5824,8 +5824,10 @@ describe("JantComposeDialog", () => {
     expect(css).not.toMatch(
       /\.compose-reply-compose-layout\s+\.compose-quote-text\s*\{[^}]*min-height:/,
     );
-    expect(css).toMatch(
-      /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s*\{[\s\S]*font-size:\s*var\(--type-content-body\);/,
+    // The reply body is set at the post body's size: the editor takes its type
+    // from `.prose`, so a reply rule restating it would only be a second copy.
+    expect(css).not.toMatch(
+      /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s*\{[^}]*font-size:/,
     );
   });
 

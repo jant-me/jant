@@ -55,7 +55,9 @@ class HtmlBlockNodeView {
     this.editor = editor;
 
     const wrapper = document.createElement("div");
-    wrapper.className = "tiptap-html-block-card";
+    // `not-prose`: this is editor chrome, not post content, so the reader's
+    // typography defaults stay out of its controls.
+    wrapper.className = "tiptap-html-block-card not-prose";
     wrapper.dataset.selected = "false";
     this.dom = wrapper;
 

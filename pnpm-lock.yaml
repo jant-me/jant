@@ -202,6 +202,9 @@ importers:
       '@tiptap/extension-hard-break':
         specifier: ^3.31.3
         version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))
+      '@tiptap/extension-heading':
+        specifier: ^3.31.3
+        version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))
       '@tiptap/extension-image':
         specifier: ^3.27.3
         version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))

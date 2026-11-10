@@ -3,6 +3,7 @@ import {
   Mark,
   markInputRule,
   markPasteRule,
+  mergeAttributes,
   Node,
   getSchema,
   type AnyExtension,
@@ -15,6 +16,7 @@ import CodeBlock from "@tiptap/extension-code-block";
 import { OrderedList } from "@tiptap/extension-list";
 import HardBreak from "@tiptap/extension-hard-break";
 import Paragraph from "@tiptap/extension-paragraph";
+import Heading from "@tiptap/extension-heading";
 import Bold from "@tiptap/extension-bold";
 import Italic from "@tiptap/extension-italic";
 import Strike from "@tiptap/extension-strike";
@@ -592,6 +594,42 @@ const MarkdownParagraph = Paragraph.extend({
     return escapeLineStartBlockSyntax(rendered);
   },
 });
+
+/** Every level a Markdown or HTML heading can have. */
+const ALL_HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
+
+function clampHeadingLevel(level: unknown): number {
+  const value = typeof level === "number" ? Math.trunc(level) : 1;
+  return Math.min(Math.max(value, 1), 6);
+}
+
+/**
+ * Headings at every level the published post renders, created at three.
+ *
+ * `levels` limits what the author can make — the `#` to `###` input rules,
+ * the shortcuts and the heading commands. A post can still hold `####` and
+ * below: written through the API or MCP, imported, or pasted as Markdown.
+ * Tiptap draws a level outside `levels` as the first one and drops it on an
+ * HTML paste, so an `h4` opened in the editor looked like an `h1`, and one
+ * copied in from a web page became a paragraph. Here every level parses and
+ * renders as itself, the way `tiptap-render.ts` publishes it.
+ */
+const MarkdownHeading = Heading.extend({
+  parseHTML() {
+    return ALL_HEADING_LEVELS.map((level) => ({
+      tag: `h${level}`,
+      attrs: { level },
+    }));
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      `h${clampHeadingLevel(node.attrs.level)}`,
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
+      0,
+    ];
+  },
+}).configure({ levels: [1, 2, 3] });
 
 /**
  * Ordered lists with CommonMark markers: digits only.
@@ -1229,7 +1267,7 @@ export function createMarkdownContentExtensions(
 ): Extensions {
   return [
     StarterKit.configure({
-      heading: { levels: [1, 2, 3] },
+      heading: false,
       link: false,
       codeBlock: false,
       orderedList: false,
@@ -1241,6 +1279,7 @@ export function createMarkdownContentExtensions(
       trailingNode: { notAfter: ["footnoteDefinition"] },
     }),
     MarkdownParagraph,
+    MarkdownHeading,
     MarkdownHardBreak,
     MarkdownBold,
     MarkdownItalic,

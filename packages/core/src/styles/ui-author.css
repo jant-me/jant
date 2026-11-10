@@ -5392,27 +5392,17 @@
      on an empty post, not a reserved shape, so it should follow the type
      instead of a pixel count that goes stale when the leading moves. Every
      compose text surface shares it: a note's body and the "thoughts" under a
-     link or a quote all open the same way and grow from there. */
+     link or a quote all open the same way and grow from there.
+     The type itself — family, size, leading, every block and mark inside — is
+     the reader's: the editor element carries `.prose` (see `createTiptapEditor`),
+     so what is written here looks the way it will be read. Only what an
+     editor has and a published post does not is styled in this sheet. */
   .compose-tiptap-body .tiptap {
     outline: none;
     min-height: calc(var(--type-body-leading) * 2em);
     min-width: 0;
     max-width: 100%;
     overflow-x: auto;
-    font-size: var(--type-content-body);
-    line-height: var(--type-body-leading);
-    letter-spacing: var(--type-body-tracking);
-    color: var(--site-text-primary);
-    font-family: var(--font-body);
-  }
-
-  .compose-reply-compose-layout .compose-tiptap-body .tiptap {
-    font-size: var(--type-content-body);
-    line-height: var(--type-body-leading);
-  }
-
-  .compose-tiptap-link .tiptap {
-    color: var(--site-text-primary);
   }
 
   /* Placeholder */
@@ -5425,268 +5415,9 @@
     height: 0;
   }
 
-  /* Tiptap prose styling */
-  .compose-tiptap-body .tiptap :is(h1, h2, h3, h4) {
-    font-family: var(--font-heading);
-    font-weight: var(--type-heading-weight);
-    letter-spacing: var(--type-heading-tracking);
-    line-height: var(--type-heading-leading);
-  }
-
-  .compose-tiptap-body .tiptap h1 {
-    font-size: var(--type-content-display);
-    margin-top: 4rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .compose-tiptap-body .tiptap h2 {
-    font-size: var(--type-content-title);
-    margin-top: 2.1rem;
-    margin-bottom: 1.4rem;
-  }
-
-  .compose-tiptap-body .tiptap h3 {
-    font-size: var(--type-content-subtitle);
-    margin-top: 2rem;
-    margin-bottom: 1.4rem;
-  }
-
-  .compose-reply-compose-layout
-    .compose-tiptap-body
-    .tiptap
-    :is(h1, h2, h3, h4) {
-    font-size: var(--type-secondary);
-    line-height: 1.32;
-    margin-top: 1.4rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .compose-tiptap-body .tiptap p {
-    margin-top: 1.4rem;
-    margin-bottom: 1.4rem;
-  }
-
-  .compose-reply-compose-layout .compose-tiptap-body .tiptap p {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  /* The first block's 1.4rem top margin is a lead-in that only made sense when
-     the body was the first thing in the editor. Every editor now renders a
-     format header above it — and notes a title field too — so it reads as a gap
-     instead. (This used to be scoped to .compose-editor-row, back when
-     standalone new/edit editors did start with the body.) */
-  .compose-tiptap-body .tiptap > :first-child {
-    margin-top: 0;
-  }
-
-  .compose-tiptap-body .tiptap ul {
-    list-style-type: disc;
-    padding-left: 1.4em;
-    margin: 1.25em 0;
-  }
-
-  .compose-tiptap-body .tiptap ol {
-    list-style-type: decimal;
-    /* Keep multi-digit markers inside the editor's scrollable bounds. */
-    padding-left: 2.25em;
-    margin: 1.25em 0;
-  }
-
-  .compose-tiptap-body .tiptap :is(ul, ol) :is(ul, ol) {
-    padding-left: 1.5em;
-    margin: 0.4em 0;
-  }
-
-  .compose-tiptap-body .tiptap ul ul {
-    list-style-type: circle;
-  }
-
-  .compose-tiptap-body .tiptap ul ul ul {
-    list-style-type: square;
-  }
-
-  .compose-tiptap-body .tiptap ol ol {
-    list-style-type: lower-alpha;
-  }
-
-  .compose-tiptap-body .tiptap ol ol ol {
-    list-style-type: lower-roman;
-  }
-
-  .compose-tiptap-body .tiptap li {
-    margin: 0.5em 0;
-  }
-
-  .compose-tiptap-body .tiptap li > p:first-child {
-    margin-top: 0;
-  }
-
-  .compose-tiptap-body .tiptap li > p:last-child {
-    margin-bottom: 0;
-  }
-
-  /* A nested list makes its leading paragraph no longer the last child, so
-     clear the body-paragraph margin that would otherwise separate the levels. */
-  .compose-tiptap-body .tiptap li > p:has(+ :is(ul, ol)),
-  .compose-tiptap-body
-    .tiptap
-    li
-    > p:has(+ .ProseMirror-gapcursor + :is(ul, ol)) {
-    margin-bottom: 0;
-  }
-
-  .compose-tiptap-body .tiptap blockquote {
-    --_blockquote-bg: var(--compose-blockquote-bg);
-    --_blockquote-text: var(--compose-blockquote-text);
-    position: relative;
-    margin: 1.4rem 0;
-    padding: 1.4rem 1rem 0.75rem;
-    border: none;
-    border-radius: 6px;
-    background: var(--_blockquote-bg);
-    color: var(--_blockquote-text);
-    font-family: var(--font-blockquote);
-    font-style: italic;
-    font-weight: inherit;
-    quotes: none;
-    text-wrap: pretty;
-    transition:
-      background 0.18s ease,
-      color 0.18s ease;
-  }
-
-  /* Reply compose deliberately stays denser than ordinary authored prose. */
-  .compose-reply-compose-layout .compose-tiptap-body .tiptap ul {
-    padding-left: 1.5em;
-    margin: 0.25em 0;
-  }
-
-  .compose-reply-compose-layout .compose-tiptap-body .tiptap ol {
-    padding-left: 2.25em;
-    margin: 0.25em 0;
-  }
-
-  .compose-reply-compose-layout
-    .compose-tiptap-body
-    .tiptap
-    :is(ul, ol)
-    :is(ul, ol) {
-    padding-left: 1.5em;
-    margin: 0.2em 0;
-  }
-
-  .compose-reply-compose-layout .compose-tiptap-body .tiptap li {
-    margin: 0.15em 0;
-  }
-
-  .compose-reply-compose-layout .compose-tiptap-body .tiptap blockquote {
-    margin: 0.72em 0;
-    padding: 1.3rem 0.9em 0.76em 1em;
-  }
-
-  /* CJK: no italic for blockquotes (no true italic glyph) */
-  :lang(zh) .compose-tiptap-body .tiptap blockquote,
-  :lang(ja) .compose-tiptap-body .tiptap blockquote,
-  :lang(ko) .compose-tiptap-body .tiptap blockquote {
-    font-style: normal;
-  }
-
-  .compose-tiptap-body .tiptap blockquote::before {
-    content: "";
-    display: block;
-    width: 1.3rem;
-    height: 1.3rem;
-    margin-bottom: 0.35rem;
-    background: var(--compose-blockquote-rail);
-    opacity: 0.6;
-    mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 96 96' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M24.4 10.5C16.9 17.7 11.5 26.8 8.2 37.7C4.9 48.7 4.8 58.9 7.8 68.2C10.3 75.7 15.4 79.5 22.9 79.5C28 79.5 32.2 77.8 35.4 74.2C38.6 70.7 40.2 66.5 40.2 61.4C40.2 56.5 38.8 52.6 36 49.6C33.3 46.6 29.7 45.1 25.2 45.1C23.4 45.1 21.8 45.3 20.2 45.8C22.2 37.3 26.7 29.2 33.6 21.4L24.4 10.5Z'/%3E%3Cpath d='M60.8 10.5C53.3 17.7 47.9 26.8 44.6 37.7C41.3 48.7 41.2 58.9 44.2 68.2C46.7 75.7 51.8 79.5 59.3 79.5C64.4 79.5 68.6 77.8 71.8 74.2C75 70.7 76.6 66.5 76.6 61.4C76.6 56.5 75.2 52.6 72.4 49.6C69.7 46.6 66.1 45.1 61.6 45.1C59.8 45.1 58.2 45.3 56.6 45.8C58.6 37.3 63.1 29.2 70 21.4L60.8 10.5Z'/%3E%3C/svg%3E");
-    mask-size: contain;
-    mask-repeat: no-repeat;
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 96 96' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M24.4 10.5C16.9 17.7 11.5 26.8 8.2 37.7C4.9 48.7 4.8 58.9 7.8 68.2C10.3 75.7 15.4 79.5 22.9 79.5C28 79.5 32.2 77.8 35.4 74.2C38.6 70.7 40.2 66.5 40.2 61.4C40.2 56.5 38.8 52.6 36 49.6C33.3 46.6 29.7 45.1 25.2 45.1C23.4 45.1 21.8 45.3 20.2 45.8C22.2 37.3 26.7 29.2 33.6 21.4L24.4 10.5Z'/%3E%3Cpath d='M60.8 10.5C53.3 17.7 47.9 26.8 44.6 37.7C41.3 48.7 41.2 58.9 44.2 68.2C46.7 75.7 51.8 79.5 59.3 79.5C64.4 79.5 68.6 77.8 71.8 74.2C75 70.7 76.6 66.5 76.6 61.4C76.6 56.5 75.2 52.6 72.4 49.6C69.7 46.6 66.1 45.1 61.6 45.1C59.8 45.1 58.2 45.3 56.6 45.8C58.6 37.3 63.1 29.2 70 21.4L60.8 10.5Z'/%3E%3C/svg%3E");
-    -webkit-mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-  }
-
-  .compose-tiptap-body .tiptap blockquote:focus-within {
-    --_blockquote-bg: var(--compose-blockquote-bg-focus);
-    color: var(--site-text-primary);
-  }
-
-  .compose-tiptap-body .tiptap blockquote > :first-child {
-    margin-top: 0;
-  }
-
-  .compose-tiptap-body .tiptap blockquote > :last-child {
-    margin-bottom: 0;
-  }
-
-  .compose-tiptap-body .tiptap blockquote p {
-    margin: 0;
-  }
-
-  .compose-tiptap-body .tiptap blockquote p + p,
-  .compose-tiptap-body .tiptap blockquote ul,
-  .compose-tiptap-body .tiptap blockquote ol,
-  .compose-tiptap-body .tiptap blockquote pre {
-    margin-top: 0.6em;
-  }
-
-  .compose-tiptap-body .tiptap pre {
-    background: var(--site-page-bg);
-    border-radius: 6px;
-    padding: 0.75em 1em;
-    margin: 0.5em 0;
-    overflow-x: auto;
-    font-size: 0.85em;
-  }
-
-  .compose-tiptap-body .tiptap code {
-    background: var(--site-page-bg);
-    border-radius: 3px;
-    padding: 0.15em 0.3em;
-    font-size: 0.9em;
-  }
-
-  .compose-tiptap-body .tiptap pre code {
-    background: none;
-    border-radius: 0;
-    padding: 0;
-    font-size: inherit;
-  }
-
-  .compose-tiptap-body .tiptap hr {
-    border: none;
-    border-top: 1px solid var(--site-divider);
-    margin: 1em 0;
-  }
-
-  /* --- Table in editor -------------------------------------------------- */
-
-  .compose-tiptap-body .tiptap table {
-    border-collapse: collapse;
-    width: max-content;
-    min-width: 100%;
-    margin: 0.75em 0;
-  }
-
-  .compose-tiptap-body .tiptap td,
-  .compose-tiptap-body .tiptap th {
-    border: 1px solid var(--site-divider);
-    padding: 0.4em 0.6em;
-    vertical-align: top;
-    min-width: 6rem;
-    position: relative;
-  }
-
-  .compose-tiptap-body .tiptap th {
-    font-weight: var(--fw-semibold);
-    background: var(--site-page-bg);
-  }
-
-  .compose-tiptap-body .tiptap .selectedCell {
-    background: oklch(from var(--site-accent) l c h / 0.12);
-  }
+  /* Blocks and marks take `.prose` as they are. The few places the editor
+     has to differ are in the unlayered block at the end of this sheet, since a
+     rule inside `@layer components` cannot outrank `.prose`. */
 
   /* Contextual table toolbar — deliberately quieter than the text bubble menu. */
   .tiptap-table-controls {
@@ -5886,8 +5617,9 @@
 
   /* --- Image figure in editor ------------------------------------------- */
 
+  /* Margin, measure and corner radius come from the reader's `.prose figure`
+     rules, so an image sits in the draft the way it sits in the post. */
   .tiptap-image-figure {
-    margin: 0.75em 0;
     position: relative;
 
     /* Toolbar palette — soft charcoal, not pure black */
@@ -5926,10 +5658,6 @@
   }
 
   .tiptap-image-figure img {
-    width: 100%;
-    max-height: 500px;
-    object-fit: contain;
-    border-radius: 4px;
     display: block;
   }
 
@@ -6061,38 +5789,12 @@
     }
   }
 
-  /* Layout variants — in compact dialog, wide/full just fill the container */
-  .tiptap-image-figure[data-layout="wide"],
-  .tiptap-image-figure[data-layout="full"] {
-    width: 100%;
-  }
-
+  /* Layout variants. The breakout itself is the reader's `.prose figure` rule;
+     only the compact composer holds it back (end of this sheet). */
   .tiptap-image-figure[data-layout="full"] .tiptap-image-container {
     border-radius: 0;
     border-left: none;
     border-right: none;
-  }
-
-  .tiptap-image-figure[data-layout="full"] img {
-    border-radius: 0;
-  }
-
-  /* Fullscreen editor — enough room for real breakout */
-  .compose-fullscreen .tiptap-image-figure[data-layout="wide"] {
-    width: 1200px;
-    max-width: 100vw;
-    margin-left: 50%;
-    transform: translateX(-50%);
-  }
-
-  .compose-fullscreen .tiptap-image-figure[data-layout="full"] {
-    width: 100vw;
-    margin-left: 50%;
-    transform: translateX(-50%);
-  }
-
-  .tiptap-image-figure[data-layout="full"] img {
-    border-radius: 0;
   }
 
   /* Centered toolbar — hidden until selected */
@@ -6190,14 +5892,8 @@
     border-color: transparent;
   }
 
-  /* Static figcaption (shown when not selected) */
-  .tiptap-image-figcaption {
-    text-align: center;
-    font-size: var(--type-xs);
-    color: var(--site-text-secondary);
-    margin-top: 0.4em;
-  }
-
+  /* Static figcaption (shown when not selected). Its type is the reader's
+     `.prose figcaption`. */
   .tiptap-image-figcaption:empty {
     display: none;
   }
@@ -6475,33 +6171,11 @@
     display: none;
   }
 
-  .compose-tiptap-body .tiptap a {
-    color: var(--site-prose-link-color, var(--site-content-link));
-    font-weight: inherit;
-    text-decoration: underline;
-    text-decoration-color: var(
-      --site-prose-link-underline,
-      var(--site-content-link-underline)
-    );
-    text-decoration-thickness: 0.05em;
-    text-underline-offset: 0.1em;
-    transition:
-      color 0.18s ease,
-      text-decoration-color 0.18s ease;
-  }
-
-  .compose-tiptap-body .tiptap a:hover {
-    color: var(--site-prose-link-hover, var(--site-content-link-hover));
-    text-decoration-color: currentColor;
-  }
-
-  .compose-tiptap-body .tiptap s {
-    text-decoration: line-through;
-  }
-
+  /* Raised without a line box of its own, like `.footnote-ref` in the post, so
+     a line with a reference keeps the leading of the lines around it. */
   .compose-tiptap-body .tiptap .tiptap-footnote-reference {
     font-size: var(--type-footnote-ref);
-    line-height: 1;
+    line-height: 0;
     vertical-align: super;
     color: var(--site-footnote-marker);
     white-space: nowrap;
@@ -6556,14 +6230,6 @@
     margin-top: 1rem;
     padding-top: 0;
     border-top: 0;
-  }
-
-  .compose-tiptap-body .tiptap .tiptap-footnote-definition > :first-child {
-    margin-top: 0;
-  }
-
-  .compose-tiptap-body .tiptap .tiptap-footnote-definition > :last-child {
-    margin-bottom: 0;
   }
 
   /* =========================================================================
@@ -7357,8 +7023,6 @@
   .compose-fullscreen .compose-tiptap-body .tiptap {
     min-height: calc(100dvh - 14rem);
     padding-bottom: max(18vh, 8rem);
-    font-size: var(--type-content-body);
-    line-height: var(--type-body-leading);
   }
 
   .compose-fullscreen
@@ -7578,4 +7242,127 @@
   ) {
   width: 100%;
   max-width: none;
+}
+
+/*
+ * Editor exceptions to `.prose`
+ *
+ * The editor document carries `.prose` (see `createTiptapEditor`), so a draft
+ * is set in the reader's typography: one set of rules for the post as written
+ * and as read. `.prose` is unlayered, and a rule inside `@layer components`
+ * cannot outrank it whatever its specificity, so the few places an editor has
+ * to differ from the published post sit out here. Anything not listed is the
+ * reader's.
+ */
+
+/* TipTap wraps a list item's text in a paragraph, which the published HTML of
+   a tight list does not have. Left alone, that paragraph's bottom margin opens
+   a gap above a nested list that the post does not show. ProseMirror can put a
+   gap cursor between the two. */
+.compose-tiptap-body .tiptap li > p:has(+ :is(ul, ol)),
+.compose-tiptap-body
+  .tiptap
+  li
+  > p:has(+ .ProseMirror-gapcursor + :is(ul, ol)) {
+  margin-bottom: 0;
+}
+
+/* The editor scrolls sideways for wide tables, and a scroll box clips what
+   hangs outside it. At the reader's indent the marker of item 10 is cut off;
+   only a list against the left edge is at risk. */
+.compose-tiptap-body .tiptap > ol {
+  padding-left: 2.25em;
+}
+
+/* The post draws rules between rows and none between columns, which leaves an
+   empty table in a draft with no visible cells. The grid is for writing. */
+.compose-tiptap-body .tiptap table {
+  border-collapse: collapse;
+}
+
+.compose-tiptap-body .tiptap :is(td, th) {
+  position: relative;
+  border: 1px solid var(--site-divider);
+  padding: 0.4em 0.6em;
+}
+
+.compose-tiptap-body .tiptap .selectedCell {
+  background: oklch(from var(--site-accent) l c h / 0.12);
+}
+
+/* TipTap wraps each table in `.tableWrapper`. The reader's rule that a block
+   right after a heading or a rule gives up its top margin then lands on the
+   wrapper, and the table inside keeps its own. */
+.compose-tiptap-body
+  .tiptap
+  :is(h1, h2, h3, h4, h5, h6, hr)
+  + .tableWrapper
+  > table,
+.compose-tiptap-body .tiptap > .tableWrapper:first-child > table {
+  margin-top: 0;
+}
+
+/* Footnote definitions are shown where they are written, beside their label. */
+.compose-tiptap-body .tiptap .tiptap-footnote-definition > :first-child {
+  margin-top: 0;
+}
+
+.compose-tiptap-body .tiptap .tiptap-footnote-definition > :last-child {
+  margin-bottom: 0;
+}
+
+/* Wide and full images break out of the column on the page and in the
+   fullscreen editor, which has the room. Every other composer is a sheet one
+   column wide, so there they fill it. */
+.compose-tiptap-body:not(.compose-fullscreen *)
+  .tiptap-image-figure:is([data-layout="wide"], [data-layout="full"]) {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  transform: none;
+}
+
+/* Reply compose deliberately stays denser than ordinary authored prose. Every
+   level, or an h5 left at the prose size would outrank the compact h1. */
+.compose-reply-compose-layout
+  .compose-tiptap-body
+  .tiptap
+  :is(h1, h2, h3, h4, h5, h6) {
+  font-size: var(--type-secondary);
+  line-height: 1.32;
+  margin-top: 1.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.compose-reply-compose-layout .compose-tiptap-body .tiptap p {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.compose-reply-compose-layout .compose-tiptap-body .tiptap ul {
+  padding-left: 1.5em;
+  margin: 0.25em 0;
+}
+
+.compose-reply-compose-layout .compose-tiptap-body .tiptap ol {
+  padding-left: 2.25em;
+  margin: 0.25em 0;
+}
+
+.compose-reply-compose-layout
+  .compose-tiptap-body
+  .tiptap
+  :is(ul, ol)
+  :is(ul, ol) {
+  padding-left: 1.5em;
+  margin: 0.2em 0;
+}
+
+.compose-reply-compose-layout .compose-tiptap-body .tiptap li {
+  margin: 0.15em 0;
+}
+
+.compose-reply-compose-layout .compose-tiptap-body .tiptap blockquote {
+  margin: 0.72em 0;
+  padding: 1.3rem 0.9em 0.76em 1em;
 }
