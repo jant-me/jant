@@ -21,7 +21,10 @@
 import type { FC } from "hono/jsx";
 import type { MediaView } from "../../types.js";
 import { getMediaCategory } from "../../lib/upload.js";
-import { shouldUseShortVideoExperience } from "../../lib/video-playback.js";
+import {
+  getPosterFrameUrl,
+  shouldUseShortVideoExperience,
+} from "../../lib/video-playback.js";
 import {
   blurhashToDataUrl,
   getBlurhashDecodeSize,
@@ -455,6 +458,14 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                   ? undefined
                   : `${Math.round(Math.max(160, rowHeight * ratio))}px`;
                 const posterSrc = item.posterUrl || placeholder;
+                /* A clip stored without a poster (an API upload that sent
+                   none) would show an empty box: these `<video>`s only ever
+                   paint their poster. Without one, the browser reads the
+                   file's metadata and draws the poster frame itself — at
+                   once for a long clip, and for a short one when the feed
+                   player hands it its source near the viewport. */
+                const drawsOwnFrame = !item.posterUrl;
+                const videoPreload = drawsOwnFrame ? "metadata" : "none";
                 /* `video.u-photo` resolves to `poster`, which is the still
                    the timeline already shows. Only a real poster qualifies:
                    the blurhash fallback is a data URL, and publishing one as
@@ -505,7 +516,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                         class="u-video media-visual-frame media-video-link"
                       >
                         <video
-                          preload="none"
+                          preload={videoPreload}
                           muted
                           playsinline
                           loop
@@ -569,10 +580,15 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                     }
                   >
                     <video
-                      preload="none"
+                      preload={videoPreload}
                       muted
                       playsinline
                       poster={posterSrc}
+                      src={
+                        drawsOwnFrame
+                          ? getPosterFrameUrl(item.url, item.durationSeconds)
+                          : undefined
+                      }
                       width={item.width}
                       height={item.height}
                       style={videoStyle}

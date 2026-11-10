@@ -1332,6 +1332,34 @@ export class JantComposeEditor extends LitElement {
     return this._attachments.some((a) => a.clientId === clientId);
   }
 
+  /**
+   * Ask for posters for the uploaded videos that have none. A clip that came
+   * in through the API without a poster gets one made here, in the author's
+   * browser, the only place every deployment can decode video. The bridge
+   * stores it and shows it on the card.
+   */
+  #requestMissingPosters() {
+    const attachments = this._attachments.flatMap((a) =>
+      a.file.type.startsWith("video/") &&
+      a.mediaId &&
+      a.remoteUrl &&
+      a.posterUrl === null
+        ? [{ clientId: a.clientId, mediaId: a.mediaId, url: a.remoteUrl }]
+        : [],
+    );
+    if (attachments.length === 0) return;
+
+    // Wait for the render, so the event leaves from a connected editor.
+    void this.updateComplete.then(() => {
+      this.dispatchEvent(
+        new CustomEvent("jant:video-posters-missing", {
+          bubbles: true,
+          detail: { attachments },
+        }),
+      );
+    });
+  }
+
   /** Pre-fill all fields for edit mode or draft restore */
   populate(data: {
     format: string;
@@ -1419,6 +1447,7 @@ export class JantComposeEditor extends LitElement {
       }));
       this._attachments = attachments;
       this._attachmentOrder = attachments.map((a) => a.clientId);
+      this.#requestMissingPosters();
     }
 
     // Restore attached texts from server data

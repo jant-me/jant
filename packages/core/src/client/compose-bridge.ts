@@ -28,7 +28,7 @@ import {
   refreshPostPageView,
   refreshTimelineThreadView,
 } from "./post-refresh.js";
-import { getJsonString, readJsonObject } from "./json.js";
+import { getJsonString, readErrorMessage, readJsonObject } from "./json.js";
 import { uploadViaSession } from "./upload-session.js";
 import type { UploadSessionResult } from "./upload-session.js";
 import { publicPath } from "./runtime-paths.js";
@@ -580,6 +580,66 @@ document.addEventListener("jant:files-selected", (e: Event) => {
     });
     uploadPromises.set(clientId, promise);
     promise.finally(() => uploadPromises.delete(clientId));
+  }
+});
+
+// ── Posters for videos uploaded without one ─────────────────────────
+
+/** Media this page has already tried to give a poster, so it tries once. */
+const posterBackfills = new Set<string>();
+
+interface MissingPoster {
+  clientId: string;
+  mediaId: string;
+  /** Where the clip is stored */
+  url: string;
+}
+
+/**
+ * Make a poster for an uploaded clip that has none, store it on the media,
+ * and show it on the attachment card. Nothing here is the author's doing, so
+ * a failure stays in the console: the clip keeps the frame readers' browsers
+ * draw for it.
+ */
+async function backfillVideoPoster(
+  item: MissingPoster,
+  editor: JantComposeEditor | null,
+): Promise<void> {
+  try {
+    const poster = await VideoProcessor.extractPosterFromUrl(item.url);
+    if (!poster) return;
+
+    const response = await fetch(
+      publicPath(`/api/media/${item.mediaId}/poster`),
+      {
+        method: "PUT",
+        headers: { "Content-Type": poster.type || "image/webp" },
+        body: poster,
+      },
+    );
+    if (!response.ok) {
+      throw new Error(
+        await readErrorMessage(response, "Failed to upload poster"),
+      );
+    }
+    attachmentOwner(editor, item.clientId)?.updateAttachmentPoster(
+      item.clientId,
+      poster,
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console -- a background repair failing is silent by design; say so
+    console.warn("[jant] poster for an uploaded video failed", error);
+  }
+}
+
+document.addEventListener("jant:video-posters-missing", (e: Event) => {
+  const event = e as CustomEvent<{ attachments: MissingPoster[] }>;
+  const editor = getComposeEditorFromEventTarget(event.target);
+
+  for (const item of event.detail.attachments) {
+    if (posterBackfills.has(item.mediaId)) continue;
+    posterBackfills.add(item.mediaId);
+    void backfillVideoPoster(item, editor);
   }
 });
 

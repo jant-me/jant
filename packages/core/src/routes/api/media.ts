@@ -2,9 +2,9 @@
  * Media API Routes
  *
  * The author's uploaded files as a resource: list, read, change alt text,
- * delete. Uploading happens at `POST /api/upload` (one request) or
- * `/api/uploads` (a resumable session); the MCP media tools share these
- * responses.
+ * give a video its poster, delete. Uploading happens at `POST /api/upload`
+ * (one request) or `/api/uploads` (a resumable session); the MCP media tools
+ * share these responses.
  */
 
 import { Hono } from "hono";
@@ -17,6 +17,7 @@ import { assertFound, parseIdParam } from "../../lib/errors.js";
 import { ID_PREFIX } from "../../lib/ids.js";
 import { pageLimitSchema } from "../../lib/schemas.js";
 import { toApiMedia } from "../../lib/api-media.js";
+import { requireStorage } from "../../lib/storage.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -66,6 +67,23 @@ mediaApiRoutes.put("/:id", validate("json", UpdateMediaSchema), async (c) => {
   await c.var.services.media.updateAlt(id, alt);
 
   const media = assertFound(await c.var.services.media.getById(id), "Media");
+  return c.json(toApiMedia(media, c.var.appConfig));
+});
+
+// A video uploaded without a poster can be given one afterwards: the body is
+// the WebP or PNG bytes, as for `PUT /api/uploads/:id/poster`.
+mediaApiRoutes.put("/:id/poster", async (c) => {
+  const storage = requireStorage(c.var.storage);
+  const id = parseIdParam(c.req.param("id"), ID_PREFIX.media);
+
+  const media = assertFound(
+    await c.var.services.media.setPoster(
+      id,
+      new Uint8Array(await c.req.arrayBuffer()),
+      { storage },
+    ),
+    "Media",
+  );
   return c.json(toApiMedia(media, c.var.appConfig));
 });
 

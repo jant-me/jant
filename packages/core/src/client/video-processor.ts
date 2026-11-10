@@ -12,15 +12,19 @@
  *   browser to double-rotate)
  * - Clears the alternate_group track flag (mediabunny sets it non-zero,
  *   which stops Safari's native video controls from auto-hiding)
- * - Extracts poster frame + blurhash during processing
+ * - Extracts poster frame + blurhash during processing, and makes a poster
+ *   for a clip already uploaded without one
  *
  * Requires WebCodecs API support — check `isSupported()` before use.
  */
 
-import type { VideoCodec } from "mediabunny";
+import type { InputVideoTrack, VideoCodec } from "mediabunny";
 import { loadMediabunny } from "./mediabunny.js";
 import { encode } from "blurhash";
-import { normalizeDurationSeconds } from "../lib/video-playback.js";
+import {
+  getPosterFrameSeconds,
+  normalizeDurationSeconds,
+} from "../lib/video-playback.js";
 import { zeroTrackAlternateGroups } from "../lib/mp4-track-flags.js";
 
 /** Maximum pixels for the long edge of the output video. */
@@ -170,8 +174,65 @@ function drawFrame(
 }
 
 /**
+ * Capture a clip's poster frame and blurhash from its video track. The frame
+ * is the one `getPosterFrameSeconds` names, the same one a reader's browser
+ * draws for a clip stored without a poster.
+ *
+ * @param videoTrack - The clip's primary video track
+ * @param duration - Clip length in seconds, when known
+ * @returns Poster blob (640px-wide WebP) and blurhash, each when it could be made
+ */
+async function captureStill(
+  videoTrack: InputVideoTrack,
+  duration: number | undefined,
+): Promise<{ poster?: Blob; blurhash?: string }> {
+  const { CanvasSink } = await loadMediabunny();
+  const wrapped = await optional("capture frame", () =>
+    new CanvasSink(videoTrack).getCanvas(getPosterFrameSeconds(duration)),
+  );
+  if (!wrapped) return {};
+
+  const canvas = wrapped.canvas as HTMLCanvasElement;
+  const srcW = canvas.width;
+  const srcH = canvas.height;
+
+  // Poster: 640px wide WebP
+  const posterScale = Math.min(POSTER_WIDTH / srcW, 1);
+  const posterFrame = drawFrame(
+    canvas,
+    Math.round(srcW * posterScale),
+    Math.round(srcH * posterScale),
+  );
+  const poster = posterFrame
+    ? await optional(
+        "encode poster",
+        () =>
+          new Promise<Blob | undefined>((resolve) => {
+            posterFrame.canvas.toBlob(
+              (blob) => resolve(blob ?? undefined),
+              "image/webp",
+              0.8,
+            );
+          }),
+      )
+    : undefined;
+
+  // Blurhash: 32px canvas, 4×3 components
+  const bhScale = Math.min(BLURHASH_SIZE / srcW, BLURHASH_SIZE / srcH, 1);
+  const bw = Math.max(Math.round(srcW * bhScale), 1);
+  const bh = Math.max(Math.round(srcH * bhScale), 1);
+  const bhFrame = drawFrame(canvas, bw, bh);
+  const blurhash = bhFrame
+    ? await optional("encode blurhash", async () =>
+        encode(bhFrame.ctx.getImageData(0, 0, bw, bh).data, bw, bh, 4, 3),
+      )
+    : undefined;
+
+  return { poster, blurhash };
+}
+
+/**
  * Probe a video file and extract its poster frame and blurhash in one pass.
- * Seeks to `min(duration × 0.1, 1s)` and captures the frame.
  *
  * Returns the source dimensions, codec, and bitrate alongside, so the caller
  * can decide whether a re-encode is needed at all — and at what bitrate —
@@ -186,7 +247,7 @@ function drawFrame(
  * @returns Poster blob (640px-wide WebP), blurhash, dimensions, codec, bitrate
  */
 async function probeSource(file: File): Promise<SourceProbe> {
-  const { Input, BlobSource, ALL_FORMATS, CanvasSink } = await loadMediabunny();
+  const { Input, BlobSource, ALL_FORMATS } = await loadMediabunny();
   const input = new Input({
     source: new BlobSource(file),
     formats: ALL_FORMATS,
@@ -212,8 +273,7 @@ async function probeSource(file: File): Promise<SourceProbe> {
       input.computeDuration(),
     );
 
-    // Everything the caller needs to plan the conversion.
-    const base: SourceProbe = {
+    return {
       sourceWidth: videoTrack.displayWidth,
       sourceHeight: videoTrack.displayHeight,
       rotation: videoTrack.rotation,
@@ -221,54 +281,44 @@ async function probeSource(file: File): Promise<SourceProbe> {
         duration === undefined ? undefined : normalizeDurationSeconds(duration),
       videoCodec,
       videoBitrate,
+      ...(await captureStill(videoTrack, duration)),
     };
+  } finally {
+    input.dispose();
+  }
+}
 
-    // A tenth of the way in, so the still is not the fade-from-black most
-    // clips open on. With no duration to take a tenth of, the opening frame
-    // is the only one we can name.
-    const seekTime = duration === undefined ? 0 : Math.min(duration * 0.1, 1);
-    const wrapped = await optional("capture frame", () =>
-      new CanvasSink(videoTrack).getCanvas(seekTime),
+/**
+ * Make a poster for a clip that is already uploaded, reading the file where
+ * it is stored. mediabunny fetches it in byte ranges, so only the metadata
+ * and the samples up to the poster frame cross the network, not the clip.
+ *
+ * @param url - The stored clip's address; its host has to allow this origin
+ * @returns Poster blob (640px-wide WebP), or `undefined` when the browser
+ *   cannot decode video or the file could not be read
+ * @example
+ * ```ts
+ * const poster = await VideoProcessor.extractPosterFromUrl(media.url);
+ * ```
+ */
+async function extractPosterFromUrl(url: string): Promise<Blob | undefined> {
+  if (typeof VideoDecoder === "undefined") return undefined;
+
+  const { Input, UrlSource, ALL_FORMATS } = await loadMediabunny();
+  const input = new Input({
+    source: new UrlSource(url),
+    formats: ALL_FORMATS,
+  });
+  try {
+    const videoTrack = await optional("open video track", () =>
+      input.getPrimaryVideoTrack(),
     );
-    if (!wrapped) return base;
+    if (!videoTrack) return undefined;
 
-    const canvas = wrapped.canvas as HTMLCanvasElement;
-    const srcW = canvas.width;
-    const srcH = canvas.height;
-
-    // Poster: 640px wide WebP
-    const posterScale = Math.min(POSTER_WIDTH / srcW, 1);
-    const posterFrame = drawFrame(
-      canvas,
-      Math.round(srcW * posterScale),
-      Math.round(srcH * posterScale),
+    const duration = await optional("compute duration", () =>
+      input.computeDuration(),
     );
-    const poster = posterFrame
-      ? await optional(
-          "encode poster",
-          () =>
-            new Promise<Blob | undefined>((resolve) => {
-              posterFrame.canvas.toBlob(
-                (blob) => resolve(blob ?? undefined),
-                "image/webp",
-                0.8,
-              );
-            }),
-        )
-      : undefined;
-
-    // Blurhash: 32px canvas, 4×3 components
-    const bhScale = Math.min(BLURHASH_SIZE / srcW, BLURHASH_SIZE / srcH, 1);
-    const bw = Math.max(Math.round(srcW * bhScale), 1);
-    const bh = Math.max(Math.round(srcH * bhScale), 1);
-    const bhFrame = drawFrame(canvas, bw, bh);
-    const blurhash = bhFrame
-      ? await optional("encode blurhash", async () =>
-          encode(bhFrame.ctx.getImageData(0, 0, bw, bh).data, bw, bh, 4, 3),
-        )
-      : undefined;
-
-    return { ...base, poster, blurhash };
+    return (await captureStill(videoTrack, duration)).poster;
   } finally {
     input.dispose();
   }
@@ -614,4 +664,8 @@ function probeVideoDimensions(
   });
 }
 
-export const VideoProcessor = { isSupported, processToFile };
+export const VideoProcessor = {
+  isSupported,
+  processToFile,
+  extractPosterFromUrl,
+};

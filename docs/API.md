@@ -126,7 +126,7 @@ Current tool groups:
 
 - posts: `jant_posts_list`, `jant_posts_get`, `jant_posts_search`, `jant_posts_create`, `jant_posts_update`, `jant_posts_delete`
 - threads: `jant_threads_list`, `jant_threads_get`, `jant_threads_list_posts`
-- media: `jant_media_list`, `jant_media_get`, `jant_media_upload`, `jant_media_update`, `jant_media_delete`
+- media: `jant_media_list`, `jant_media_get`, `jant_media_upload`, `jant_media_update`, `jant_media_set_poster`, `jant_media_delete`
 - attachments: `jant_attachments_get_content`
 - collections: `jant_collections_list`, `jant_collections_get`, `jant_collections_create`, `jant_collections_update`, `jant_collections_delete`, `jant_collections_add_thread`, `jant_collections_remove_thread`
 - settings: `jant_settings_get`, `jant_settings_update`
@@ -1238,10 +1238,16 @@ For `put`:
 
 `PUT /api/uploads/:id/poster`
 
-Use this when uploading a video and you want a WebP poster frame.
+Gives the video a poster: the still shown in its place in the timeline, share cards, and feeds.
 
-- Body: raw WebP bytes
+- Body: raw WebP or PNG bytes
 - Success response: `204 No Content`
+
+To take one from the clip with ffmpeg:
+
+```bash
+ffmpeg -ss 1 -i clip.mp4 -frames:v 1 -vf scale=640:-2 poster.png
+```
 
 ### Complete an upload session
 
@@ -1303,17 +1309,17 @@ Content type: `multipart/form-data`
 
 Form fields:
 
-| Field             | Type    | Required | Default | Notes                          |
-| ----------------- | ------- | -------- | ------- | ------------------------------ |
-| `file`            | file    | yes      | —       | Main file                      |
-| `width`           | integer | no       | `null`  | Image/video width              |
-| `height`          | integer | no       | `null`  | Image/video height             |
-| `alt`             | string  | no       | `null`  | Alt text                       |
-| `blurhash`        | string  | no       | `null`  | Blurhash                       |
-| `waveform`        | string  | no       | `null`  | Audio waveform                 |
-| `summary`         | string  | no       | `null`  | Summary for text uploads       |
-| `durationSeconds` | integer | no       | `null`  | Video or audio length          |
-| `poster`          | file    | no       | —       | Poster frame for video uploads |
+| Field             | Type    | Required | Default | Notes                     |
+| ----------------- | ------- | -------- | ------- | ------------------------- |
+| `file`            | file    | yes      | —       | Main file                 |
+| `width`           | integer | no       | `null`  | Image/video width         |
+| `height`          | integer | no       | `null`  | Image/video height        |
+| `alt`             | string  | no       | `null`  | Alt text                  |
+| `blurhash`        | string  | no       | `null`  | Blurhash                  |
+| `waveform`        | string  | no       | `null`  | Audio waveform            |
+| `summary`         | string  | no       | `null`  | Summary for text uploads  |
+| `durationSeconds` | integer | no       | `null`  | Video or audio length     |
+| `poster`          | file    | no       | —       | Video poster, WebP or PNG |
 
 Response: `201 Created` with the [media object](#media) the file became.
 
@@ -1429,6 +1435,19 @@ Rules:
 - `alt` is trimmed before storing.
 - An empty `alt` clears it, and the response carries `null`.
 - Max length is `500`.
+
+Response: `200 OK` with the updated media object.
+
+### Set a video's poster
+
+`PUT /api/media/:id/poster`
+
+Auth: `Session or token`
+
+Gives a video its poster, or replaces the one it has.
+
+- Body: raw WebP or PNG bytes
+- A media item that is not a video answers `400`.
 
 Response: `200 OK` with the updated media object.
 

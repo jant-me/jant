@@ -684,12 +684,32 @@ export function generateSiteAssetStorageKey(
   return { id, filename, storageKey };
 }
 
+/**
+ * Where a video's poster is stored.
+ *
+ * Posters are served `immutable`, so a replacement cannot reuse the key the
+ * poster it replaces had: caches would go on serving the old still. A
+ * replacement passes a `version`, which makes the key new.
+ *
+ * @param siteId - Owning site ID
+ * @param mediaId - The video's media ID
+ * @param ext - Poster file extension
+ * @param version - Distinguishes a replacement from the poster before it
+ * @returns The storage key
+ * @example
+ * ```ts
+ * getPosterStorageKey("sit_1", "med_1", "webp"); // "media/sit_1/posters/med_1.webp"
+ * getPosterStorageKey("sit_1", "med_1", "png", "k3x9"); // "media/sit_1/posters/med_1-k3x9.png"
+ * ```
+ */
 export function getPosterStorageKey(
   siteId: string,
   mediaId: string,
   ext = "webp",
+  version?: string,
 ): string {
-  return `${MEDIA_ROOT_PREFIX}/${siteId}/${MEDIA_POSTERS_STORAGE_PREFIX}/${mediaId}.${ext}`;
+  const name = version ? `${mediaId}-${version}` : mediaId;
+  return `${MEDIA_ROOT_PREFIX}/${siteId}/${MEDIA_POSTERS_STORAGE_PREFIX}/${name}.${ext}`;
 }
 
 export function getTemporaryUploadStorageKey(

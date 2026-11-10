@@ -242,6 +242,7 @@ curl -X POST "$JANT_URL/api/mcp" \
 - `jant_media_list`
 - `jant_media_get`
 - `jant_media_upload`
+- `jant_media_set_poster`
 - `jant_attachments_get_content`
 
 通过标准：

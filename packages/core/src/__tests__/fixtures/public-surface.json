@@ -852,6 +852,7 @@
       "PUT /api/collections/directory-items/:id",
       "PUT /api/collections/directory-items/:id/move",
       "PUT /api/media/:id",
+      "PUT /api/media/:id/poster",
       "PUT /api/nav-items/:id",
       "PUT /api/nav-items/:id/move",
       "PUT /api/posts/:id",
@@ -1232,6 +1233,10 @@
         "cursor",
         "limit",
         "mimePrefix"
+      ],
+      "jant_media_set_poster": [
+        "id",
+        "posterBase64"
       ],
       "jant_media_update": [
         "alt",
