@@ -196,6 +196,7 @@ describe("MCP API Routes", () => {
     expect(toolNames).toContain("jant_collections_remove_thread");
     expect(toolNames).toContain("jant_settings_update");
     expect(toolNames).toContain("jant_posts_search");
+    expect(toolNames).toContain("jant_media_set_poster");
 
     // Deleting reads nothing back, so it takes only the post to delete.
     const deleteTool = body.result.tools.find(
@@ -628,6 +629,51 @@ describe("MCP API Routes", () => {
       summary: "Heading Body text",
       chars: 17,
     });
+  });
+
+  it("gives a video its poster through tools/call", async () => {
+    const storage = createMockStorage();
+    const { app, services } = createTestApp({
+      authenticated: true,
+      storage,
+    });
+    app.route("/api/mcp", mcpApiRoutes);
+
+    const video = await services.media.create({
+      filename: "clip.mp4",
+      originalName: "clip.mp4",
+      mimeType: "video/mp4",
+      size: 4096,
+      storageKey: "media/clip.mp4",
+    });
+
+    const res = await postMcp(
+      app,
+      {
+        jsonrpc: "2.0",
+        id: 7,
+        method: "tools/call",
+        params: {
+          name: "jant_media_set_poster",
+          arguments: {
+            id: video.id,
+            posterBase64: Buffer.from(createFakeWebpBytes()).toString("base64"),
+          },
+        },
+      },
+      {
+        "MCP-Protocol-Version": "2025-06-18",
+      },
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.result.isError).toBe(false);
+    expect(body.result.structuredContent.posterUrl).toMatch(/\.webp$/);
+    const posterKey = (await services.media.getById(video.id))?.posterKey;
+    expect(posterKey && storage.files.get(posterKey)?.contentType).toBe(
+      "image/webp",
+    );
   });
 
   it("deletes media through tools/call", async () => {

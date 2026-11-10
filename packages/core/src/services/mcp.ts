@@ -168,7 +168,18 @@ const UploadMediaToolSchema = z.object({
   blurhash: z.string().max(200).optional(),
   waveform: z.string().max(2000).optional(),
   chars: z.number().int().nonnegative().optional(),
-  posterBase64: z.string().min(1).optional(),
+  posterBase64: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Video only: a still for the clip as base64 WebP or PNG, shown in its place in the timeline, share cards, and feeds. Without one, readers' browsers draw a frame from the file.",
+    ),
+});
+
+const SetMediaPosterToolSchema = z.object({
+  id: MediaIdSchema.describe("Media TypeID of a video"),
+  posterBase64: z.string().min(1).describe("The poster as base64 WebP or PNG"),
 });
 
 const AddCollectionThreadToolSchema = z.object({
@@ -630,6 +641,25 @@ const mcpTools: McpToolDefinition[] = [
       }
 
       return serializeMedia(updatedMedia, context.appConfig);
+    },
+  },
+  {
+    name: "jant_media_set_poster",
+    description:
+      "Give a video its poster, or replace the one it has, and return the updated media record.",
+    inputSchema: toolInputSchema(SetMediaPosterToolSchema),
+    async execute(args, context) {
+      const input = SetMediaPosterToolSchema.parse(args ?? {});
+      const media = await context.services.media.setPoster(
+        input.id,
+        decodeBase64Bytes(input.posterBase64, "posterBase64"),
+        { storage: requireStorage(context.storage) },
+      );
+      if (!media) {
+        throw new NotFoundError("Media");
+      }
+
+      return serializeMedia(media, context.appConfig);
     },
   },
   {

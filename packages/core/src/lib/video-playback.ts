@@ -71,3 +71,58 @@ export function shouldUseShortVideoExperience(media: {
 
   return true;
 }
+
+/**
+ * Where in a clip its poster frame is taken: a tenth of the way in, so the
+ * still is not the fade-from-black most clips open on, and never later than
+ * the first second. With no duration to take a tenth of, the opening frame is
+ * the only one to name.
+ *
+ * @param durationSeconds - Clip length in seconds, when known
+ * @returns Offset into the clip, in seconds
+ *
+ * @example
+ * ```ts
+ * getPosterFrameSeconds(4); // 0.4
+ * getPosterFrameSeconds(90); // 1
+ * getPosterFrameSeconds(undefined); // 0
+ * ```
+ */
+export function getPosterFrameSeconds(
+  durationSeconds: number | null | undefined,
+): number {
+  if (
+    !Number.isFinite(durationSeconds) ||
+    !durationSeconds ||
+    durationSeconds <= 0
+  ) {
+    return 0;
+  }
+
+  return Math.min(durationSeconds * 0.1, 1);
+}
+
+/**
+ * The address a `<video>` loads to show the poster frame itself, for a clip
+ * stored without a poster. The media fragment is what makes iOS Safari draw a
+ * frame under `preload="metadata"` at all, and a start of 0 is no fragment, so
+ * a clip of unknown length starts a tenth of a second in.
+ *
+ * @param url - The video file's address
+ * @param durationSeconds - Clip length in seconds, when known
+ * @returns The address with a `#t=` fragment at the poster frame
+ *
+ * @example
+ * ```ts
+ * getPosterFrameUrl("https://media.example/clip.mp4", 4);
+ * // "https://media.example/clip.mp4#t=0.4"
+ * ```
+ */
+export function getPosterFrameUrl(
+  url: string,
+  durationSeconds: number | null | undefined,
+): string {
+  const seconds =
+    Math.round(getPosterFrameSeconds(durationSeconds) * 100) / 100;
+  return `${url}#t=${seconds > 0 ? seconds : 0.1}`;
+}

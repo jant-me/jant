@@ -83,6 +83,87 @@ describe("MediaGallery", () => {
     expect(html).toMatch(/background-image:url\(data:image\/bmp;base64,/);
   });
 
+  it("leaves a video with a poster unloaded until it plays", () => {
+    const html = renderToString(
+      MediaGallery({
+        attachments: [
+          createMediaView({
+            url: "/media/video.mp4",
+            mimeType: "video/mp4",
+            durationSeconds: 42,
+            posterUrl: "/media/video-poster.webp",
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toMatch(/<video[^>]*preload="none"/);
+    expect(html).not.toMatch(/<video[^>]*\ssrc=/);
+  });
+
+  describe("a video stored without a poster", () => {
+    // An API upload can arrive with no poster, and these `<video>`s only
+    // paint their poster: without this, the timeline showed an empty box.
+    it("loads the file at the poster frame so the browser draws it", () => {
+      const html = renderToString(
+        MediaGallery({
+          attachments: [
+            createMediaView({
+              url: "/media/video.mp4",
+              mimeType: "video/mp4",
+              width: 800,
+              height: 450,
+              durationSeconds: 42,
+            }),
+          ],
+        }),
+      );
+
+      expect(html).toMatch(/<video[^>]*preload="metadata"/);
+      expect(html).toMatch(/<video[^>]*src="\/media\/video\.mp4#t=1"/);
+    });
+
+    it("takes a tenth of a short clip, and a tenth of a second when its length is unknown", () => {
+      const render = (durationSeconds?: number) =>
+        renderToString(
+          MediaGallery({
+            attachments: [
+              createMediaView({
+                url: "/media/video.mp4",
+                mimeType: "video/mp4",
+                durationSeconds,
+                // Too large to autoplay, so it takes the static player.
+                size: 50_000_000,
+              }),
+            ],
+          }),
+        );
+
+      expect(render(4)).toContain('src="/media/video.mp4#t=0.4"');
+      expect(render(undefined)).toContain('src="/media/video.mp4#t=0.1"');
+    });
+
+    it("lets a short clip load its metadata once the feed player hands it a source", () => {
+      const html = renderToString(
+        MediaGallery({
+          attachments: [
+            createMediaView({
+              url: "/media/clip.mp4",
+              mimeType: "video/mp4",
+              durationSeconds: 12,
+              size: 3_000_000,
+            }),
+          ],
+        }),
+      );
+
+      expect(html).toContain("data-feed-short-video");
+      expect(html).toMatch(/<video[^>]*preload="metadata"/);
+      // The feed player owns a short clip's source; the markup never sets it.
+      expect(html).not.toMatch(/<video[^>]*\ssrc=/);
+    });
+  });
+
   it("marks short videos for feed autoplay instead of the static play overlay", () => {
     const html = renderToString(
       MediaGallery({

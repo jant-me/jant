@@ -220,6 +220,8 @@ curl -X POST "$JANT_SITE/api/upload" \
 # → { "id": "med_...", "url": "/media/med_....jpg", ... }
 ```
 
+For a video, send a poster as well, a WebP or PNG still taken from the clip: `-F "poster=@./poster.png"`.
+
 Use `/api/uploads` when a file is large or the connection is unreliable. Its session flow initializes the upload, transfers one or more parts, optionally adds a video poster, and completes the session to produce the final `med_*` record.
 
 Preserve source alt text. If the source has no alt text, leave it unset rather than inventing a description.

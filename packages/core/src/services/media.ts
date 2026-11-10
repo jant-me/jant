@@ -25,8 +25,12 @@ import { markdownToTiptapJson } from "../lib/markdown-to-tiptap.js";
 import { extractBodyText } from "../lib/summary.js";
 import { now } from "../lib/time.js";
 import { supportsCopy, type StorageDriver } from "../lib/storage.js";
+import { generateRandomId } from "../lib/nanoid.js";
 import {
+  detectPosterMimeType,
   generateStorageKey,
+  getPosterExtension,
+  getPosterStorageKey,
   imageExtensionForMimeType,
   isAllowedSideloadImageType,
   SITE_ASSET_STORAGE_KEY_LIKE_PATTERN,
@@ -314,6 +318,24 @@ export interface MediaService {
   attachToPost(postId: string, mediaIds: string[]): Promise<void>;
   detachFromPost(postId: string): Promise<void>;
   updateAlt(id: string, alt: string): Promise<void>;
+  /**
+   * Give a video its poster, or replace the one it has: the still that stands
+   * in for the clip in the timeline, share cards, and feeds. A replacement
+   * goes to a new key and the old object is deleted, since posters are served
+   * `immutable` and one rewritten in place would stay stale in caches.
+   *
+   * @param id - Media record ID
+   * @param bytes - The poster, as WebP or PNG bytes
+   * @param deps.storage - Storage driver the poster is written to
+   * @returns The updated record, or null when there is no such media
+   * @throws ValidationError when the media is not a video, or the bytes are
+   *   neither WebP nor PNG
+   */
+  setPoster(
+    id: string,
+    bytes: Uint8Array,
+    deps: { storage: StorageDriver },
+  ): Promise<Media | null>;
 }
 
 export interface CreateMediaData {
@@ -952,6 +974,47 @@ export function createMediaService(
         .update(media)
         .set({ alt: alt || null, updatedAt: now() })
         .where(and(eq(media.siteId, siteId), eq(media.id, id)));
+    },
+
+    async setPoster(id, bytes, { storage }) {
+      const record = await this.getById(id);
+      if (!record) return null;
+
+      if (!record.mimeType.startsWith("video/")) {
+        throw new ValidationError(
+          `Only a video takes a poster. This media is ${record.mimeType}.`,
+        );
+      }
+      const contentType = detectPosterMimeType(bytes);
+      if (!contentType) {
+        throw new ValidationError(
+          "Unsupported poster format. Only WebP and PNG are accepted.",
+        );
+      }
+
+      const previousKey = record.posterKey;
+      const posterKey = getPosterStorageKey(
+        siteId,
+        id,
+        getPosterExtension(contentType),
+        previousKey ? generateRandomId(8) : undefined,
+      );
+      await storage.put(posterKey, bytes, { contentType });
+      await db
+        .update(media)
+        .set({ posterKey, updatedAt: now() })
+        .where(and(eq(media.siteId, siteId), eq(media.id, id)));
+
+      if (previousKey && previousKey !== posterKey) {
+        // The poster is derived from the clip, so the one it replaces goes
+        // straight away rather than through the recycle window.
+        await storage.delete(previousKey).catch((err) => {
+          // eslint-disable-next-line no-console -- Error logging is intentional
+          console.error("Storage delete error:", err);
+        });
+      }
+
+      return this.getById(id);
     },
 
     async delete(id, storage) {
