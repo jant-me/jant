@@ -96,6 +96,10 @@ describe("GET /settings/stats", () => {
     const html = await res.text();
     expect(html).toContain("50 views today");
     expect(html).toContain("Views per hour");
+    // One slot per hour of the day; the one with views names its count for
+    // the label a hovered slot shows.
+    expect(html.match(/settings-stats-slot/g)).toHaveLength(24);
+    expect(html).toContain('data-label="00:00: 50 views"');
     // The ranked list: the post first, with its share behind it.
     expect(html).toContain('settings-stats-rank">1<');
     expect(html).toContain("--stats-share:86%");

@@ -109,7 +109,7 @@ try {
     : extractCanonical(work);
   const jantBin = rehearseDir
     ? join(repoRoot, "packages/core/bin/jant.js")
-    : installRelease(join(work, "package"));
+    : await installRelease(join(work, "package"));
 
   const siteId = readSnapshotSiteId(join(source, "snapshot"));
   const devApiToken = randomBytes(24).toString("hex");
@@ -329,28 +329,46 @@ function extractCanonical(dir) {
   return join(dir, canonical);
 }
 
-function installRelease(dir) {
+/**
+ * Installs the release from npm, retrying while the registry's replicas catch
+ * up. `wait-for-npm.sh` sees the version on one copy of the packument, and the
+ * install can still reach a copy without it: freezing 1.2.0 failed with
+ * `notarget No matching version found for @jant/core@1.2.0` half a second
+ * after the wait had passed.
+ */
+async function installRelease(dir) {
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "package.json"), '{ "private": true }\n');
-  console.log(`Installing @jant/core@${version} from npm...`);
-  try {
-    execFileSync(
-      "npm",
-      [
-        "install",
-        "--no-audit",
-        "--no-fund",
-        "--loglevel=error",
-        `@jant/core@${version}`,
-      ],
-      { cwd: dir, stdio: "inherit" },
+  const attempts = 6;
+  const interval = 20_000;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    console.log(
+      `Installing @jant/core@${version} from npm (attempt ${attempt}/${attempts})...`,
     );
-  } catch {
-    throw new Error(
-      `Couldn't install @jant/core@${version}. Run this after the release is published to npm.`,
-    );
+    try {
+      execFileSync(
+        "npm",
+        [
+          "install",
+          "--no-audit",
+          "--no-fund",
+          "--loglevel=error",
+          `@jant/core@${version}`,
+        ],
+        { cwd: dir, stdio: "inherit" },
+      );
+      return join(dir, "node_modules/@jant/core/bin/jant.js");
+    } catch {
+      if (attempt === attempts) break;
+      console.log(
+        `npm did not serve @jant/core@${version}; retrying in ${interval / 1000}s`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
   }
-  return join(dir, "node_modules/@jant/core/bin/jant.js");
+  throw new Error(
+    `Couldn't install @jant/core@${version} in ${attempts} attempts. Run this after the release is published to npm.`,
+  );
 }
 
 function readSnapshotSiteId(snapshotDir) {
