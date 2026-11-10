@@ -348,11 +348,15 @@
     var(--site-reading-heading) 86%,
     var(--site-reading-body)
   );
+  /* Fills for blocks inside authored text are tints over transparent, never
+     mixes with `--site-page-bg`. On the page the two render the same pixel,
+     but text is also set on other paper: the composer is a raised sheet, and a
+     fill mixed with the page shows there as a dark patch or not at all. */
   --site-code-bg: color-mix(in srgb, var(--site-reading-meta) 12%, transparent);
   --site-code-block-bg: color-mix(
     in srgb,
-    var(--site-page-bg) 94%,
-    var(--site-subtle-bg)
+    var(--site-subtle-bg) 6%,
+    transparent
   );
   --site-code-block-border: color-mix(
     in srgb,
@@ -378,7 +382,7 @@
   --site-blockquote-bg: color-mix(
     in srgb,
     var(--site-feed-quote-tint) 62%,
-    var(--site-page-bg)
+    transparent
   );
   --site-blockquote-text: color-mix(
     in oklch,
@@ -388,7 +392,7 @@
   --site-summary-blockquote-bg: color-mix(
     in srgb,
     var(--site-feed-quote-tint) 42%,
-    var(--site-page-bg)
+    transparent
   );
   --site-reading-blockquote-rail: color-mix(
     in srgb,
@@ -398,7 +402,7 @@
   --site-reading-blockquote-bg: color-mix(
     in srgb,
     var(--site-accent) 6%,
-    var(--site-page-bg)
+    transparent
   );
   --site-thread-context-bg: color-mix(
     in srgb,
@@ -449,26 +453,6 @@
     in srgb,
     var(--site-text-secondary) 72%,
     var(--compose-paper-bg)
-  );
-  --compose-blockquote-rail: color-mix(
-    in srgb,
-    var(--site-accent) 24%,
-    var(--compose-control-border)
-  );
-  --compose-blockquote-bg: color-mix(
-    in srgb,
-    var(--compose-control-bg) 56%,
-    var(--compose-paper-bg)
-  );
-  --compose-blockquote-bg-focus: color-mix(
-    in srgb,
-    var(--compose-control-bg-strong) 70%,
-    var(--compose-paper-bg)
-  );
-  --compose-blockquote-text: color-mix(
-    in srgb,
-    var(--site-text-primary) 88%,
-    var(--site-text-secondary)
   );
   --compose-floating-bg: color-mix(
     in srgb,

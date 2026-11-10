@@ -115,7 +115,9 @@ class ImageNodeView {
 
     // --- Build DOM tree ---
     const figure = document.createElement("figure");
-    figure.className = "tiptap-image-figure";
+    // `not-prose`: this is editor chrome, not post content, so the reader's
+    // typography defaults stay out of its controls.
+    figure.className = "tiptap-image-figure not-prose";
     figure.dataset.selected = "false";
     figure.dataset.layout = String(node.attrs.layout || "regular");
     figure.dataset.loadState = "loading";
