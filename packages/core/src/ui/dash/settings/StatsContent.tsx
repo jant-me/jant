@@ -98,7 +98,7 @@ function hourOf(hourKey: string): number {
   return Number(hourKey.slice(11, 13));
 }
 
-/** What one point of a series is called under the chart and in its tooltips. */
+/** What one point of a series is called under the chart and in a hovered bar's label. */
 function pointLabel(series: StatsSeries, at: string, locale: string): string {
   return series.unit === "hour"
     ? formatHourLabel(hourOf(at), locale)
@@ -325,12 +325,15 @@ function WindowSwitch({
 }
 
 /**
- * One bar per point over the whole window, so a bar is the same width
+ * One slot per point over the whole window, so a bar is the same width
  * whatever the record covers. Today has 24 slots and bars up to the current
  * hour. A longer window has one slot per day; the days before the record
  * have no bar and no baseline, since the baseline starts where counting did.
  * The total line has then already named that day, so the axis carries
  * today's date alone; it names both ends only when every day was counted.
+ * A slot names its point and count in `data-label`, which the stylesheet
+ * shows above the bar while the slot is hovered: the whole column answers,
+ * so a short bar is as easy to read as a tall one.
  */
 function ViewsChart({
   series,
@@ -365,10 +368,8 @@ function ViewsChart({
 
   return (
     <figure class="settings-stats-figure">
-      <svg
+      <div
         class="settings-stats-chart"
-        viewBox={`0 0 ${slots} 100`}
-        preserveAspectRatio="none"
         role="img"
         aria-label={
           unit === "hour"
@@ -388,36 +389,35 @@ function ViewsChart({
               )
         }
       >
-        {points.map((point, index) => {
-          if (index < startIndex) return null;
+        {Array.from({ length: slots }, (_, index) => {
+          const point = points[index];
+          if (!point || index < startIndex) {
+            return <span key={`slot-${index}`} class="settings-stats-slot" />;
+          }
           const height = (point.views / peak) * 100;
           return (
-            <rect
+            <span
               key={point.at}
-              class="settings-stats-bar"
-              x={index + 0.15}
-              y={100 - height}
-              width={0.7}
-              height={height}
+              class="settings-stats-slot"
+              style={`--stats-height:${height}%`}
+              data-label={i18n._(
+                msg({
+                  message:
+                    "{day}: {count, plural, one {# view} other {# views}}",
+                  comment:
+                    "@context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8 or an hour like 14:00",
+                }),
+                {
+                  day: pointLabel(series, point.at, locale),
+                  count: point.views,
+                },
+              )}
             >
-              <title>
-                {i18n._(
-                  msg({
-                    message:
-                      "{day}: {count, plural, one {# view} other {# views}}",
-                    comment:
-                      "@context: Tooltip on one bar of the stats chart; {day} is a date like Nov 8 or an hour like 14:00",
-                  }),
-                  {
-                    day: pointLabel(series, point.at, locale),
-                    count: point.views,
-                  },
-                )}
-              </title>
-            </rect>
+              <span class="settings-stats-bar" />
+            </span>
           );
         })}
-      </svg>
+      </div>
       {firstLabel && lastLabel && (
         <figcaption
           class={`settings-stats-axis${single ? " settings-stats-axis-single" : ""}`}
