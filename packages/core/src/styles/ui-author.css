@@ -7322,8 +7322,12 @@
   transform: none;
 }
 
-/* Reply compose deliberately stays denser than ordinary authored prose. */
-.compose-reply-compose-layout .compose-tiptap-body .tiptap :is(h1, h2, h3, h4) {
+/* Reply compose deliberately stays denser than ordinary authored prose. Every
+   level, or an h5 left at the prose size would outrank the compact h1. */
+.compose-reply-compose-layout
+  .compose-tiptap-body
+  .tiptap
+  :is(h1, h2, h3, h4, h5, h6) {
   font-size: var(--type-secondary);
   line-height: 1.32;
   margin-top: 1.4rem;
