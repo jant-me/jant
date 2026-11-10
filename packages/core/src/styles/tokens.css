@@ -100,10 +100,12 @@
      --type-content-scale uniformly scales all content sizes
      without affecting UI controls.
 
-     0.86 puts the body at 18px (21px × 0.86), the floor that reading
-     surfaces settled on: Medium 21, Substack 20, Ghost 17–19, sspai 17 for
-     Chinese. Titles and headings keep their ratios to it. */
-  --type-content-scale: 0.86;
+     0.81 puts the body at 17px (21px × 0.81). Latin reading surfaces run
+     17–21 (Ghost 17–19, Substack 20, Medium 21); Chinese ones settle on 17
+     (sspai, Apple), since a Han glyph fills its em where Latin lowercase
+     fills half, so the same px reads a size larger. 18 was tried and read
+     as big on a 13-inch laptop. Titles and headings keep their ratios. */
+  --type-content-scale: 0.81;
   --type-content-display: calc(var(--type-display) * var(--type-content-scale));
   --type-content-title: calc(var(--type-title) * var(--type-content-scale));
   --type-content-subtitle: calc(
@@ -656,14 +658,19 @@
 @media (max-width: 699px), (hover: none) and (pointer: coarse) {
   :root {
     /* Content layer — tighter scale for mobile reading.
+       Body keeps the desktop size; the headings sit closer to it than
+       desktop's 2.7 / 2.1 / 1.8 rem so a title fits a phone line.
        Ratio ≈ 1.88 : 1.42 : 1.15 : 1 (display:title:subtitle:body).
-       At 15px root × 0.86 content-scale: 31.6 / 23.9 / 19.4 / 16.8px.
+       At 15px root × 0.81 content-scale: 32 / 24.2 / 19.6 / 17px.
        Body is floored to a 16px minimum below (max()) for readability;
        the floor still yields to calc() when the user zooms the root up. */
-    --type-content-display: calc(2.45rem * var(--type-content-scale));
-    --type-content-title: calc(1.85rem * var(--type-content-scale));
-    --type-content-subtitle: calc(1.5rem * var(--type-content-scale));
-    --type-content-body: max(16px, calc(1.3rem * var(--type-content-scale)));
+    --type-content-display: calc(2.63rem * var(--type-content-scale));
+    --type-content-title: calc(1.99rem * var(--type-content-scale));
+    --type-content-subtitle: calc(1.61rem * var(--type-content-scale));
+    --type-content-body: max(
+      16px,
+      calc(var(--type-body) * var(--type-content-scale))
+    );
 
     /* UI layer — pixel floors for touch targets */
     --type-ui-title: max(16px, var(--type-secondary));
