@@ -1,5 +1,47 @@
 # @jant/core
 
+## 1.2.1
+
+### Patch Changes
+
+- [`f87301c`](https://github.com/jant-me/jant/commit/f87301c2665261273c58a01c949dae7682acc345) Thanks [@theowenyoung](https://github.com/theowenyoung)! - On a page in Chinese, Japanese or Korean, titles and headings are set in the medium weight instead of semibold. The CJK serif faces have no semibold, so a Song title came out in Bold, far heavier than the Latin heading beside it and than the body under it, most of all on a phone. In medium, Songti and the Noto Serif the site ships fall to Regular and the title's size carries the hierarchy, as a book sets a chapter title; PingFang and the other sans faces have a Medium and take the half step. Pages in other languages keep semibold.
+
+  For themes: a CJK page sets `--type-heading-weight` and `--type-display-weight` to `var(--fw-medium)` on `:root` ahead of the theme style, the way it already sets the leadings, so a font theme or custom CSS that sets either still wins.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`b4b4ed1`](https://github.com/jant-me/jant/commit/b4b4ed1c9722c425e139f750e1953d771bdbf7a0) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A heading at level four to six — written through the API or MCP, imported, or pasted as Markdown — opens in the editor at its own level, where it used to look like a top-level heading. A heading pasted from a web page keeps its level instead of turning into a paragraph. New headings are still made at three levels.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`33550d1`](https://github.com/jant-me/jant/commit/33550d13fca18df1b4fb191d5c15de4b79e4f4ad) Thanks [@theowenyoung](https://github.com/theowenyoung)! - The editor sets a draft the way the post is read. Inline code had no visible background in the composer, and headings, lists, quotes, code blocks, rules, tables and images were each a little off from the published post; the editor now uses the post body's own styles. In dark mode, quotes and code blocks keep their fill on the composer's raised background.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`12bb191`](https://github.com/jant-me/jant/commit/12bb1910a146e80427f26ad56a00decc88d41b0b) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A share image keeps its fine marks on a site that serves its assets from another host through `ASSET_BASE_URL`, as Jant's hosted sites do: the fade where the summary stops short of the post, a Thread's rail and the dots between its posts, and the short rule before a quote's source. The image used to leave them all out. The share stylesheet was linked without CORS, so the page could not read its rules, and the capture paints a `::before` or `::after` only from rules it can read. The asset host already has to allow cross-origin requests for the client bundle, so its setup stays the same.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`56f4879`](https://github.com/jant-me/jant/commit/56f487946880b92e7dfbe2e9c19162606996b5f5) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A share image keeps the font theme's web fonts on a site that serves its assets from another host through `ASSET_BASE_URL`, as Jant's hosted sites do. The image used to fall back to a local font while the card was laid out in the web font, so its lines broke in other places and a gap could open under the title. The capture can now read the font rules in the site's stylesheets on the asset host, and it refetches any stylesheet whose cached copy it cannot read.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`0dc7b22`](https://github.com/jant-me/jant/commit/0dc7b22454aeece8b48fdd7962d0033dce91f452) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Pointing at a bar of the chart on **Settings → Stats** shows its hour or day and its count, at once and above the bar, where it used to take the browser's own tooltip a second to appear. The whole column answers, so a short bar is as easy to read as a tall one.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
 ## 1.2.0
 
 ### Minor Changes
