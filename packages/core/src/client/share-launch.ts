@@ -27,6 +27,13 @@ let styles: Promise<void> | undefined;
  * Link the share stylesheet, which `<html data-share-stylesheet>` names, and
  * resolve once it has loaded. A load that fails is forgotten, so the next
  * call links it again.
+ *
+ * Linked with CORS, so the page can read its rules when `ASSET_BASE_URL`
+ * puts it on another origin. snapdom paints a `::before` or `::after` only
+ * when a stylesheet it can read has one, and the card's are all in this
+ * sheet: read none, and the picture loses the fade where the summary stops,
+ * the Thread's rail, and the dash before a source. The asset host already
+ * answers with CORS, which the module scripts beside this sheet need.
  */
 function ensureShareStyles(): Promise<void> {
   return (styles ??= new Promise<void>((resolve, reject) => {
@@ -37,6 +44,7 @@ function ensureShareStyles(): Promise<void> {
     }
     const link = document.createElement("link");
     link.rel = "stylesheet";
+    link.crossOrigin = "anonymous";
     link.href = href;
     link.addEventListener("load", () => resolve(), { once: true });
     link.addEventListener(

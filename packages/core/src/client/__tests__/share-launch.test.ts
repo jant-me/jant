@@ -59,6 +59,9 @@ describe("openShareImage", () => {
     await vi.waitFor(() => expect(linked).toHaveLength(1));
     expect(linked[0]!.rel).toBe("stylesheet");
     expect(linked[0]!.getAttribute("href")).toBe(STYLESHEET);
+    // On an asset host the rules are readable only through CORS, and
+    // snapdom paints no pseudo-element from a sheet it cannot read.
+    expect(linked[0]!.crossOrigin).toBe("anonymous");
     expect(dialog()).toBeNull();
 
     linked[0]!.dispatchEvent(new Event("load"));
