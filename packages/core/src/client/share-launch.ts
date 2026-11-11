@@ -54,8 +54,13 @@ function ensureShareStyles(): Promise<void> {
 async function loadShareStyles(): Promise<void> {
   const href = document.documentElement.dataset.shareStylesheet;
   if (!href) return;
-  // A failure here leaves the link below to fail and report it.
-  if (stylesFailed) await fetch(href, { cache: "reload" }).catch(() => {});
+  // The cache keeps the new copy once its body has been read. A failure here
+  // leaves the link below to fail and report it.
+  if (stylesFailed) {
+    await fetch(href, { cache: "reload" })
+      .then((response) => response.blob())
+      .catch(() => {});
+  }
   await new Promise<void>((resolve, reject) => {
     const link = document.createElement("link");
     link.rel = "stylesheet";

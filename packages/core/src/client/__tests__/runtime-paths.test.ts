@@ -8,11 +8,17 @@
  */
 
 import { afterEach, describe, expect, it } from "vitest";
-import { navPath, publicPath, viewPath } from "../runtime-paths.js";
+import {
+  assetBaseUrl,
+  navPath,
+  publicPath,
+  viewPath,
+} from "../runtime-paths.js";
 
 afterEach(() => {
   delete document.documentElement.dataset.sitePathPrefix;
   delete document.documentElement.dataset.viewBasePath;
+  delete document.documentElement.dataset.assetBasePath;
 });
 
 describe("viewPath", () => {
@@ -80,5 +86,20 @@ describe("navPath", () => {
     document.documentElement.dataset.viewBasePath = "/en";
     expect(navPath("/my-post")).toBe("/my-post");
     expect(navPath("/preview/my-post?edit=1")).toBe("/preview/my-post?edit=1");
+  });
+});
+
+describe("assetBaseUrl", () => {
+  it("is the CDN that ASSET_BASE_URL names", () => {
+    document.documentElement.dataset.assetBasePath =
+      "https://media.example.com/_assets";
+    expect(assetBaseUrl().href).toBe("https://media.example.com/_assets/");
+  });
+
+  it("is the site's own directory, under its path prefix", () => {
+    document.documentElement.dataset.assetBasePath = "/blog/_assets";
+    expect(assetBaseUrl().href).toBe(
+      new URL("/blog/_assets/", window.location.href).href,
+    );
   });
 });

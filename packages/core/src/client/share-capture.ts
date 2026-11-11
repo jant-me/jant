@@ -9,6 +9,7 @@
  */
 
 import { snapdom } from "@zumer/snapdom";
+import { assetBaseUrl } from "./runtime-paths.js";
 
 /**
  * Tallest card, in CSS px: one 9:19.5 phone screen viewed at full width
@@ -131,6 +132,65 @@ function unusedFontFamilies(): string[] {
     if (face.status === "loaded" || face.status === "loading") used.add(family);
   }
   return [...declared].filter((family) => !used.has(family));
+}
+
+function isReadable(link: globalThis.HTMLLinkElement): boolean {
+  try {
+    return link.sheet?.cssRules != null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetch `url` as snapdom will, and again past the browser's cache if the
+ * cached copy fails.
+ */
+async function cacheReadableCopy(url: string): Promise<void> {
+  const read = async (cache: "default" | "reload"): Promise<boolean> => {
+    try {
+      // snapdom fetches another origin without credentials.
+      const response = await fetch(url, { credentials: "omit", cache });
+      // The cache keeps the copy once its body has been read.
+      await response.blob();
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+  if (!(await read("default"))) await read("reload");
+}
+
+/**
+ * Let snapdom read the page's stylesheets on the asset host, and name the
+ * host for its `fontStylesheetDomains`.
+ *
+ * snapdom embeds a web font only from a stylesheet on the page's origin, or
+ * one it may fetch from a host it is told about. The font themes' faces are
+ * in `client.css`, which `ASSET_BASE_URL` puts on another origin. Left out,
+ * the picture paints in a local font while the card was laid out in the web
+ * font: lines break in other places and a gap opens under the title.
+ *
+ * snapdom's fetch reads the browser's cache, and the copy there came from
+ * the page's own link, made without CORS. An asset host like R2 sends
+ * `Access-Control-Allow-Origin` only to a request that carries an `Origin`,
+ * so Chromium fails a CORS read of that copy. A sheet whose copy fails is
+ * fetched again past the cache, which replaces it.
+ *
+ * @returns The asset host, or none when assets share the page's origin
+ */
+async function readableAssetStylesheets(): Promise<string[]> {
+  const base = assetBaseUrl();
+  if (base.origin === window.location.origin) return [];
+  const links = document.querySelectorAll<globalThis.HTMLLinkElement>(
+    'link[rel~="stylesheet"]',
+  );
+  await Promise.all(
+    Array.from(links)
+      .filter((link) => link.href.startsWith(base.href) && !isReadable(link))
+      .map((link) => cacheReadableCopy(link.href)),
+  );
+  return [base.host];
 }
 
 /** Fonts the card uses, then every image in it, decoded. */
@@ -383,6 +443,8 @@ export async function prepareShareCard(
   host.innerHTML = cardHtml;
   document.body.appendChild(host);
   const dispose = () => host.remove();
+  // Alongside the layout; only the painting needs it.
+  const fontStylesheetDomains = readableAssetStylesheets();
   try {
     const card = host.querySelector<HTMLElement>("[data-share-card]");
     if (!card) throw new Error("The share card is missing.");
@@ -405,6 +467,7 @@ export async function prepareShareCard(
                 dpr: 1,
                 reconcile: true,
                 excludeFonts: { families: excludedFamilies },
+                fontStylesheetDomains: await fontStylesheetDomains,
               });
               return capture.toCanvas();
             }),
