@@ -68,6 +68,8 @@ describe("openShareImage", () => {
     await opening;
 
     expect(dialog()?.open).toHaveBeenCalledTimes(1);
+    // The browser's cached copy is good enough until a load fails.
+    expect(fetch).not.toHaveBeenCalledWith(STYLESHEET, expect.anything());
   });
 
   it("links the stylesheet once however often it opens", async () => {
@@ -93,11 +95,46 @@ describe("openShareImage", () => {
     linked[0]!.dispatchEvent(new Event("error"));
     await vi.waitFor(() => expect(linked).toHaveLength(2));
     expect(linked[1]!.getAttribute("href")).toBe(STYLESHEET);
+    expect(linked[1]!.crossOrigin).toBe("anonymous");
     linked[1]!.dispatchEvent(new Event("load"));
     await opening;
 
     expect(warn).toHaveBeenCalledTimes(1);
     expect(showToastMock).not.toHaveBeenCalled();
+    expect(dialog()?.open).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetches a failed stylesheet past the cache before linking it again", async () => {
+    // A copy cached without CORS fails every CORS load until it is replaced.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const order: string[] = [];
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      order.push(`fetch ${String(input)}`);
+      return new Response("<div data-share-card></div>");
+    });
+    vi.mocked(document.head.appendChild).mockImplementation(
+      <T extends Node>(node: T) => {
+        const link = node as unknown as globalThis.HTMLLinkElement;
+        order.push(`link ${link.getAttribute("href")}`);
+        linked.push(link);
+        return node;
+      },
+    );
+    const { openShareImage } = await import("../share-launch.js");
+
+    const opening = openShareImage("post-1");
+    await vi.waitFor(() => expect(linked).toHaveLength(1));
+    linked[0]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(linked).toHaveLength(2));
+    linked[1]!.dispatchEvent(new Event("load"));
+    await opening;
+
+    expect(fetch).toHaveBeenCalledWith(STYLESHEET, { cache: "reload" });
+    expect(order.filter((step) => step.includes(STYLESHEET))).toEqual([
+      `link ${STYLESHEET}`,
+      `fetch ${STYLESHEET}`,
+      `link ${STYLESHEET}`,
+    ]);
     expect(dialog()?.open).toHaveBeenCalledTimes(1);
   });
 
