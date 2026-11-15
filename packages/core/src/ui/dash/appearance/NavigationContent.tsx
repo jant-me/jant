@@ -543,6 +543,14 @@ export function NavigationContent({
         comment: "@context: Shown when a pasted address resolves to a draft",
       }),
     ),
+    addressUnlisted: i18n._(
+      msg({
+        message:
+          "That page is unlisted. Make it Public or Hidden from Latest to add it to the menu.",
+        comment:
+          "@context: Shown when a pasted address resolves to an unlisted page, which a menu entry would list",
+      }),
+    ),
     addressPrivate: i18n._(
       msg({
         message: "That page is private, so nobody could open it from a menu.",

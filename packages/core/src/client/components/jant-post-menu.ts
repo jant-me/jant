@@ -62,6 +62,14 @@ interface MenuLanguage {
   label: string;
 }
 
+/** The visibility panel's choices, widest audience first. */
+const POST_MENU_VISIBILITY_OPTIONS = [
+  { value: "public", label: "Public" },
+  { value: "latest_hidden", label: "Hidden from Latest" },
+  { value: "unlisted", label: "Unlisted" },
+  { value: "private", label: "Private" },
+] as const;
+
 /**
  * What the server made of an address pasted into the translation picker: the
  * Thread it names, or why that Thread cannot be linked to this one.
@@ -142,7 +150,8 @@ export function removeLeadingFeedDivider(
 
 /**
  * The image carries a QR code to the post, which a reader can open only once
- * it is published and not Private.
+ * it is published and not Private. An Unlisted post opens for anyone with the
+ * link, so it can be shared this way too.
  */
 function canShareAsImage(data: PostMenuData): boolean {
   return !data.isDraft && data.visibility !== "private";
@@ -1088,6 +1097,7 @@ export class JantPostMenu extends LitElement {
     const messages: Record<string, string> = {
       public: "Post made public.",
       latest_hidden: "Hidden from Latest.",
+      unlisted: "Post made unlisted.",
       private: "Post made private.",
     };
     showToast(messages[newVisibility] ?? "Visibility updated.");
@@ -1522,14 +1532,10 @@ export class JantPostMenu extends LitElement {
   }
 
   #getVisibilityLabel(visibility: string) {
-    switch (visibility) {
-      case "private":
-        return "Private";
-      case "latest_hidden":
-        return "Hidden from Latest";
-      default:
-        return "Public";
-    }
+    return (
+      POST_MENU_VISIBILITY_OPTIONS.find((option) => option.value === visibility)
+        ?.label ?? "Public"
+    );
   }
 
   // --- Icons (inline SVG) ---
@@ -2140,86 +2146,33 @@ export class JantPostMenu extends LitElement {
         </div>
         <div role="menu" class="post-menu-list">
           <div class="post-menu-section">
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-checked=${visibility === "public" ? "true" : "false"}
-              data-post-menu-visibility-option
-              data-post-menu-visibility-current=${
-                visibility === "public" ? "true" : "false"
-              }
-              class=${`post-menu-item${
-                visibility === "public" ? " post-menu-item-active" : ""
-              }`}
-              @click=${() =>
-                visibility === "public"
-                  ? this.#showMainMenu("[data-post-menu-open-visibility]")
-                  : this.#setVisibility("public")}
-            >
-              <span class="post-menu-item-label">Public</span>
-              ${
-                visibility === "public"
-                  ? html`<span
-                      class="post-menu-item-trailing post-menu-item-check"
-                      >${this.#iconCheck()}</span
-                    >`
-                  : nothing
-              }
-            </button>
-
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-checked=${visibility === "latest_hidden" ? "true" : "false"}
-              data-post-menu-visibility-option
-              data-post-menu-visibility-current=${
-                visibility === "latest_hidden" ? "true" : "false"
-              }
-              class=${`post-menu-item${
-                visibility === "latest_hidden" ? " post-menu-item-active" : ""
-              }`}
-              @click=${() =>
-                visibility === "latest_hidden"
-                  ? this.#showMainMenu("[data-post-menu-open-visibility]")
-                  : this.#setVisibility("latest_hidden")}
-            >
-              <span class="post-menu-item-label">Hidden from Latest</span>
-              ${
-                visibility === "latest_hidden"
-                  ? html`<span
-                      class="post-menu-item-trailing post-menu-item-check"
-                      >${this.#iconCheck()}</span
-                    >`
-                  : nothing
-              }
-            </button>
-
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-checked=${visibility === "private" ? "true" : "false"}
-              data-post-menu-visibility-option
-              data-post-menu-visibility-current=${
-                visibility === "private" ? "true" : "false"
-              }
-              class=${`post-menu-item${
-                visibility === "private" ? " post-menu-item-active" : ""
-              }`}
-              @click=${() =>
-                visibility === "private"
-                  ? this.#showMainMenu("[data-post-menu-open-visibility]")
-                  : this.#setVisibility("private")}
-            >
-              <span class="post-menu-item-label">Private</span>
-              ${
-                visibility === "private"
-                  ? html`<span
-                      class="post-menu-item-trailing post-menu-item-check"
-                      >${this.#iconCheck()}</span
-                    >`
-                  : nothing
-              }
-            </button>
+            ${POST_MENU_VISIBILITY_OPTIONS.map(({ value, label }) => {
+              const current = visibility === value;
+              return html`
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked=${current ? "true" : "false"}
+                  data-post-menu-visibility-option
+                  data-post-menu-visibility-current=${current ? "true" : "false"}
+                  class=${`post-menu-item${current ? " post-menu-item-active" : ""}`}
+                  @click=${() =>
+                    current
+                      ? this.#showMainMenu("[data-post-menu-open-visibility]")
+                      : this.#setVisibility(value)}
+                >
+                  <span class="post-menu-item-label">${label}</span>
+                  ${
+                    current
+                      ? html`<span
+                          class="post-menu-item-trailing post-menu-item-check"
+                          >${this.#iconCheck()}</span
+                        >`
+                      : nothing
+                  }
+                </button>
+              `;
+            })}
           </div>
         </div>
       </div>

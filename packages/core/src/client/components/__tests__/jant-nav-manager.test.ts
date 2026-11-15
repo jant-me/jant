@@ -95,6 +95,8 @@ const labels: NavManagerLabels = {
     "Already in navigation. Drag it in the list above to move it.",
   addressNotFound: "Nothing at {address}. Check it, or search by title.",
   addressUnpublished: "That page is a draft. Publish it, then add it.",
+  addressUnlisted:
+    "That page is unlisted. Make it Public or Hidden from Latest to add it to the menu.",
   addressPrivate: "That page is private, so nobody could open it from a menu.",
   addressUntitled: "That page has no title yet, so a menu has nothing to show.",
   addressExternal:

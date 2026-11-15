@@ -3445,6 +3445,7 @@
   article[data-post-pinned] .post-status-badges,
   article[data-post-pinned-in-collection] .post-status-badges,
   article[data-post-draft] .post-status-badges,
+  article[data-post-visibility="unlisted"] .post-status-badges,
   article[data-post-visibility="private"] .post-status-badges {
     display: flex;
   }
@@ -3471,6 +3472,7 @@
     display: none;
   }
 
+  article[data-post-visibility="unlisted"] .post-status-unlisted,
   article[data-post-visibility="private"] .post-status-private {
     display: inline-flex;
   }

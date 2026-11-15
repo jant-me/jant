@@ -258,7 +258,7 @@ export function latestFeedSelection(input: {
     status: "published",
     excludeReplies: true,
     excludeLatestHidden: true,
-    excludePrivate: true,
+    listedForReader: true,
     lang: input.lang,
     publishedBefore: input.publishedBefore,
   } satisfies PostFilters;
@@ -284,7 +284,7 @@ export function featuredFeedSelection(input: {
 }) {
   return {
     status: "published",
-    excludePrivate: true,
+    listedForReader: true,
     lang: input.lang,
     publishedBefore: input.publishedBefore,
   } satisfies ThreadRootPageOptions;

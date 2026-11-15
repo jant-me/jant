@@ -178,7 +178,7 @@ describe.skipIf(!hugoAvailable)("collection order on an exported site", () => {
       collectionEntries: inCollections(ordered),
     });
 
-    const reader = { status: "published" as const, excludePrivate: true };
+    const reader = { status: "published" as const, listedForReader: true };
     for (const { slug, sortOrder } of COLLECTIONS) {
       const ids = [collectionIds.get(slug) as string];
       // What the page shows, as the collection page route decides it.

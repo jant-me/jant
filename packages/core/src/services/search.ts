@@ -7,6 +7,7 @@
  */
 
 import type { Post, Status, Format, SearchResult } from "../types.js";
+import { READER_LISTED_VISIBILITIES } from "../types/constants.js";
 import type { DatabaseDialect } from "../db/dialect.js";
 import type { RawQueryClient } from "../db/raw-query.js";
 import { escapeHtml } from "../lib/html.js";
@@ -26,12 +27,14 @@ export interface SearchOptions {
   /** Filter by status */
   status?: Status[];
   /**
-   * Whether private posts, and replies in a private Thread, may match.
+   * Whether the signed-in author is asking. Only then may Unlisted and Private
+   * posts, and replies in such a Thread, match: no list a reader sees includes
+   * them.
    *
    * Defaults to `false`, so a caller that doesn't say who is asking gets what a
-   * signed-out reader would. Pass `true` only for the signed-in author.
+   * signed-out reader would.
    */
-  includePrivate?: boolean;
+  asAuthor?: boolean;
   /** Filter by format */
   format?: Format;
   /**
@@ -202,12 +205,21 @@ const EFFECTIVE_VISIBILITY_SQL =
   "COALESCE(post.visibility, root_post.visibility)";
 
 /**
+ * The visibilities a signed-out reader may find in a list, as SQL literals.
+ * Written into the statement rather than bound, so the reader's rule adds no
+ * placeholder and the author's statement lines up with it.
+ */
+const READER_LISTED_SQL_VALUES = READER_LISTED_VISIBILITIES.map(
+  (value) => `'${value}'`,
+).join(", ");
+
+/**
  * The conditions every search statement applies after its own match clause:
  * site, status, audience, format, and language.
  *
  * Built once so that no statement can leave one out. Each dialect and each
  * match strategy has its own SQL, and a statement missing the visibility
- * clause does not fail — it returns private posts.
+ * clause does not fail — it returns Unlisted and Private posts.
  *
  * @param siteId - Site the search is scoped to
  * @param options - Caller's search options
@@ -216,7 +228,7 @@ const EFFECTIVE_VISIBILITY_SQL =
  * @example
  * ```ts
  * const filters = buildSearchFilters(siteId, { status: ["published"] });
- * // filters.sql: "AND post.site_id = ?\nAND post.status IN (?)\nAND COALESCE(…) != 'private'"
+ * // filters.sql: "AND post.site_id = ?\nAND post.status IN (?)\nAND COALESCE(…) IN ('public', 'latest_hidden')"
  * // filters.params: [siteId, "published"]
  * ```
  */
@@ -231,8 +243,10 @@ function buildSearchFilters(
   ];
   const params: unknown[] = [siteId, ...status];
 
-  if (!options.includePrivate) {
-    conditions.push(`${EFFECTIVE_VISIBILITY_SQL} != 'private'`);
+  if (!options.asAuthor) {
+    conditions.push(
+      `${EFFECTIVE_VISIBILITY_SQL} IN (${READER_LISTED_SQL_VALUES})`,
+    );
   }
   if (options.format) {
     conditions.push("post.format = ?");

@@ -123,6 +123,10 @@ terms:
     target: Hidden from Latest
     note: 帖子状态的名称，界面上保留英文。句子里描述这个状态时可以写「从 Latest 中隐藏」。
 
+  - source: Unlisted
+    target: Unlisted
+    note: 帖子状态的名称，界面上保留英文。有链接的人能打开，但站内任何列表都不出现。句子里描述这个状态时可以写「不公开列出」。
+
   - source: Latest
     target: Latest
     note: 站点时间线的名称，界面上保留英文，不要译成「最新」。小写的 latest 只是「最新的」，照常翻译。

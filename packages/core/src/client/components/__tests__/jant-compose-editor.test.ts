@@ -308,7 +308,10 @@ const labels: ComposeLabels = {
   publishVisibilityPublicHint: "Appears in Latest.",
   publishVisibilityHiddenFromLatest: "Hidden from Latest",
   publishVisibilityHiddenFromLatestHint:
-    "Doesn't appear in Latest. Still appears in collections you add it to.",
+    "Doesn't appear in Latest. Still appears in the archive, search, and collections.",
+  publishVisibilityUnlisted: "Unlisted",
+  publishVisibilityUnlistedHint:
+    "Not listed anywhere. Only people with the link can see it.",
   publishVisibilityPrivate: "Private",
   publishVisibilityPrivateHint: "Only visible when signed in.",
   publishDateLabel: "Published on",
@@ -334,6 +337,7 @@ const labels: ComposeLabels = {
   publishSlugInvalid: "Use lowercase letters, numbers, and hyphens only.",
   publishSlugReserved: "This link is reserved. Choose something else.",
   postHiddenFromLatest: "Post hidden",
+  postUnlisted: "Post unlisted",
   postPrivately: "Post privately",
   quietReplyLabel: "Reply quietly",
   quietReplyHint: "Won't move the thread to the top of latest.",

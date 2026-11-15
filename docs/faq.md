@@ -28,6 +28,10 @@ Jant has no built-in comments. To take comments, embed a third-party system such
 
 There's no separate "page" type. Set a Note titled `About` to **Hidden from Latest** (off the homepage, direct link still works) and it becomes a standalone page. Jant builds the slug from the title, so the address defaults to `/about`; to use a different one, open the control at the top right of the post (it reads `Now · /…`) and fill in **Custom link**. See [Writing and organizing § Make a standalone page](writing-and-organizing.md#make-a-standalone-page-about).
 
+## How do I share a post only with people who have the link?
+
+Set it to **Unlisted** in **Publish settings**. Anyone with the address can open it, and the site lists it nowhere: not on Latest, in `/archive`, in search, in a feed, or in the sitemap. See [Writing and organizing § Share a post by link](writing-and-organizing.md#share-a-post-by-link).
+
 ## How do I publish a post with a past date?
 
 Each post in the composer has a control at its top right reading `Now · /…`. Open it and set **Published on** to an earlier date; the post drops into the timeline at that point. Handy for backfilling older posts brought over from elsewhere. You can only pick today or earlier; Jant doesn't schedule posts. See [Writing and organizing § Publish settings](writing-and-organizing.md#publish-settings).

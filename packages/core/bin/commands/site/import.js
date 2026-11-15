@@ -29,7 +29,7 @@ const parseFrontMatter = parseFrontMatterShared;
  * writes `SITE_EXPORT_FORMAT_VERSION` from `src/services/export.ts`; a test
  * keeps the two equal.
  */
-export const SUPPORTED_SITE_EXPORT_VERSION = 2;
+export const SUPPORTED_SITE_EXPORT_VERSION = 3;
 
 /**
  * Refuse an export written in a format newer than this importer reads.
@@ -2241,6 +2241,7 @@ function buildPostPayloadFromBundle(bundle, options) {
   const visibility =
     frontMatter.visibility === "public" ||
     frontMatter.visibility === "latest_hidden" ||
+    frontMatter.visibility === "unlisted" ||
     frontMatter.visibility === "private"
       ? frontMatter.visibility
       : undefined;

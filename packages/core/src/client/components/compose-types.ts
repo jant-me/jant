@@ -315,6 +315,8 @@ export interface ComposeLabels {
   publishVisibilityPublicHint: string;
   publishVisibilityHiddenFromLatest: string;
   publishVisibilityHiddenFromLatestHint: string;
+  publishVisibilityUnlisted: string;
+  publishVisibilityUnlistedHint: string;
   publishVisibilityPrivate: string;
   publishVisibilityPrivateHint: string;
   publishDateLabel: string;
@@ -338,6 +340,7 @@ export interface ComposeLabels {
   publishSlugInvalid: string;
   publishSlugReserved: string;
   postHiddenFromLatest: string;
+  postUnlisted: string;
   postPrivately: string;
   quietReplyLabel: string;
   quietReplyHint: string;
@@ -383,7 +386,8 @@ export interface ComposeFullscreenCloseDetail {
   editorIndex?: number;
 }
 
-export type ComposeVisibility = "public" | "latest_hidden" | "private";
+export type ComposeVisibility =
+  "public" | "latest_hidden" | "unlisted" | "private";
 
 export type ComposeSubmitAttachment =
   | {

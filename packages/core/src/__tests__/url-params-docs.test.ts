@@ -26,9 +26,9 @@ import {
 import {
   ARCHIVE_LAYOUTS,
   ARCHIVE_SORTS,
+  ARCHIVE_VISIBILITIES,
   FORMATS,
   MEDIA_KINDS,
-  PUBLIC_ARCHIVE_VISIBILITIES,
 } from "../types/constants.js";
 
 const REPO_DIR = resolve(import.meta.dirname, "../../../..");
@@ -58,7 +58,7 @@ const DIMENSION_VALUES: Record<FilterDimensionKey, readonly string[] | null> = {
   year: null,
   media: ["any", "none", ...MEDIA_KINDS],
   replies: ["any", "none"],
-  visibility: [...PUBLIC_ARCHIVE_VISIBILITIES, "private" as const].map(
+  visibility: ARCHIVE_VISIBILITIES.map(
     (visibility) =>
       FILTER_DIMENSIONS.visibility.url.serialize(visibility, {}) ?? visibility,
   ),

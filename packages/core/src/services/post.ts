@@ -73,6 +73,7 @@ import type { StorageDriver } from "../lib/storage.js";
 import type { MediaService } from "./media.js";
 import {
   FORMATS,
+  isListedForReader,
   MAX_MEDIA_ATTACHMENTS,
   STATUSES,
   VISIBILITIES,
@@ -163,8 +164,8 @@ export interface PostFilters {
   excludeReplies?: boolean;
   /** Exclude posts hidden from Latest from results */
   excludeLatestHidden?: boolean;
-  /** Exclude private posts from results */
-  excludePrivate?: boolean;
+  /** Keep only what a signed-out reader may list: no Unlisted, no Private. */
+  listedForReader?: boolean;
   threadId?: string;
   /**
    * Restrict to these Posts. The list becomes one `IN (…)`, so a caller keeps
@@ -262,7 +263,7 @@ export interface SummaryConfig {
 
 export interface ThreadRootPageOptions {
   status?: Status;
-  excludePrivate?: boolean;
+  listedForReader?: boolean;
   excludeLatestHidden?: boolean;
   /** See `PostFilters.lang`. */
   lang?: string;
@@ -864,7 +865,7 @@ export interface PostService {
    * ```ts
    * const first = await posts.listCollectionThreadRootPage(
    *   [collection.id],
-   *   { status: "published", excludePrivate: true, sortOrder: "newest" },
+   *   { status: "published", listedForReader: true, sortOrder: "newest" },
    *   { limit: 20 },
    * );
    * ```
@@ -1043,7 +1044,7 @@ function ensurePostVisibility(
   return ensureAllowedPostValue(
     value,
     VISIBILITIES,
-    "Visibility must be public, hidden from Latest, or private.",
+    "Visibility must be public, hidden from Latest, unlisted, or private.",
     ErrorCtor,
   );
 }
@@ -2470,7 +2471,7 @@ export function createPostService(
       // semantics stay consistent if they ever change.
       const conditions = buildFilterConditions({
         status: "published",
-        excludePrivate: true,
+        listedForReader: true,
         excludeReplies: true,
       });
       if (afterId !== undefined) {
@@ -2539,7 +2540,7 @@ export function createPostService(
     async countForSitemap() {
       const conditions = buildFilterConditions({
         status: "published",
-        excludePrivate: true,
+        listedForReader: true,
         excludeReplies: true,
       });
       const result = await db
@@ -2553,7 +2554,7 @@ export function createPostService(
       if (offset < 0) return null;
       const conditions = buildFilterConditions({
         status: "published",
-        excludePrivate: true,
+        listedForReader: true,
         excludeReplies: true,
       });
       const rows = await db
@@ -3346,13 +3347,13 @@ export function createPostService(
       const wasNavigationPageEligible =
         existing.format === "note" &&
         existing.status === "published" &&
-        existing.visibility !== "private" &&
+        isListedForReader(existing.visibility) &&
         !isThreadReply(existing) &&
         hasNonEmptyText(existing.title);
       const remainsNavigationPageEligible =
         nextFormat === "note" &&
         nextStatus === "published" &&
-        effectiveNextVisibility !== "private" &&
+        isListedForReader(effectiveNextVisibility) &&
         !isThreadReply(existing) &&
         hasNonEmptyText(nextTitle);
 

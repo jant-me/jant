@@ -1,8 +1,10 @@
 {{ define "main" }}
   {{- /* Root posts are branch bundles (kind=section), so we iterate .Site.Pages.
        Hugo already excludes draft pages, so `private` posts (emitted with
-       `draft: true`) are filtered out automatically. This leaves `public`
-       and `latest_hidden` posts — both visible in the archive timeline. */ -}}
+       `draft: true`) are filtered out automatically, and `unlisted` posts
+       (emitted with `build.list: never`) are in no page collection. This
+       leaves `public` and `latest_hidden` posts — both visible in the
+       archive timeline. */ -}}
   {{- $posts := where .Site.Pages "Type" "post" -}}
   {{- $posts = $posts.ByDate.Reverse -}}
   {{- $pageSize := .Site.Params.archive_page_size | default (.Site.Params.page_size | default 10) -}}

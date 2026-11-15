@@ -30,7 +30,7 @@ searchApiRoutes.get(
       const results = await c.var.services.search.search(query, {
         limit,
         status: ["published"],
-        includePrivate: true,
+        asAuthor: true,
       });
 
       return c.json({

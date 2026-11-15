@@ -35,7 +35,7 @@ function setup(options: { authenticated: boolean }) {
 
   /** A post with a Markdown text attachment; returns the attachment's ID. */
   async function postWithText(
-    overrides: { status?: "draft"; visibility?: "private" } = {},
+    overrides: { status?: "draft"; visibility?: "unlisted" | "private" } = {},
   ) {
     const post = await services.posts.createWithAttachments(
       { format: "note", bodyMarkdown: "With notes", ...overrides },
@@ -110,6 +110,15 @@ describe("/_/text/:mediaId", () => {
     const res = await author.app.request(`/_/text/${authorId}`);
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("private, no-cache");
+  });
+
+  it("gives an Unlisted post's attachment to anyone with the link", async () => {
+    const { app, postWithText } = setup({ authenticated: false });
+    const id = await postWithText({ visibility: "unlisted" });
+
+    const res = await app.request(`/_/text/${id}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("public, no-cache");
   });
 
   it("escapes an uploaded plain-text file instead of passing its markup through", async () => {

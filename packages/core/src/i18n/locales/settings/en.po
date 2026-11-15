@@ -2701,6 +2701,11 @@ msgstr "That page is a draft. Publish it, then add it."
 msgid "That page is private, so nobody could open it from a menu."
 msgstr "That page is private, so nobody could open it from a menu."
 
+#. @context: Shown when a pasted address resolves to an unlisted page, which a menu entry would list
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That page is unlisted. Make it Public or Hidden from Latest to add it to the menu."
+msgstr "That page is unlisted. Make it Public or Hidden from Latest to add it to the menu."
+
 #. @context: Error toast when selected theme is not valid
 #: src/routes/dash/settings.tsx
 msgid "That theme isn't available. Pick another one."
@@ -2982,6 +2987,11 @@ msgstr "Typography choices and reading texture"
 #: src/ui/dash/settings/SessionsContent.tsx
 msgid "Unknown device"
 msgstr "Unknown device"
+
+#. @context: Post badge for posts that open for anyone with the link but are listed nowhere
+#: src/ui/dash/StatusBadge.tsx
+msgid "Unlisted"
+msgstr "Unlisted"
 
 #. @context: Settings item description for password change
 #: src/ui/dash/settings/AccountMenuContent.tsx

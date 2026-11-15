@@ -55,6 +55,7 @@ export type NavAddressResolution =
         | "link_only"
         | "untitled"
         | "unpublished"
+        | "unlisted"
         | "private"
         | "not_found";
       address: string;
@@ -134,6 +135,7 @@ export interface NavManagerLabels {
   addressAlreadyAdded: string;
   addressNotFound: string;
   addressUnpublished: string;
+  addressUnlisted: string;
   addressPrivate: string;
   addressUntitled: string;
   addressExternal: string;

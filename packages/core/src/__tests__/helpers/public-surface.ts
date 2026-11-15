@@ -161,6 +161,7 @@ export const THEME_ONLY_EXPORT_FIELDS = {
     "feed_id",
     "media.id",
     "media.position",
+    "sitemap",
     "summary_text",
     "truncated",
   ],
@@ -726,7 +727,13 @@ export async function buildPublicSurface(): Promise<PublicSurface> {
       THEME_ONLY_EXPORT_FIELDS[
         kind === "smart_collection" ? "collection" : kind
       ];
-    return [...exported[kind]].filter((path) => !themeOnly.includes(path));
+    // A theme-only field's own keys (`sitemap.disable`) are theme only too.
+    return [...exported[kind]].filter(
+      (path) =>
+        !themeOnly.some(
+          (field) => path === field || path.startsWith(`${field}.`),
+        ),
+    );
   };
 
   return normalize({

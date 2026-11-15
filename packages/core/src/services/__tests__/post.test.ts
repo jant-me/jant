@@ -369,7 +369,7 @@ describe("PostService", () => {
           visibility: "friends_only" as never,
         }),
       ).rejects.toThrow(
-        "Visibility must be public, hidden from Latest, or private.",
+        "Visibility must be public, hidden from Latest, unlisted, or private.",
       );
     });
 
@@ -915,7 +915,7 @@ describe("PostService", () => {
       ]);
     });
 
-    it("excludes private posts when excludePrivate is set", async () => {
+    it("excludes private posts when listedForReader is set", async () => {
       await postService.create({
         format: "note",
         bodyMarkdown: "public post",
@@ -931,7 +931,7 @@ describe("PostService", () => {
         featured: true,
       });
 
-      const posts = await postService.list({ excludePrivate: true });
+      const posts = await postService.list({ listedForReader: true });
       expect(posts).toHaveLength(2);
       // Featured posts have visibility "public", so both public and featured appear
       expect(posts.map((p) => p.bodyText).sort()).toEqual([
@@ -1954,7 +1954,7 @@ describe("PostService", () => {
           visibility: "friends_only" as never,
         }),
       ).rejects.toThrow(
-        "Visibility must be public, hidden from Latest, or private.",
+        "Visibility must be public, hidden from Latest, unlisted, or private.",
       );
     });
 

@@ -2701,6 +2701,11 @@ msgstr "该页面是草稿 (未发布内容)。先发布它，然后再添加。
 msgid "That page is private, so nobody could open it from a menu."
 msgstr "该页面是私有的，因此任何人都无法通过菜单打开它。"
 
+#. @context: Shown when a pasted address resolves to an unlisted page, which a menu entry would list
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That page is unlisted. Make it Public or Hidden from Latest to add it to the menu."
+msgstr "该页面是 Unlisted，改为 Public 或 Hidden from Latest 后才能加入菜单。"
+
 #. @context: Error toast when selected theme is not valid
 #: src/routes/dash/settings.tsx
 msgid "That theme isn't available. Pick another one."
@@ -2982,6 +2987,11 @@ msgstr "排版选项与阅读质感"
 #: src/ui/dash/settings/SessionsContent.tsx
 msgid "Unknown device"
 msgstr "未知设备"
+
+#. @context: Post badge for posts that open for anyone with the link but are listed nowhere
+#: src/ui/dash/StatusBadge.tsx
+msgid "Unlisted"
+msgstr "Unlisted"
 
 #. @context: Settings item description for password change
 #: src/ui/dash/settings/AccountMenuContent.tsx

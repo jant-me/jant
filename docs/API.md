@@ -305,39 +305,39 @@ Jant supports three post formats:
 
 Post responses include these fields:
 
-| Field             | Type                                     | Notes                                                                                                                                    |
-| ----------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`              | `pst_*` string                           | Post ID                                                                                                                                  |
-| `format`          | `note` \| `link` \| `quote`              | Post format                                                                                                                              |
-| `status`          | `draft` \| `published`                   | Stored post status                                                                                                                       |
-| `visibility`      | `public` \| `latest_hidden` \| `private` | Resolved visibility shown to clients                                                                                                     |
-| `pinnedAt`        | integer \| `null`                        | Pin timestamp                                                                                                                            |
-| `featuredAt`      | integer \| `null`                        | Feature timestamp                                                                                                                        |
-| `slug`            | string                                   | Canonical slug                                                                                                                           |
-| `title`           | string \| `null`                         | Returned for non-quote responses; omitted for `quote`                                                                                    |
-| `url`             | string \| `null`                         | Returned for non-quote responses; usually `null` on notes                                                                                |
-| `sourceName`      | string \| `null`                         | Returned instead of `title` for `quote`                                                                                                  |
-| `sourceUrl`       | string \| `null`                         | Returned instead of `url` for `quote`                                                                                                    |
-| `displayTitle`    | string                                   | Short plain-text name: the title, or one derived from the content when there is none. Use it where the post is referenced from elsewhere |
-| `body`            | string \| `null`                         | Raw TipTap JSON string when stored that way; omitted when `content=markdown`                                                             |
-| `bodyHtml`        | string \| `null`                         | Rendered HTML; omitted when `content=markdown`                                                                                           |
-| `bodyText`        | string \| `null`                         | Plain-text rendering; omitted when `content=markdown`                                                                                    |
-| `bodyMarkdown`    | string \| `null`                         | Markdown source; only returned when `content=markdown`                                                                                   |
-| `quoteText`       | string \| `null`                         | Quote content                                                                                                                            |
-| `summary`         | string \| `null`                         | Optional summary                                                                                                                         |
-| `rating`          | integer \| `null`                        | `1` to `5` when set                                                                                                                      |
-| `replyToId`       | `pst_*` string \| `null`                 | Parent reply/post ID                                                                                                                     |
-| `threadId`        | `pst_*` string                           | Thread root ID                                                                                                                           |
-| `language`        | string \| `null`                         | BCP 47 content language, the same for every post in a Thread; `null` until the site first turns on multilingual content                  |
-| `quietReply`      | boolean                                  | Reply published without announcing its Thread                                                                                            |
-| `publishedAt`     | integer \| `null`                        | Publish timestamp                                                                                                                        |
-| `lastActivityAt`  | integer                                  | Newest post in the Thread, excluding quiet replies                                                                                       |
-| `threadUpdatedAt` | integer                                  | Newest post in the Thread, including quiet replies                                                                                       |
-| `threadPostCount` | integer                                  | Published posts in the Thread, root included; `1` alone                                                                                  |
-| `createdAt`       | integer                                  | Unix seconds                                                                                                                             |
-| `updatedAt`       | integer                                  | Unix seconds — last row write, including edits                                                                                           |
-| `attachments`     | array                                    | Ordered media/text attachment objects                                                                                                    |
-| `collectionIds`   | `col_*` string[]                         | Shared Thread Collections; only in `GET /api/posts/:id`                                                                                  |
+| Field             | Type                                                   | Notes                                                                                                                                    |
+| ----------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`              | `pst_*` string                                         | Post ID                                                                                                                                  |
+| `format`          | `note` \| `link` \| `quote`                            | Post format                                                                                                                              |
+| `status`          | `draft` \| `published`                                 | Stored post status                                                                                                                       |
+| `visibility`      | `public` \| `latest_hidden` \| `unlisted` \| `private` | Resolved visibility shown to clients                                                                                                     |
+| `pinnedAt`        | integer \| `null`                                      | Pin timestamp                                                                                                                            |
+| `featuredAt`      | integer \| `null`                                      | Feature timestamp                                                                                                                        |
+| `slug`            | string                                                 | Canonical slug                                                                                                                           |
+| `title`           | string \| `null`                                       | Returned for non-quote responses; omitted for `quote`                                                                                    |
+| `url`             | string \| `null`                                       | Returned for non-quote responses; usually `null` on notes                                                                                |
+| `sourceName`      | string \| `null`                                       | Returned instead of `title` for `quote`                                                                                                  |
+| `sourceUrl`       | string \| `null`                                       | Returned instead of `url` for `quote`                                                                                                    |
+| `displayTitle`    | string                                                 | Short plain-text name: the title, or one derived from the content when there is none. Use it where the post is referenced from elsewhere |
+| `body`            | string \| `null`                                       | Raw TipTap JSON string when stored that way; omitted when `content=markdown`                                                             |
+| `bodyHtml`        | string \| `null`                                       | Rendered HTML; omitted when `content=markdown`                                                                                           |
+| `bodyText`        | string \| `null`                                       | Plain-text rendering; omitted when `content=markdown`                                                                                    |
+| `bodyMarkdown`    | string \| `null`                                       | Markdown source; only returned when `content=markdown`                                                                                   |
+| `quoteText`       | string \| `null`                                       | Quote content                                                                                                                            |
+| `summary`         | string \| `null`                                       | Optional summary                                                                                                                         |
+| `rating`          | integer \| `null`                                      | `1` to `5` when set                                                                                                                      |
+| `replyToId`       | `pst_*` string \| `null`                               | Parent reply/post ID                                                                                                                     |
+| `threadId`        | `pst_*` string                                         | Thread root ID                                                                                                                           |
+| `language`        | string \| `null`                                       | BCP 47 content language, the same for every post in a Thread; `null` until the site first turns on multilingual content                  |
+| `quietReply`      | boolean                                                | Reply published without announcing its Thread                                                                                            |
+| `publishedAt`     | integer \| `null`                                      | Publish timestamp                                                                                                                        |
+| `lastActivityAt`  | integer                                                | Newest post in the Thread, excluding quiet replies                                                                                       |
+| `threadUpdatedAt` | integer                                                | Newest post in the Thread, including quiet replies                                                                                       |
+| `threadPostCount` | integer                                                | Published posts in the Thread, root included; `1` alone                                                                                  |
+| `createdAt`       | integer                                                | Unix seconds                                                                                                                             |
+| `updatedAt`       | integer                                                | Unix seconds — last row write, including edits                                                                                           |
+| `attachments`     | array                                                  | Ordered media/text attachment objects                                                                                                    |
+| `collectionIds`   | `col_*` string[]                                       | Shared Thread Collections; only in `GET /api/posts/:id`                                                                                  |
 
 ### Post response shape
 
@@ -547,35 +547,35 @@ Request body:
 
 Fields:
 
-| Field               | Type                                     | Required             | Default        | Notes                                                                                                                                  |
-| ------------------- | ---------------------------------------- | -------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `format`            | `note` \| `link` \| `quote`              | yes                  | —              | Post format                                                                                                                            |
-| `title`             | string                                   | required for `link`  | —              | Max `300`; not allowed for `quote`                                                                                                     |
-| `sourceName`        | string                                   | no                   | `null`         | Quote attribution name, max `300`; only for `quote`                                                                                    |
-| `body`              | string                                   | no                   | `null`         | TipTap JSON string; mutually exclusive with `bodyMarkdown`                                                                             |
-| `bodyMarkdown`      | string                                   | no                   | `null`         | Recommended for scripts; mutually exclusive with `body`                                                                                |
-| `slug`              | string                                   | no                   | auto-generated | Canonical slug; mutually exclusive with `path`                                                                                         |
-| `path`              | string                                   | no                   | —              | Create-time address; starts with a letter or digit, then lowercase letters, numbers, `-`, `.`, and `/`; mutually exclusive with `slug` |
-| `status`            | `draft` \| `published`                   | no                   | `published`    | Post status                                                                                                                            |
-| `visibility`        | `public` \| `latest_hidden` \| `private` | no                   | `public`       | Post visibility                                                                                                                        |
-| `pinned`            | boolean                                  | no                   | `false`        | Pin the post; not allowed on replies                                                                                                   |
-| `featured`          | boolean                                  | no                   | `false`        | Mark as featured                                                                                                                       |
-| `pinnedAt`          | integer \| `null`                        | no                   | —              | Pin at this time instead of now; wins over `pinned`. For restores                                                                      |
-| `featuredAt`        | integer \| `null`                        | no                   | —              | Feature at this time instead of now; wins over `featured`. For restores                                                                |
-| `url`               | absolute URL                             | required for `link`  | —              | Allows `http:`, `https:`, or `mailto:`; not allowed for `note` or `quote`                                                              |
-| `sourceUrl`         | absolute URL                             | no                   | `null`         | Quote attribution URL; not allowed for non-quote                                                                                       |
-| `quoteText`         | string                                   | required for `quote` | —              | Not allowed for `note` or `link`                                                                                                       |
-| `rating`            | integer                                  | no                   | `null`         | `1` to `5`; send `0` to clear on update                                                                                                |
-| `collectionIds`     | `col_*` string[]                         | no                   | `[]`           | Shared Thread Collection TypeIDs; max `20`                                                                                             |
-| `collectionEntries` | object[]                                 | no                   | —              | Collection memberships with their own times; wins over `collectionIds`. For restores                                                   |
-| `replyToId`         | `pst_*` string                           | no                   | `null`         | Make this post a thread reply                                                                                                          |
-| `quietReply`        | boolean                                  | no                   | `false`        | Publish a reply without announcing its Thread on Latest                                                                                |
-| `language`          | BCP 47 tag                               | no                   | detected       | Content language, e.g. `en`, `zh-Hans`; replies inherit the Thread's                                                                   |
-| `translationOfId`   | `pst_*` string                           | no                   | `null`         | Link the new post into that post's translation group                                                                                   |
-| `publishedAt`       | integer                                  | no                   | current time   | Unix seconds; only valid when `status` is `published`                                                                                  |
-| `createdAt`         | integer                                  | no                   | current time   | Unix seconds; restores a moved post's creation time                                                                                    |
-| `updatedAt`         | integer                                  | no                   | `createdAt`    | Unix seconds; restores a moved post's last edit time                                                                                   |
-| `attachments`       | attachment[]                             | no                   | `[]`           | Ordered attachments, max `20`                                                                                                          |
+| Field               | Type                                                   | Required             | Default        | Notes                                                                                                                                  |
+| ------------------- | ------------------------------------------------------ | -------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `format`            | `note` \| `link` \| `quote`                            | yes                  | —              | Post format                                                                                                                            |
+| `title`             | string                                                 | required for `link`  | —              | Max `300`; not allowed for `quote`                                                                                                     |
+| `sourceName`        | string                                                 | no                   | `null`         | Quote attribution name, max `300`; only for `quote`                                                                                    |
+| `body`              | string                                                 | no                   | `null`         | TipTap JSON string; mutually exclusive with `bodyMarkdown`                                                                             |
+| `bodyMarkdown`      | string                                                 | no                   | `null`         | Recommended for scripts; mutually exclusive with `body`                                                                                |
+| `slug`              | string                                                 | no                   | auto-generated | Canonical slug; mutually exclusive with `path`                                                                                         |
+| `path`              | string                                                 | no                   | —              | Create-time address; starts with a letter or digit, then lowercase letters, numbers, `-`, `.`, and `/`; mutually exclusive with `slug` |
+| `status`            | `draft` \| `published`                                 | no                   | `published`    | Post status                                                                                                                            |
+| `visibility`        | `public` \| `latest_hidden` \| `unlisted` \| `private` | no                   | `public`       | Post visibility                                                                                                                        |
+| `pinned`            | boolean                                                | no                   | `false`        | Pin the post; not allowed on replies                                                                                                   |
+| `featured`          | boolean                                                | no                   | `false`        | Mark as featured                                                                                                                       |
+| `pinnedAt`          | integer \| `null`                                      | no                   | —              | Pin at this time instead of now; wins over `pinned`. For restores                                                                      |
+| `featuredAt`        | integer \| `null`                                      | no                   | —              | Feature at this time instead of now; wins over `featured`. For restores                                                                |
+| `url`               | absolute URL                                           | required for `link`  | —              | Allows `http:`, `https:`, or `mailto:`; not allowed for `note` or `quote`                                                              |
+| `sourceUrl`         | absolute URL                                           | no                   | `null`         | Quote attribution URL; not allowed for non-quote                                                                                       |
+| `quoteText`         | string                                                 | required for `quote` | —              | Not allowed for `note` or `link`                                                                                                       |
+| `rating`            | integer                                                | no                   | `null`         | `1` to `5`; send `0` to clear on update                                                                                                |
+| `collectionIds`     | `col_*` string[]                                       | no                   | `[]`           | Shared Thread Collection TypeIDs; max `20`                                                                                             |
+| `collectionEntries` | object[]                                               | no                   | —              | Collection memberships with their own times; wins over `collectionIds`. For restores                                                   |
+| `replyToId`         | `pst_*` string                                         | no                   | `null`         | Make this post a thread reply                                                                                                          |
+| `quietReply`        | boolean                                                | no                   | `false`        | Publish a reply without announcing its Thread on Latest                                                                                |
+| `language`          | BCP 47 tag                                             | no                   | detected       | Content language, e.g. `en`, `zh-Hans`; replies inherit the Thread's                                                                   |
+| `translationOfId`   | `pst_*` string                                         | no                   | `null`         | Link the new post into that post's translation group                                                                                   |
+| `publishedAt`       | integer                                                | no                   | current time   | Unix seconds; only valid when `status` is `published`                                                                                  |
+| `createdAt`         | integer                                                | no                   | current time   | Unix seconds; restores a moved post's creation time                                                                                    |
+| `updatedAt`         | integer                                                | no                   | `createdAt`    | Unix seconds; restores a moved post's last edit time                                                                                   |
+| `attachments`       | attachment[]                                           | no                   | `[]`           | Ordered attachments, max `20`                                                                                                          |
 
 Important rules:
 
@@ -770,41 +770,41 @@ Lists of public posts are Thread lists: `GET /api/public/threads`.
 
 Public post responses include these fields:
 
-| Field             | Type                        | Notes                                                                                                                   |
-| ----------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `id`              | `pst_*` string              | Post ID                                                                                                                 |
-| `format`          | `note` \| `link` \| `quote` | Post format                                                                                                             |
-| `status`          | `published`                 | Public endpoints only return published posts                                                                            |
-| `visibility`      | `public` \| `latest_hidden` | `latest_hidden` comes from single-post reads, and from Thread lists that ask for it                                     |
-| `slug`            | string                      | Canonical slug                                                                                                          |
-| `permalink`       | string                      | The post's public path, including any site prefix: its first custom URL, or `/{slug}` without one                       |
-| `title`           | string \| `null`            | Returned for `note` and `link` posts                                                                                    |
-| `url`             | string \| `null`            | Returned for `link` posts                                                                                               |
-| `sourceName`      | string \| `null`            | Returned instead of `title` for `quote`                                                                                 |
-| `sourceUrl`       | string \| `null`            | Returned instead of `url` for `quote`                                                                                   |
-| `bodyHtml`        | string \| `null`            | Rendered HTML; omitted when `content=markdown`                                                                          |
-| `bodyText`        | string \| `null`            | Plain-text rendering; omitted when `content=markdown`                                                                   |
-| `bodyMarkdown`    | string \| `null`            | Markdown source; only returned when `content=markdown`                                                                  |
-| `quoteText`       | string \| `null`            | Quote content                                                                                                           |
-| `summary`         | string \| `null`            | Optional summary                                                                                                        |
-| `rating`          | integer \| `null`           | `1` to `5` when set                                                                                                     |
-| `previewKind`     | string \| `null`            | Link preview kind                                                                                                       |
-| `previewProvider` | string \| `null`            | Link preview provider                                                                                                   |
-| `previewImageUrl` | string \| `null`            | Public preview image URL                                                                                                |
-| `replyToId`       | `pst_*` string \| `null`    | Parent reply/post ID                                                                                                    |
-| `threadId`        | `pst_*` string              | Thread root ID                                                                                                          |
-| `language`        | string \| `null`            | BCP 47 content language, the same for every post in a Thread; `null` until the site first turns on multilingual content |
-| `quietReply`      | boolean                     | Reply published without announcing its Thread. Always `false` on Thread roots                                           |
-| `pinnedAt`        | integer \| `null`           | Pin timestamp                                                                                                           |
-| `featuredAt`      | integer \| `null`           | Feature timestamp                                                                                                       |
-| `publishedAt`     | integer \| `null`           | Publish timestamp                                                                                                       |
-| `lastActivityAt`  | integer                     | Thread root: newest post in the Thread, **excluding** quiet replies. Editing a post never moves it                      |
-| `threadUpdatedAt` | integer                     | Thread root: newest post in the Thread, **including** quiet replies. Editing a post never moves it                      |
-| `threadPostCount` | integer                     | Published posts in the Thread, root included; `1` for a post on its own                                                 |
-| `createdAt`       | integer                     | Unix seconds                                                                                                            |
-| `updatedAt`       | integer                     | Unix seconds — when this row was last written, including edits                                                          |
-| `attachments`     | array                       | Ordered media/text attachment objects                                                                                   |
-| `collections`     | object[]                    | Public collection refs with `id`, `slug`, `title`, and `url`                                                            |
+| Field             | Type                                      | Notes                                                                                                                       |
+| ----------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `id`              | `pst_*` string                            | Post ID                                                                                                                     |
+| `format`          | `note` \| `link` \| `quote`               | Post format                                                                                                                 |
+| `status`          | `published`                               | Public endpoints only return published posts                                                                                |
+| `visibility`      | `public` \| `latest_hidden` \| `unlisted` | `latest_hidden` comes from single-post reads, and from Thread lists that ask for it; `unlisted` only from single-post reads |
+| `slug`            | string                                    | Canonical slug                                                                                                              |
+| `permalink`       | string                                    | The post's public path, including any site prefix: its first custom URL, or `/{slug}` without one                           |
+| `title`           | string \| `null`                          | Returned for `note` and `link` posts                                                                                        |
+| `url`             | string \| `null`                          | Returned for `link` posts                                                                                                   |
+| `sourceName`      | string \| `null`                          | Returned instead of `title` for `quote`                                                                                     |
+| `sourceUrl`       | string \| `null`                          | Returned instead of `url` for `quote`                                                                                       |
+| `bodyHtml`        | string \| `null`                          | Rendered HTML; omitted when `content=markdown`                                                                              |
+| `bodyText`        | string \| `null`                          | Plain-text rendering; omitted when `content=markdown`                                                                       |
+| `bodyMarkdown`    | string \| `null`                          | Markdown source; only returned when `content=markdown`                                                                      |
+| `quoteText`       | string \| `null`                          | Quote content                                                                                                               |
+| `summary`         | string \| `null`                          | Optional summary                                                                                                            |
+| `rating`          | integer \| `null`                         | `1` to `5` when set                                                                                                         |
+| `previewKind`     | string \| `null`                          | Link preview kind                                                                                                           |
+| `previewProvider` | string \| `null`                          | Link preview provider                                                                                                       |
+| `previewImageUrl` | string \| `null`                          | Public preview image URL                                                                                                    |
+| `replyToId`       | `pst_*` string \| `null`                  | Parent reply/post ID                                                                                                        |
+| `threadId`        | `pst_*` string                            | Thread root ID                                                                                                              |
+| `language`        | string \| `null`                          | BCP 47 content language, the same for every post in a Thread; `null` until the site first turns on multilingual content     |
+| `quietReply`      | boolean                                   | Reply published without announcing its Thread. Always `false` on Thread roots                                               |
+| `pinnedAt`        | integer \| `null`                         | Pin timestamp                                                                                                               |
+| `featuredAt`      | integer \| `null`                         | Feature timestamp                                                                                                           |
+| `publishedAt`     | integer \| `null`                         | Publish timestamp                                                                                                           |
+| `lastActivityAt`  | integer                                   | Thread root: newest post in the Thread, **excluding** quiet replies. Editing a post never moves it                          |
+| `threadUpdatedAt` | integer                                   | Thread root: newest post in the Thread, **including** quiet replies. Editing a post never moves it                          |
+| `threadPostCount` | integer                                   | Published posts in the Thread, root included; `1` for a post on its own                                                     |
+| `createdAt`       | integer                                   | Unix seconds                                                                                                                |
+| `updatedAt`       | integer                                   | Unix seconds — when this row was last written, including edits                                                              |
+| `attachments`     | array                                     | Ordered media/text attachment objects                                                                                       |
+| `collections`     | object[]                                  | Public collection refs with `id`, `slug`, `title`, and `url`                                                                |
 
 ### Get a public post by slug
 
@@ -816,7 +816,7 @@ This returns a single published public post by canonical slug.
 
 Notes:
 
-- `latest_hidden` posts remain readable by direct slug.
+- `latest_hidden` and `unlisted` posts remain readable by direct slug.
 - Draft and private posts return `404`.
 - `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
 
@@ -940,7 +940,7 @@ Base paths: `/api/threads` and `/api/public/threads`
 
 A Thread is a root post and its replies. It has no ID of its own: it uses its root's, which every post in it carries as `threadId`. The endpoints that read one Thread accept any of its posts.
 
-`/api/threads` is the author's view: every status and visibility, with posts in the [editing view](#post-response-shape). `/api/public/threads` is the reader's: published Threads that aren't private, with posts in the [reading view](#public-posts). When `PUBLIC_API_ENABLED=false`, `/api/public/threads` returns `404` to every caller.
+`/api/threads` is the author's view: every status and visibility, with posts in the [editing view](#post-response-shape). `/api/public/threads` is the reader's: published Threads that aren't private, with posts in the [reading view](#public-posts). Its lists leave out Unlisted Threads too. When `PUBLIC_API_ENABLED=false`, `/api/public/threads` returns `404` to every caller.
 
 Thread responses include these fields:
 
@@ -1012,22 +1012,22 @@ Unfiltered, `/api/public/threads` lists what the homepage lists: Threads hidden 
 
 Query parameters:
 
-| Parameter    | Type                                                           | Required | Default     | Notes                                                                                                                                         |
-| ------------ | -------------------------------------------------------------- | -------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sort`       | `activity` \| `published` \| `updated` \| `oldest` \| `rating` | no       | `activity`  | See the orders below. A named collection changes the default                                                                                  |
-| `visibility` | `public` \| `featured` \| `hidden` \| `any` \| `private`       | no       | see notes   | `hidden` is the URL spelling of `latest_hidden`, which is also read. `private` on `/api/threads` only                                         |
-| `format`     | `note` \| `link` \| `quote`                                    | no       | all         | Format of the root                                                                                                                            |
-| `collection` | string                                                         | no       | none        | Collection slug, or several comma-separated. A Thread in any one of them matches                                                              |
-| `year`       | integer                                                        | no       | none        | Roots whose `publishedAt` falls in this calendar year in the site's time zone, whatever the order                                             |
-| `media`      | comma-separated `MediaKind` \| `any` \| `none`                 | no       | none        | Kinds (`image`, `video`, `audio`, `text`, `document`): roots with an attachment of one of them. `any` = with any attachment, `none` = without |
-| `title`      | `any` \| `none`                                                | no       | none        | Roots with a title, or without                                                                                                                |
-| `replies`    | `any` \| `none`                                                | no       | none        | Threads with published replies, or single posts                                                                                               |
-| `lang`       | BCP 47 tag                                                     | no       | all         | Restrict to one content language                                                                                                              |
-| `status`     | `draft` \| `published`                                         | no       | `published` | `/api/threads` only                                                                                                                           |
-| `include`    | `fold`                                                         | no       | none        | Add [the fold](#the-fold) to each Thread. Comma-separated; a value it doesn't offer is skipped                                                |
-| `cursor`     | string                                                         | no       | none        | Pass the previous `nextCursor` back unchanged                                                                                                 |
-| `limit`      | integer                                                        | no       | `20`        | `1` to `100`                                                                                                                                  |
-| `content`    | `markdown`                                                     | no       | none        | Return `bodyMarkdown` instead of the rendered body fields                                                                                     |
+| Parameter    | Type                                                                   | Required | Default     | Notes                                                                                                                                         |
+| ------------ | ---------------------------------------------------------------------- | -------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sort`       | `activity` \| `published` \| `updated` \| `oldest` \| `rating`         | no       | `activity`  | See the orders below. A named collection changes the default                                                                                  |
+| `visibility` | `public` \| `featured` \| `hidden` \| `any` \| `unlisted` \| `private` | no       | see notes   | `hidden` is the URL spelling of `latest_hidden`, which is also read. `unlisted` and `private` on `/api/threads` only                          |
+| `format`     | `note` \| `link` \| `quote`                                            | no       | all         | Format of the root                                                                                                                            |
+| `collection` | string                                                                 | no       | none        | Collection slug, or several comma-separated. A Thread in any one of them matches                                                              |
+| `year`       | integer                                                                | no       | none        | Roots whose `publishedAt` falls in this calendar year in the site's time zone, whatever the order                                             |
+| `media`      | comma-separated `MediaKind` \| `any` \| `none`                         | no       | none        | Kinds (`image`, `video`, `audio`, `text`, `document`): roots with an attachment of one of them. `any` = with any attachment, `none` = without |
+| `title`      | `any` \| `none`                                                        | no       | none        | Roots with a title, or without                                                                                                                |
+| `replies`    | `any` \| `none`                                                        | no       | none        | Threads with published replies, or single posts                                                                                               |
+| `lang`       | BCP 47 tag                                                             | no       | all         | Restrict to one content language                                                                                                              |
+| `status`     | `draft` \| `published`                                                 | no       | `published` | `/api/threads` only                                                                                                                           |
+| `include`    | `fold`                                                                 | no       | none        | Add [the fold](#the-fold) to each Thread. Comma-separated; a value it doesn't offer is skipped                                                |
+| `cursor`     | string                                                                 | no       | none        | Pass the previous `nextCursor` back unchanged                                                                                                 |
+| `limit`      | integer                                                                | no       | `20`        | `1` to `100`                                                                                                                                  |
+| `content`    | `markdown`                                                             | no       | none        | Return `bodyMarkdown` instead of the rendered body fields                                                                                     |
 
 Orders:
 
@@ -1052,7 +1052,7 @@ Response:
 
 Notes:
 
-- `visibility` left out means what the homepage shows on `/api/public/threads`, and every visibility on `/api/threads`. `visibility=any` on `/api/public/threads` adds Threads hidden from Latest. `visibility=all` returns `400`, and so does `visibility=private` on `/api/public/threads`.
+- `visibility` left out means what the homepage shows on `/api/public/threads`, and every visibility on `/api/threads`. `visibility=any` on `/api/public/threads` adds Threads hidden from Latest. `visibility=all` returns `400`, and so do `visibility=unlisted` and `visibility=private` on `/api/public/threads`.
 - `visibility=featured` lists newest-published first. A `sort` other than `published` returns `400`.
 - A single `collection` without `sort` lists in that collection's own `sortOrder`, with its pinned Threads on top; several collections list by `activity`. `activity`, `oldest`, and `rating` on a collection keep its pins. `published` and `updated` read it as a plain filter.
 - To walk every public Thread, pass `visibility=any&sort=published`: in `activity` order a new reply moves a Thread, which a walk can skip.
@@ -1071,7 +1071,7 @@ Returns the Thread of the post the slug or ID names, root or reply. `include=fol
 
 Notes:
 
-- `/api/public/threads/:slug` returns `404` when the slug names a draft or a private post. A Thread hidden from Latest is returned.
+- `/api/public/threads/:slug` returns `404` when the slug names a draft or a private post. A Thread hidden from Latest or Unlisted is returned.
 - `/api/threads/:id` returns drafts and private Threads.
 
 ### List a Thread's posts
@@ -1571,7 +1571,7 @@ Default response:
 
 Notes:
 
-- The default response returns directory ordering in `directoryItems`, and every smart collection in `smartCollections`. Both kinds carry `threadCount` and `recentActivityAt`, measured the same way, because the directory prints them side by side. Both count private Threads.
+- The default response returns directory ordering in `directoryItems`, and every smart collection in `smartCollections`. Both kinds carry `threadCount` and `recentActivityAt`, measured the same way, because the directory prints them side by side. Both count Unlisted and private Threads.
 - `view=compose` returns collections sorted by recent activity and always returns an empty `directoryItems` array. It carries no smart collections: a post cannot be added to one by hand, so offering it in a compose picker would be a control that does nothing.
 
 ### Get a collection
@@ -1939,7 +1939,7 @@ be an OR, which the conditions do not express.
 Response: `{ "smartCollections": SmartCollection[] }`, each carrying
 `threadCount` and `recentActivityAt`.
 
-Both measures answer for the caller. A private thread is counted, and dates the
+Both measures answer for the caller. An Unlisted or private thread is counted, and dates the
 smart collection, only for a caller who could read it — the same rule the
 collection directory follows. `recentActivityAt` is the newest activity among
 the threads the conditions match, where activity means the thread gained a
@@ -2115,7 +2115,7 @@ Fields by type:
 | `type`              | `collection` \| `smart_collection` \| `page`                                               | yes                          | —         | Points at a collection, a smart collection, or a standalone page |
 | `collectionId`      | `col_*` string                                                                             | yes (for `collection`)       | —         | Collection to point at                                           |
 | `smartCollectionId` | `smc_*` string                                                                             | yes (for `smart_collection`) | —         | Smart collection to point at                                     |
-| `postId`            | `pst_*` string                                                                             | yes (for `page`)             | —         | Published, non-private, titled Note to point at                  |
+| `postId`            | `pst_*` string                                                                             | yes (for `page`)             | —         | Published, titled Note to point at, neither Unlisted nor private |
 | `placement`         | `header` \| `more`                                                                         | no                           | see notes | In the header, or in its More menu                               |
 
 System keys:
@@ -2607,7 +2607,7 @@ Response:
 
 Base path: `/api/search`
 
-Search is the author's: it covers every published post, including private posts and replies in a private Thread. Readers search on the `/search` page, which leaves private posts out for anyone signed out.
+Search is the author's: it covers every published post, including Unlisted and private posts and the replies in their Threads. Readers search on the `/search` page, which leaves those posts out for anyone signed out.
 
 ### Search posts
 
@@ -2624,19 +2624,19 @@ Query parameters:
 
 Result objects include these fields:
 
-| Field         | Type                                     | Notes                                                                                                    |
-| ------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `id`          | `pst_*` string                           | Post ID                                                                                                  |
-| `format`      | `note` \| `link` \| `quote`              | Post format                                                                                              |
-| `slug`        | string                                   | Canonical slug                                                                                           |
-| `snippet`     | string \| omitted                        | Search snippet; may contain `<mark>` tags                                                                |
-| `publishedAt` | integer \| `null`                        | Publish timestamp                                                                                        |
-| `permalink`   | string                                   | Public path, including any configured site prefix: the post's first custom URL, or `/{slug}` without one |
-| `visibility`  | `public` \| `latest_hidden` \| `private` | Resolved visibility, inherited from the Thread's root                                                    |
-| `title`       | string \| `null`                         | Present for `note` and `link` results                                                                    |
-| `url`         | string \| `null`                         | Present for `note` and `link` results                                                                    |
-| `sourceName`  | string \| `null`                         | Present instead of `title` for `quote` results                                                           |
-| `sourceUrl`   | string \| `null`                         | Present instead of `url` for `quote` results                                                             |
+| Field         | Type                                                   | Notes                                                                                                    |
+| ------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `id`          | `pst_*` string                                         | Post ID                                                                                                  |
+| `format`      | `note` \| `link` \| `quote`                            | Post format                                                                                              |
+| `slug`        | string                                                 | Canonical slug                                                                                           |
+| `snippet`     | string \| omitted                                      | Search snippet; may contain `<mark>` tags                                                                |
+| `publishedAt` | integer \| `null`                                      | Publish timestamp                                                                                        |
+| `permalink`   | string                                                 | Public path, including any configured site prefix: the post's first custom URL, or `/{slug}` without one |
+| `visibility`  | `public` \| `latest_hidden` \| `unlisted` \| `private` | Resolved visibility, inherited from the Thread's root                                                    |
+| `title`       | string \| `null`                                       | Present for `note` and `link` results                                                                    |
+| `url`         | string \| `null`                                       | Present for `note` and `link` results                                                                    |
+| `sourceName`  | string \| `null`                                       | Present instead of `title` for `quote` results                                                           |
+| `sourceUrl`   | string \| `null`                                       | Present instead of `url` for `quote` results                                                             |
 
 Response:
 
@@ -3104,8 +3104,8 @@ Feed notes:
 - Invalid `format` values are ignored rather than rejected.
 - Every feed accepts `?limit=` for one response of a different length, from `1` to `500`; a larger value gets `500`, and a value that is not a positive whole number leaves the site's `RSS_FEED_LIMIT` in place. The feed's `rel="self"` link keeps the address without it.
 - Every entry carries `<jant:id>`, the post's ID, beside `<id>`, which is the permalink. The permalink changes when a slug is renamed or the site moves domain; the ID never does.
-- Latest feeds include published root posts only, excluding private posts and `latest_hidden` posts.
-- Featured feeds include published featured root posts and exclude private posts.
+- Latest feeds include published root posts only, excluding Unlisted, private, and `latest_hidden` posts.
+- Featured feeds include published featured root posts and exclude Unlisted and private posts.
 - `GET /archive/feed` returns the complete published record (including `latest_hidden`) and accepts the archive filters `?year=`, `?format=`, `?collection=`, `?media=`, `?title=`, `?replies=`, `?visibility=`, and `?sort=`. A `?collection=` slug that names no collection returns `404`, as the page does — handing back the unfiltered archive under the collection's name would give a subscriber a set they never asked for.
 - `GET /feed/latest` and `GET /feed/featured` are kept indefinitely as `308` redirects to the canonical `/latest/feed` and `/featured/feed`, so existing subscribers never break.
 - `GET /feed/all` and `GET /feed/all/atom.xml` are legacy aliases that redirect to `/latest/feed` with `308`, preserving the query string.
@@ -3151,7 +3151,7 @@ Response:
 Notes:
 
 - `latest` is whether the post is in the Latest feed; `featured` is whether its Thread is in the featured feed, which holds a Thread when any post in it is featured. Both are decided by the same rules the feeds use, RSS delay included.
-- Every ID asked about is answered once, in the order asked. A post that was deleted, made private, moved back to draft, is a reply, or does not exist answers `false` for both.
+- Every ID asked about is answered once, in the order asked. A post that was deleted, made Unlisted or private, moved back to draft, is a reply, or does not exist answers `false` for both.
 - Available whenever the site is listed in Discover, whatever `PUBLIC_API_ENABLED` says: it tells nothing the public feeds do not. A site that is not listed answers `404`.
 - No IDs, more than `50`, or a value that is not a post ID returns `400`.
 
@@ -3167,7 +3167,7 @@ Notes:
 
 - Returns XML with content type `application/xml; charset=utf-8`.
 - Includes up to `1000` published root posts.
-- Excludes private posts.
+- Excludes Unlisted and private posts.
 
 #### Robots
 

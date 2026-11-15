@@ -290,7 +290,7 @@ Fields commonly needed during migration:
 | `slug`          | Original stable slug when it should remain the canonical URL.                              |
 | `path`          | Alternative to `slug` for an original path such as `2024/01/hello-world`; never send both. |
 | `status`        | `published` or `draft`; set it explicitly according to the import plan.                    |
-| `visibility`    | `public`, `latest_hidden`, or `private`.                                                   |
+| `visibility`    | `public`, `latest_hidden`, `unlisted`, or `private`.                                       |
 | `pinned`        | Preserve a pinned state when the source had one; replies cannot be pinned.                 |
 | `featured`      | Preserve a featured or starred state when it has the same meaning.                         |
 | `collectionIds` | Approved `col_*` IDs on standalone posts and Thread roots.                                 |

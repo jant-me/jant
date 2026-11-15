@@ -820,7 +820,7 @@ msgstr ""
 
 #. @context: Compose publish settings help text for posts hidden from Latest
 #: src/ui/compose/ComposeDialog.tsx
-msgid "Doesn't appear in Latest. Still appears in collections you add it to."
+msgid "Doesn't appear in Latest. Still appears in the archive, search, and collections."
 msgstr ""
 
 #. @context: Confirm action sheet - discard text attachment changes button
@@ -1615,6 +1615,11 @@ msgstr ""
 msgid "Not enough text to tell yet — publishes in {language}"
 msgstr ""
 
+#. @context: Compose publish settings help text for unlisted visibility
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Not listed anywhere. Only people with the link can see it."
+msgstr ""
+
 #. @context: Action to dismiss the post-create Collection navigation prompt
 #: src/ui/shared/CollectionsManager.tsx
 msgid "Not now"
@@ -1788,6 +1793,11 @@ msgstr ""
 #. @context: Compose publish button for private visibility
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Post privately"
+msgstr ""
+
+#. @context: Compose publish button for unlisted visibility
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Post unlisted"
 msgstr ""
 
 #. @context: Smart collection dialog — conditions are combined with AND
@@ -2683,6 +2693,15 @@ msgstr ""
 #. @context: Compose quote text placeholder
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Type the quote..."
+msgstr ""
+
+#. @context: Archive visibility filter - posts that open for anyone with the link but are listed nowhere
+#. @context: Compose publish settings visibility option
+#. @context: Post status badge for a post that opens for anyone with the link but is listed nowhere
+#: src/lib/filter-dimensions.ts
+#: src/ui/compose/ComposeDialog.tsx
+#: src/ui/feed/PostStatusBadges.tsx
+msgid "Unlisted"
 msgstr ""
 
 #. @context: Archive filter - notes without a title

@@ -1811,6 +1811,8 @@ export class JantNavManager extends LitElement {
         );
       case "unpublished":
         return this.labels.addressUnpublished;
+      case "unlisted":
+        return this.labels.addressUnlisted;
       case "private":
         return this.labels.addressPrivate;
       case "untitled":
