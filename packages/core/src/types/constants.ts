@@ -8,8 +8,70 @@ export type Format = (typeof FORMATS)[number];
 export const STATUSES = ["draft", "published"] as const;
 export type Status = (typeof STATUSES)[number];
 
-export const VISIBILITIES = ["public", "latest_hidden", "private"] as const;
+export const VISIBILITIES = [
+  "public",
+  "latest_hidden",
+  "unlisted",
+  "private",
+] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
+
+/**
+ * Visibilities a signed-out reader can open at the post's address.
+ *
+ * Wider than {@link READER_LISTED_VISIBILITIES}: an Unlisted post opens for
+ * anyone who has its link, but no list a reader sees includes it.
+ */
+export const READER_OPENABLE_VISIBILITIES = [
+  "public",
+  "latest_hidden",
+  "unlisted",
+] as const satisfies readonly Visibility[];
+
+/**
+ * Visibilities a signed-out reader may find in a list: an archive, a search,
+ * a Collection, a feed, a sitemap, an API listing. Latest narrows this further
+ * by leaving out `latest_hidden`.
+ */
+export const READER_LISTED_VISIBILITIES = [
+  "public",
+  "latest_hidden",
+] as const satisfies readonly Visibility[];
+
+/**
+ * Whether a signed-out reader can open a post with this visibility.
+ *
+ * @param visibility - The post's effective visibility (its Thread root's)
+ * @returns False only for `private`
+ *
+ * @example
+ * ```ts
+ * isOpenableByReader("unlisted"); // true
+ * isOpenableByReader("private"); // false
+ * ```
+ */
+export function isOpenableByReader(visibility: string): boolean {
+  return (READER_OPENABLE_VISIBILITIES as readonly string[]).includes(
+    visibility,
+  );
+}
+
+/**
+ * Whether a list a signed-out reader sees may include a post with this
+ * visibility.
+ *
+ * @param visibility - The post's effective visibility (its Thread root's)
+ * @returns False for `unlisted` and `private`
+ *
+ * @example
+ * ```ts
+ * isListedForReader("latest_hidden"); // true
+ * isListedForReader("unlisted"); // false
+ * ```
+ */
+export function isListedForReader(visibility: string): boolean {
+  return (READER_LISTED_VISIBILITIES as readonly string[]).includes(visibility);
+}
 
 export const FEED_KINDS = ["latest", "featured"] as const;
 export type FeedKind = (typeof FEED_KINDS)[number];
@@ -43,9 +105,10 @@ export type ArchiveSort = (typeof ARCHIVE_SORTS)[number];
  * visibility, and it lives here because the filter bar presents the two as one
  * dimension.
  *
- * `private` is deliberately absent. It names a set only the author can see, so
- * a reader who asks for it has to be told so — handing back a different set
- * under the same name is the one answer that is never right.
+ * `unlisted` and `private` are deliberately absent. Each names a set only the
+ * author can list, so a reader who asks for it has to be told so — handing
+ * back a different set under the same name is the one answer that is never
+ * right.
  */
 export const PUBLIC_ARCHIVE_VISIBILITIES = [
   "public",
@@ -56,6 +119,7 @@ export const PUBLIC_ARCHIVE_VISIBILITIES = [
 /** Every visibility the author can select, in filter-bar order. */
 export const ARCHIVE_VISIBILITIES = [
   ...PUBLIC_ARCHIVE_VISIBILITIES,
+  "unlisted",
   "private",
 ] as const;
 

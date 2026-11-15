@@ -169,7 +169,7 @@ export async function getNavigationData(
     collectionNavIds.length > 0
       ? await c.var.services.navItems.getCollectionFreshness(collectionNavIds, {
           status: "published",
-          excludePrivate: !isAuthenticated,
+          listedForReader: !isAuthenticated,
         })
       : undefined;
 

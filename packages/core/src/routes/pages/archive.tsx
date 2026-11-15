@@ -199,8 +199,8 @@ async function parseArchiveParams(
  * Whether an archive query names a result set only a signed-in reader can see.
  *
  * Answered from the query alone, never from what the database happens to hold.
- * A check that fired only when private posts existed would answer "does this
- * site keep anything private?" to whoever asked.
+ * A check that fired only when private or unlisted posts existed would answer
+ * "does this site keep anything back?" to whoever asked.
  *
  * @param params - Parsed query params
  * @returns `true` when rendering this query requires an authenticated reader
@@ -266,15 +266,16 @@ function buildArchivePostFilters(
   const sortsByActivity = params.sort === "updated";
 
   // The visibility clause is applied as selected, with no auth-dependent
-  // degrade: a query naming `private` has already been redirected or 404'd by
-  // the time it reaches here (see `archiveQueryRequiresAuth`). Silently
-  // dropping the clause instead would render a different set under the same
-  // name. `excludePrivate` below stays the unconditional floor regardless.
+  // degrade: a query naming `unlisted` or `private` has already been
+  // redirected or 404'd by the time it reaches here (see
+  // `archiveQueryRequiresAuth`). Silently dropping the clause instead would
+  // render a different set under the same name. `listedForReader` below stays
+  // the unconditional floor regardless.
   return {
     lang,
     status: "published",
     excludeReplies: true,
-    excludePrivate: !isAuthenticated,
+    listedForReader: !isAuthenticated,
     excludeLatestHidden: false,
     // The year filter follows the active axis, so every month bucket shown
     // under `year=N` really belongs to that year.
@@ -316,10 +317,10 @@ export const archiveRoutes = new Hono<Env>();
  * - **Legacy spellings** (`hasMedia`/`hasTitle`/`hasReplies=1/0`,
  *   `visibility=latest_hidden`, `visibility=all`, `view=`) are unconditional —
  *   the old spelling is gone for everyone, so 308.
- * - **`visibility=private` for a signed-out reader** is not. That URL moved
- *   for *this* reader, *now*, and has to keep working once the author signs
- *   in, so it is a 302. When both apply, the weaker claim wins and everything
- *   is still resolved in a single hop.
+ * - **`visibility=unlisted` or `visibility=private` for a signed-out reader**
+ *   is not. That URL moved for *this* reader, *now*, and has to keep working
+ *   once the author signs in, so it is a 302. When both apply, the weaker
+ *   claim wins and everything is still resolved in a single hop.
  *
  * Only these params are touched; everything else, including unknown params, is
  * preserved. Returns null when the URL is already canonical for this reader.
@@ -365,13 +366,18 @@ function archiveParamsRedirect(
     changed = true;
   }
 
-  // A signed-out reader cannot select `private`, and the one answer that is
-  // never right is to drop the clause and render a different set under the
-  // same URL. Strip it here so the address bar and the page agree on what the
-  // reader is looking at. The decision reads the param and the session only,
-  // so it is identical whether or not this site holds a single private post.
+  // A signed-out reader cannot select `unlisted` or `private`, and the one
+  // answer that is never right is to drop the clause and render a different
+  // set under the same URL. Strip it here so the address bar and the page
+  // agree on what the reader is looking at. The decision reads the param and
+  // the session only, so it is identical whether or not this site holds a
+  // single such post.
+  const visibilityParam = params.get("visibility");
   let authStripped = false;
-  if (params.get("visibility") === "private" && !c.var.isAuthenticated) {
+  if (
+    (visibilityParam === "unlisted" || visibilityParam === "private") &&
+    !c.var.isAuthenticated
+  ) {
     params.delete("visibility");
     authStripped = true;
     changed = true;
@@ -527,7 +533,7 @@ export async function renderArchivePage(
       {
         status: "published",
         excludeReplies: true,
-        excludePrivate: !isAuthenticated,
+        listedForReader: !isAuthenticated,
         lang: filters.lang,
         sortBy: filters.sortBy,
       },
@@ -820,7 +826,7 @@ async function buildArchiveFeedData(
     lang: getViewLang(c) ?? undefined,
     status: "published",
     excludeReplies: true,
-    excludePrivate: true,
+    listedForReader: true,
     excludeLatestHidden: false,
     ...selectionFilters,
     sortBy: sortsByActivity ? "thread_updated" : "published",

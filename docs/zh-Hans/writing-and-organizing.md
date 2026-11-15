@@ -37,7 +37,7 @@ URL 和标题必填，评论可选。
 
 发布相关的设置分在两处：
 
-- **Publish settings**（主 **Publish** 按钮旁边）：可见性（Public / Hidden from Latest / Private，整条 Thread 共用），以及 **Save as draft** 和 **Drafts**。
+- **Publish settings**（主 **Publish** 按钮旁边）：可见性（Public / Hidden from Latest / Unlisted / Private，整条 Thread 共用），以及 **Save as draft** 和 **Drafts**。
 - **日期与链接**（每条帖子右上角，默认显示 `Now · /…`）：点开可以改这一条的发布时间和链接。鼠标移到帖子上时出现，窄屏上一直可见。
 
 ### 发布日期（Published on）
@@ -64,7 +64,7 @@ Thread 把多条帖子按时间顺序串在一起：先写一条根帖，之后�
 
 适合边想边写、分多次更新的内容：一开始未必想清楚，但希望读者按顺序读完。
 
-整个 Thread 共享根帖的可见性（Public / Hidden from Latest / Private），但 Featured 状态各自独立：某条 Reply 可以单独标成 Featured，根帖不必跟着标。
+整个 Thread 共享根帖的可见性（Public / Hidden from Latest / Unlisted / Private），但 Featured 状态各自独立：某条 Reply 可以单独标成 Featured，根帖不必跟着标。
 
 在帖子详情页底部点 **Reply**，就能接着往下写。
 
@@ -165,14 +165,23 @@ Jant 没有单独的「页面」类型——独立页面就是一篇 Hidden from
 
 ### 发布状态
 
-帖子有四种发布状态：
+帖子有五种发布状态：
 
 - **`Public`**：出现在首页 Latest，未登录的访客也能看到。
 - **`Hidden from Latest`**：从首页隐去，但内容仍然公开——直链有效，所在 Thread 可加入 Collection，也会出现在 `/archive` 里。
+- **`Unlisted`**：有链接的人都能打开，但站内任何地方都不列出。见[凭链接分享帖子](#凭链接分享帖子)。
 - **`Private`**：仅登录后可见。
 - **`Draft`**：未发布，仅自己可见。
 
 `/archive` 是站点上所有公开帖子的完整索引。
+
+### 凭链接分享帖子
+
+把帖子设为 **Unlisted**，再把地址发给你想分享的人。拿到地址的人都能打开。站内任何地方都不列出它：Latest、`/archive`、搜索、feed、sitemap 和 Collection 页面里都没有，页面也会要求搜索引擎不要收录。登录后，你在各处照常能看到它。
+
+- 不再分享时，改成 **Private**，这个地址就会返回 404。
+- 想换一个链接、让旧链接失效，就改它的 **Custom link**，旧地址会返回 404。[自定义 URL](#自定义-url) 在删除之前仍然能打开这篇帖子。
+- Unlisted 的帖子可以加入 Collection，但只有你登录后才能在里面看到它。
 
 ### Featured
 
@@ -207,6 +216,7 @@ Jant 的核心设计之一是把「发布」和「广播」拆开。
 | `Public` 且 Featured | 是           | 是     | 是           | 是           | 是           | 是           |
 | `Public`             | 是           | 是     | 是           | 是           | 否           | 是           |
 | `Hidden from Latest` | 是           | 否     | 是           | 是           | 否           | 是           |
+| `Unlisted`           | 是           | 否     | 仅登录后可见 | 仅登录后可见 | 否           | 仅登录后可见 |
 | `Private`            | 仅登录后可见 | 否     | 仅登录后可见 | 仅登录后可见 | 否           | 仅登录后可见 |
 | `Draft`              | 否           | 否     | 否           | 否           | 否           | 否           |
 
@@ -214,10 +224,10 @@ Jant 的核心设计之一是把「发布」和「广播」拆开。
 
 ### 仍然能访问到的部分
 
-`Private` 和 `Draft` 会让帖子从访客能打开的所有页面和 feed 里消失。有两处不一样：
+`Private` 和 `Draft` 会让帖子从访客能打开的所有页面和 feed 里消失，`Unlisted` 会让帖子从所有列表里消失。有两处不一样：
 
 - **附件。** 上传的文件在 `/media/` 下有自己的地址，任何人拿到这个地址都能打开。地址很长且随机，猜不到；但帖子公开时分享出去的文件，改为私密后在原地址仍然能打开。删除附件会让这个地址失效；浏览器或 CDN 已经缓存的副本可能更久，最长一年。
-- **sitemap。** 搜索引擎读取 `/sitemap.xml`。帖子改为私密后，几分钟内会从中移除；帖子超过 500 篇的站点，较早的 sitemap 分页缓存更久，最长一天。
+- **sitemap。** 搜索引擎读取 `/sitemap.xml`。帖子改为私密或 Unlisted 后，几分钟内会从中移除；帖子超过 500 篇的站点，较早的 sitemap 分页缓存更久，最长一天。
 
 ## URL 与浏览页面
 
@@ -256,7 +266,7 @@ Jant 动态生成的 Atom feed 都有同一段发布缓冲：新帖子和 Reply 
 | `year`       | 年份，例如 2024                                                                  | 该年发布的帖子；配合 `sort=updated` 时，是该年最后有活动的 Thread                       |
 | `media`      | `any`、`none`，或用逗号分隔的类型：`image`、`video`、`audio`、`text`、`document` | 带任意附件、不带附件，或带其中某类附件的帖子                                            |
 | `replies`    | `any`、`none`                                                                    | 有回复的 Thread，或没有回复的单帖                                                       |
-| `visibility` | `public`、`featured`、`hidden`、`private`                                        | 公开、精选或 `Hidden from Latest` 的帖子；`private` 只在你登录时可用                    |
+| `visibility` | `public`、`featured`、`hidden`、`unlisted`、`private`                            | 公开、精选或 `Hidden from Latest` 的帖子；`unlisted` 和 `private` 只在你登录时可用      |
 | `sort`       | `published`、`updated`                                                           | 排序和月份分组的依据：发布时间（默认），或活动时间，包括用 **Reply quietly** 发布的回复 |
 | `layout`     | `list`、`grid`                                                                   | 页面布局；feed 忽略它                                                                   |
 | `page`       | 页码                                                                             | 第几页；feed 忽略它                                                                     |
@@ -308,7 +318,7 @@ Jant 动态生成的 Atom feed 都有同一段发布缓冲：新帖子和 Reply 
 
 自定义 URL 原来有一种「归档」类型：一个短路径，存着手打的归档查询串。[智能合集](#智能合集)取代了它——结果一样，但不用把 `format=note&title=none` 敲进输入框，还多了标题、描述和 feed。
 
-已有的归档地址继续能用，也没有让它们失效的打算。要换成智能合集，先记下这条记录上显示的查询串，例如 `/archive?format=note&title=none`，然后删除这个自定义 URL，再在同一路径用同样的条件新建智能合集。必须先删除，因为自定义 URL 存在期间一直占着这个地址，别的东西存不进去。筛选「私密」的路径没有对应的智能合集，因为智能合集总是公开的，这种路径保持原样即可。
+已有的归档地址继续能用，也没有让它们失效的打算。要换成智能合集，先记下这条记录上显示的查询串，例如 `/archive?format=note&title=none`，然后删除这个自定义 URL，再在同一路径用同样的条件新建智能合集。必须先删除，因为自定义 URL 存在期间一直占着这个地址，别的东西存不进去。筛选 Unlisted 或「私密」的路径没有对应的智能合集，因为智能合集总是公开的，这种路径保持原样即可。
 
 ### 跳转规则
 

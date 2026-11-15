@@ -107,7 +107,7 @@ The two dark rules are explained under [Dark mode](#dark-mode).
 | Variable              | Default                      | What it controls                                                  |
 | --------------------- | ---------------------------- | ----------------------------------------------------------------- |
 | `--font-body`         | System sans-serif            | Body text, inputs                                                 |
-| `--font-heading`      | Editorial serif stack        | Post titles and h1–h3                                             |
+| `--font-heading`      | Editorial serif stack        | Post titles and h1–h6                                             |
 | `--font-site-title`   | Editorial serif stack        | Site logo (header)                                                |
 | `--font-ui`           | System sans-serif            | Buttons, navigation, labels, badges (not affected by font themes) |
 | `--font-serif`        | System serif + Noto fallback | Serif accent text                                                 |

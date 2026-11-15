@@ -262,7 +262,10 @@ const labels: ComposeLabels = {
   publishVisibilityPublicHint: "Appears in Latest.",
   publishVisibilityHiddenFromLatest: "Hidden from Latest",
   publishVisibilityHiddenFromLatestHint:
-    "Doesn't appear in Latest. Still appears in collections you add it to.",
+    "Doesn't appear in Latest. Still appears in the archive, search, and collections.",
+  publishVisibilityUnlisted: "Unlisted",
+  publishVisibilityUnlistedHint:
+    "Not listed anywhere. Only people with the link can see it.",
   publishVisibilityPrivate: "Private",
   publishVisibilityPrivateHint: "Only visible when signed in.",
   publishDateLabel: "Published on",
@@ -288,6 +291,7 @@ const labels: ComposeLabels = {
   publishSlugInvalid: "Use lowercase letters, numbers, and hyphens only.",
   publishSlugReserved: "This link is reserved. Choose something else.",
   postHiddenFromLatest: "Post hidden",
+  postUnlisted: "Post unlisted",
   postPrivately: "Post privately",
   quietReplyLabel: "Reply quietly",
   quietReplyHint: "Won't move the thread to the top of latest.",
@@ -1743,17 +1747,20 @@ describe("JantComposeDialog", () => {
     // Each row carries its own hint, so the options can be compared before
     // one is picked — a single hint under a chip group could not do that.
     expect(el.textContent).toContain("Appears in Latest.");
+    expect(el.textContent).toContain(
+      "Not listed anywhere. Only people with the link can see it.",
+    );
     expect(el.textContent).toContain("Only visible when signed in.");
 
     const rows = el.querySelectorAll<HTMLButtonElement>(
       ".compose-sheet-row[role='radio']",
     );
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
     expect(rows[0].getAttribute("aria-checked")).toBe("true");
     expect(rows[0].querySelector(".compose-sheet-check")).not.toBeNull();
-    expect(rows[2].querySelector(".compose-sheet-check")).toBeNull();
+    expect(rows[3].querySelector(".compose-sheet-check")).toBeNull();
 
-    rows[2].click();
+    rows[3].click();
     await flushUpdates(el);
 
     // Picking is the whole job of this panel, so it dismisses itself — no
@@ -1771,8 +1778,8 @@ describe("JantComposeDialog", () => {
     const updated = el.querySelectorAll<HTMLButtonElement>(
       ".compose-sheet-row[role='radio']",
     );
-    expect(updated[2].getAttribute("aria-checked")).toBe("true");
-    expect(updated[2].querySelector(".compose-sheet-check")).not.toBeNull();
+    expect(updated[3].getAttribute("aria-checked")).toBe("true");
+    expect(updated[3].querySelector(".compose-sheet-check")).not.toBeNull();
     expect(updated[0].querySelector(".compose-sheet-check")).toBeNull();
   });
 
@@ -2790,7 +2797,7 @@ describe("JantComposeDialog", () => {
     const options = el.querySelectorAll<HTMLButtonElement>(
       ".compose-sheet-row[role='radio']",
     );
-    expect(options).toHaveLength(3);
+    expect(options).toHaveLength(4);
     options[1]?.click();
     await el.updateComplete;
 
@@ -3160,8 +3167,8 @@ describe("JantComposeDialog", () => {
     const options = el.querySelectorAll<HTMLButtonElement>(
       ".compose-sheet-row[role='radio']",
     );
-    expect(options).toHaveLength(3);
-    options[2]?.click();
+    expect(options).toHaveLength(4);
+    options[3]?.click();
     await el.updateComplete;
 
     expect(
@@ -3170,6 +3177,31 @@ describe("JantComposeDialog", () => {
         "expected publish button",
       ).textContent?.trim(),
     ).toBe("Post privately");
+  });
+
+  it("updates the publish button label for unlisted visibility", async () => {
+    const el = await createElement();
+
+    requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
+      "expected publish settings toggle",
+    ).click();
+    await el.updateComplete;
+
+    el.querySelectorAll<HTMLButtonElement>(
+      ".compose-sheet-row[role='radio']",
+    )[2]?.click();
+    await el.updateComplete;
+
+    expect(el._visibility).toBe("unlisted");
+    expect(
+      requireElement(
+        el.querySelector<HTMLButtonElement>(".compose-publish-main"),
+        "expected publish button",
+      ).textContent?.trim(),
+    ).toBe("Post unlisted");
+    // The Hide from Latest checkbox cannot speak for this state either.
+    expect(el.querySelector(".compose-quick-actions-row")).toBeNull();
   });
 
   it("updates the publish button label for hidden visibility", async () => {
@@ -3184,7 +3216,7 @@ describe("JantComposeDialog", () => {
     const options = el.querySelectorAll<HTMLButtonElement>(
       ".compose-sheet-row[role='radio']",
     );
-    expect(options).toHaveLength(3);
+    expect(options).toHaveLength(4);
     options[1]?.click();
     await el.updateComplete;
 
@@ -3230,7 +3262,7 @@ describe("JantComposeDialog", () => {
     // A checkbox cannot speak for a third state, so it steps aside.
     el.querySelectorAll<HTMLButtonElement>(
       ".compose-sheet-row[role='radio']",
-    )[2]?.click();
+    )[3]?.click();
     await el.updateComplete;
 
     expect(el._visibility).toBe("private");
@@ -5824,8 +5856,10 @@ describe("JantComposeDialog", () => {
     expect(css).not.toMatch(
       /\.compose-reply-compose-layout\s+\.compose-quote-text\s*\{[^}]*min-height:/,
     );
-    expect(css).toMatch(
-      /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s*\{[\s\S]*font-size:\s*var\(--type-content-body\);/,
+    // The reply body is set at the post body's size: the editor takes its type
+    // from `.prose`, so a reply rule restating it would only be a second copy.
+    expect(css).not.toMatch(
+      /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s*\{[^}]*font-size:/,
     );
   });
 

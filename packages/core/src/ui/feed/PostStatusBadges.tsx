@@ -9,9 +9,10 @@
  *
  * An anonymous reader has no menu and cannot change any of that, and never
  * receives a draft or private post to begin with, so the same card would carry
- * four permanently invisible badges. There we emit only the badges that
- * actually apply — usually none at all. Featured is rendered in the footer
- * meta instead.
+ * five permanently invisible badges. There we emit only the badges that
+ * actually apply — usually none at all. Unlisted is the one visibility a
+ * reader can meet: it tells someone who opened the link why the homepage
+ * won't lead them back. Featured is rendered in the footer meta instead.
  */
 
 import { msg } from "@lingui/core/macro";
@@ -34,6 +35,7 @@ export const PostStatusBadges: FC<{ post: PostStatusBadgeSource }> = ({
 
   const isPinned = post.pinned;
   const isPinnedInCollection = Boolean(post.pinnedInCollection);
+  const isUnlisted = post.visibility === "unlisted";
   const isPrivate = post.visibility === "private";
   const isDraft = post.status === "draft";
 
@@ -44,6 +46,7 @@ export const PostStatusBadges: FC<{ post: PostStatusBadgeSource }> = ({
     !isAuthor &&
     !isPinned &&
     !isPinnedInCollection &&
+    !isUnlisted &&
     !isPrivate &&
     !isDraft
   ) {
@@ -52,6 +55,7 @@ export const PostStatusBadges: FC<{ post: PostStatusBadgeSource }> = ({
 
   const showPinned = isAuthor || isPinned;
   const showPinnedInCollection = isAuthor || isPinnedInCollection;
+  const showUnlisted = isAuthor || isUnlisted;
   const showPrivate = isAuthor || isPrivate;
   const showDraft = isAuthor || isDraft;
 
@@ -74,6 +78,18 @@ export const PostStatusBadges: FC<{ post: PostStatusBadgeSource }> = ({
         <span class="post-status-badge post-status-pinned-in-collection">
           <Icon name="post-status-pin" />
           {pinnedLabel}
+        </span>
+      )}
+      {showUnlisted && (
+        <span class="post-status-badge post-status-unlisted">
+          <Icon name="post-status-unlisted" />
+          {i18n._(
+            msg({
+              message: "Unlisted",
+              comment:
+                "@context: Post status badge for a post that opens for anyone with the link but is listed nowhere",
+            }),
+          )}
         </span>
       )}
       {showPrivate && (

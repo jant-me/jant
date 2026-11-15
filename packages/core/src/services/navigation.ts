@@ -32,6 +32,7 @@ import type {
   NavigationPageCandidate,
 } from "../types.js";
 import { SYSTEM_NAV_KEYS } from "../types.js";
+import { isListedForReader } from "../types/constants.js";
 
 const POSITION_RETRY_ATTEMPTS = 5;
 const SUGGESTED_NAV_LINK_CANDIDATES = [
@@ -47,6 +48,7 @@ export interface ListSuggestedLinksOptions {
 // Re-export shared constraint detection — see db/dialect.ts
 import { isUniqueConstraintError } from "../db/dialect.js";
 import {
+  buildListedForReaderCondition,
   buildReaderVisibilityConditions,
   type ReaderVisibilityOptions,
 } from "../db/post-visibility.js";
@@ -85,6 +87,8 @@ export type NavTargetResolution =
   | { status: "unpublished" }
   /** Published but private: a menu entry nobody could open. */
   | { status: "private" }
+  /** Published but unlisted: a menu entry would list it on every page. */
+  | { status: "unlisted" }
   | { status: "not_found" };
 
 export interface NavTargetCollection {
@@ -286,7 +290,7 @@ export function createNavItemService(
           inArray(posts.translationGroupId, groupIds),
           eq(posts.language, language),
           eq(posts.status, "published"),
-          sql`${posts.visibility} != 'private'`,
+          buildListedForReaderCondition(posts.visibility),
           isNull(posts.replyToId),
           sql`trim(${posts.title}) != ''`,
         ),
@@ -430,7 +434,7 @@ export function createNavItemService(
             eq(posts.id, data.postId),
             eq(posts.format, "note"),
             eq(posts.status, "published"),
-            sql`${posts.visibility} != 'private'`,
+            buildListedForReaderCondition(posts.visibility),
             isNull(posts.replyToId),
             sql`trim(${posts.title}) != ''`,
           ),
@@ -590,7 +594,7 @@ export function createNavItemService(
         eq(posts.siteId, siteId),
         eq(posts.format, "note"),
         eq(posts.status, "published"),
-        sql`${posts.visibility} != 'private'`,
+        buildListedForReaderCondition(posts.visibility),
         isNull(posts.replyToId),
         sql`trim(${posts.title}) != ''`,
         isNull(navItems.id),
@@ -710,6 +714,7 @@ export function createNavItemService(
 
       if (row.status !== "published") return { status: "unpublished" };
       if (row.visibility === "private") return { status: "private" };
+      if (row.visibility === "unlisted") return { status: "unlisted" };
       const title = row.title?.trim() ?? "";
       if (!title) return { status: "untitled" };
 
@@ -1054,7 +1059,7 @@ export function createNavItemService(
             !post ||
             post.format !== "note" ||
             post.status !== "published" ||
-            post.visibility === "private" ||
+            !isListedForReader(post.visibility ?? "public") ||
             post.replyToId !== null ||
             !post.title?.trim()
           ) {

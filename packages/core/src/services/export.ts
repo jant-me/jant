@@ -101,6 +101,7 @@ import { makeZip } from "client-zip";
 import {
   SYSTEM_NAV_KEYS,
   isFeedNavKey,
+  isListedForReader,
   type Collection,
   type Media,
   type NavItem,
@@ -118,7 +119,7 @@ import {
  * importing the export and silently dropping what it doesn't know.
  * `export-format-version.test.ts` freezes the fields each version reads.
  */
-export const SITE_EXPORT_FORMAT_VERSION = 2;
+export const SITE_EXPORT_FORMAT_VERSION = 3;
 
 /** A file of the exported Hugo site whose text or bytes the export holds. */
 export interface ExportContentFile {
@@ -1232,6 +1233,11 @@ async function buildThreadBundle(
     draft: rootIsUnpublished ? true : undefined,
     aliases: aliases.length > 0 ? aliases : undefined,
     feed_id: feedId,
+    // An Unlisted Thread's page is built, so its link keeps working, but no
+    // page collection includes it: not Latest, the archive, a collection, a
+    // feed, or the sitemap.
+    build: root.visibility === "unlisted" ? { list: "never" } : undefined,
+    sitemap: root.visibility === "unlisted" ? { disable: true } : undefined,
     format: root.format,
     status: root.status,
     visibility: root.visibility,
@@ -1746,8 +1752,9 @@ function buildExportedCollectionMetrics(
   }
 
   for (const post of posts) {
-    // Drafts and private posts are excluded — they won't reach Hugo.
-    if (post.status === "draft" || post.visibility === "private") {
+    // Drafts and private posts won't reach Hugo, and Unlisted ones are in no
+    // list, so none of them counts toward a collection's directory entry.
+    if (post.status === "draft" || !isListedForReader(post.visibility)) {
       continue;
     }
     // Replies roll up into their thread root for directory metrics.

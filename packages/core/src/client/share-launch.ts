@@ -22,34 +22,61 @@ async function fetchShareCard(postId: string): Promise<string> {
 }
 
 let styles: Promise<void> | undefined;
+let stylesFailed = false;
 
 /**
  * Link the share stylesheet, which `<html data-share-stylesheet>` names, and
  * resolve once it has loaded. A load that fails is forgotten, so the next
- * call links it again.
+ * call links it again, after fetching it past the browser's cache.
+ *
+ * Linked with CORS, so the page can read its rules when `ASSET_BASE_URL`
+ * puts it on another origin. snapdom paints a `::before` or `::after` only
+ * when a stylesheet it can read has one, and the card's are all in this
+ * sheet: read none, and the picture loses the fade where the summary stops,
+ * the Thread's rail, and the dash before a source. The asset host already
+ * answers with CORS, which the module scripts beside this sheet need.
+ *
+ * The fetch on a retry is for a copy cached without CORS. An asset host like
+ * R2 sends `Access-Control-Allow-Origin` only to a request that carries an
+ * `Origin`, without `Vary: Origin`, and the sheet is cached as immutable. A
+ * browser that once linked it without CORS, as Jant did before, keeps a copy
+ * Chromium will not hand to a CORS request, and every load fails until the
+ * fetch replaces that copy with one that carries the header.
  */
 function ensureShareStyles(): Promise<void> {
-  return (styles ??= new Promise<void>((resolve, reject) => {
-    const href = document.documentElement.dataset.shareStylesheet;
-    if (!href) {
-      resolve();
-      return;
-    }
+  return (styles ??= loadShareStyles().catch((error: unknown) => {
+    styles = undefined;
+    stylesFailed = true;
+    throw error;
+  }));
+}
+
+async function loadShareStyles(): Promise<void> {
+  const href = document.documentElement.dataset.shareStylesheet;
+  if (!href) return;
+  // The cache keeps the new copy once its body has been read. A failure here
+  // leaves the link below to fail and report it.
+  if (stylesFailed) {
+    await fetch(href, { cache: "reload" })
+      .then((response) => response.blob())
+      .catch(() => {});
+  }
+  await new Promise<void>((resolve, reject) => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
+    link.crossOrigin = "anonymous";
     link.href = href;
     link.addEventListener("load", () => resolve(), { once: true });
     link.addEventListener(
       "error",
       () => {
         link.remove();
-        styles = undefined;
         reject(new Error(`Could not load ${href}`));
       },
       { once: true },
     );
     document.head.appendChild(link);
-  }));
+  });
 }
 
 /** Wait for the bundle and the stylesheet, and return what failed. */

@@ -112,6 +112,11 @@ const CUSTOM_SYMBOLS = {
     viewBox: "0 0 24 24",
     inner: `<path ${STROKE_POST_BADGE} d="M12 20h9" /><path ${STROKE_POST_BADGE} d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" />`,
   },
+  // Post status badge: unlisted (lucide link, thin 1.75 stroke).
+  "post-status-unlisted": {
+    viewBox: "0 0 24 24",
+    inner: `<path ${STROKE_POST_BADGE} d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path ${STROKE_POST_BADGE} d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />`,
+  },
   // Post status badge: private (lucide eye-off, thin 1.75 stroke).
   "post-status-private": {
     viewBox: "0 0 24 24",

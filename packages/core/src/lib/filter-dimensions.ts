@@ -883,6 +883,7 @@ const VISIBILITY_URL_SPELLING = {
   public: "public",
   featured: "featured",
   latest_hidden: "hidden",
+  unlisted: "unlisted",
   private: "private",
 } as const satisfies Record<ArchiveVisibility, string>;
 
@@ -922,6 +923,11 @@ const VISIBILITY_LABELS: Record<ArchiveVisibility, MessageDescriptor> = {
   latest_hidden: msg({
     message: "Hidden from Latest",
     comment: "@context: Archive visibility filter for posts hidden from Latest",
+  }),
+  unlisted: msg({
+    message: "Unlisted",
+    comment:
+      "@context: Archive visibility filter - posts that open for anyone with the link but are listed nowhere",
   }),
   private: msg({
     message: "Private",
@@ -964,9 +970,10 @@ const VISIBILITY_DIMENSION: Dimension<"visibility"> = {
   storage: {
     column: "visibility",
     // Narrower than the URL vocabulary on purpose: a smart collection is a
-    // published page, so it can never name the one set only its author sees.
-    // `private` parses here and fails validation, which is exactly what lets
-    // the "turn this link into a smart collection" flow refuse it by name.
+    // published page, so it can never name a set only its author can list.
+    // `unlisted` and `private` parse here and fail validation, which is
+    // exactly what lets the "turn this link into a smart collection" flow
+    // refuse them by name.
     isStorable(value): value is ArchiveVisibility {
       return (
         typeof value === "string" &&
@@ -991,7 +998,7 @@ const VISIBILITY_DIMENSION: Dimension<"visibility"> = {
   },
   toPostFilter(value) {
     // `featured` is a virtual visibility — a separate flag rather than a stored
-    // value — so it lands in a different field than the other three.
+    // value — so it lands in a different field than the stored ones.
     return value === "featured" ? { featured: true } : { visibility: value };
   },
   describe(value, i18n) {

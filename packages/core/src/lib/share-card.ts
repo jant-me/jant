@@ -21,6 +21,7 @@ import type { Context } from "hono";
 import { renderSVG } from "uqr";
 import type { Bindings, Media, Post, PostView } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
+import { isOpenableByReader } from "../types/constants.js";
 import { buildMediaMap } from "./media-helpers.js";
 import {
   ARTICLE_SUMMARY_MAX_BLOCKS,
@@ -208,18 +209,18 @@ export interface ShareCardSite {
  * the address its QR code points at.
  *
  * @param post - Post record
- * @returns True for published posts that are not Private
+ * @returns True for published posts a reader can open: everything but Private
  *
  * @example
  * ```ts
- * canShareAsImage({ status: "published", visibility: "latest_hidden" }); // true
+ * canShareAsImage({ status: "published", visibility: "unlisted" }); // true
  * canShareAsImage({ status: "draft", visibility: "public" }); // false
  * ```
  */
 export function canShareAsImage(
   post: Pick<Post, "status" | "visibility">,
 ): boolean {
-  return post.status === "published" && post.visibility !== "private";
+  return post.status === "published" && isOpenableByReader(post.visibility);
 }
 
 /**

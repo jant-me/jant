@@ -129,6 +129,12 @@ export interface HugoFrontMatter {
   feed_id?: string;
   build?: HugoBuildOptions;
   /**
+   * Unlisted roots only: keep the page out of Hugo's sitemap. `build.list:
+   * never` already keeps it out of every page collection; this says so to the
+   * sitemap template by name.
+   */
+  sitemap?: { disable?: boolean };
+  /**
    * Reply bundles only: 1-based position in the Thread. Jant orders a Thread
    * by creation time, then ID; replies written in the same second tie on
    * `date`, so the theme and the importer order by this instead.
@@ -259,6 +265,7 @@ const FRONT_MATTER_KEY_ORDER: readonly string[] = [
   "aliases",
   "feed_id",
   "build",
+  "sitemap",
 
   // Post payload
   "format",

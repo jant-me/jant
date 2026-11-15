@@ -67,6 +67,17 @@ export const StatusBadge: FC<StatusBadgeProps> = ({
           )}
         </span>
       )}
+      {visibility === "unlisted" && (
+        <span class="badge-outline">
+          {i18n._(
+            msg({
+              message: "Unlisted",
+              comment:
+                "@context: Post badge for posts that open for anyone with the link but are listed nowhere",
+            }),
+          )}
+        </span>
+      )}
       {pinned && (
         <span class="badge-outline">
           {i18n._(

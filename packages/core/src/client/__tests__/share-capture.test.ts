@@ -256,6 +256,110 @@ describe("capture", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    delete document.documentElement.dataset.assetBasePath;
+  });
+
+  /** Let a capture paint, recording "paint" in `steps` when it does. */
+  function stubPainting(steps: string[]): void {
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: [],
+    });
+    vi.stubGlobal("FontFaceSet", class {});
+    const { context } = recordingContext(1620, 2160);
+    const canvas = Object.assign(context.canvas, {
+      getContext: () => context,
+      toBlob: (done: (blob: Blob) => void) => done(new Blob(["png"])),
+    });
+    vi.mocked(snapdom).mockImplementation((async () => {
+      steps.push("paint");
+      return { toCanvas: async () => canvas };
+    }) as unknown as typeof snapdom);
+  }
+
+  /** Give the page these stylesheet links, each readable to it or not. */
+  function linkStylesheets(sheets: Array<[href: string, readable: boolean]>) {
+    const links = sheets.map(([href, readable]) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      Object.defineProperty(link, "sheet", {
+        get() {
+          if (!readable)
+            throw new globalThis.DOMException("No rules", "SecurityError");
+          return { cssRules: [] };
+        },
+      });
+      return link;
+    });
+    const query = document.querySelectorAll.bind(document);
+    vi.spyOn(document, "querySelectorAll").mockImplementation(((
+      selector: string,
+    ) =>
+      selector === 'link[rel~="stylesheet"]'
+        ? links
+        : query(selector)) as typeof document.querySelectorAll);
+  }
+
+  it("lets snapdom read the asset host's stylesheets for their fonts", async () => {
+    const base = "https://media.example.com/_assets";
+    document.documentElement.dataset.assetBasePath = base;
+    const steps: string[] = [];
+    stubPainting(steps);
+    linkStylesheets([
+      // Linked without CORS, and its cached copy has no CORS header.
+      [`${base}/client.css`, false],
+      // Linked without CORS too, but its cached copy reads.
+      [`${base}/client-cjk.css`, false],
+      // Linked with CORS: snapdom reads it already.
+      [`${base}/client-share.css`, true],
+      // Not the site's: its host may not answer with CORS at all.
+      ["https://fonts.example.net/serif.css", false],
+    ]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: globalThis.RequestInit) => {
+        steps.push(`${init.cache} ${url.slice(base.length + 1)}`);
+        if (url.endsWith("/client.css") && init.cache === "default") {
+          throw new TypeError("Failed to fetch");
+        }
+        return new Response("");
+      }),
+    );
+
+    const prepared = await prepareShareCard("<div data-share-card></div>");
+    await prepared.capture();
+
+    expect(steps).toEqual([
+      "default client.css",
+      "default client-cjk.css",
+      "reload client.css",
+      "paint",
+    ]);
+    expect(fetch).toHaveBeenCalledWith(`${base}/client.css`, {
+      credentials: "omit",
+      cache: "reload",
+    });
+    expect(vi.mocked(snapdom).mock.lastCall?.[1]).toMatchObject({
+      fontStylesheetDomains: ["media.example.com"],
+    });
+  });
+
+  it("fetches nothing when the assets share the page's origin", async () => {
+    document.documentElement.dataset.assetBasePath = "/_assets";
+    stubPainting([]);
+    linkStylesheets([
+      [new URL("/_assets/client.css", window.location.href).href, true],
+    ]);
+    vi.stubGlobal("fetch", vi.fn());
+
+    const prepared = await prepareShareCard("<div data-share-card></div>");
+    await prepared.capture();
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(vi.mocked(snapdom).mock.lastCall?.[1]).toMatchObject({
+      fontStylesheetDomains: [],
+    });
   });
 
   it("paints with shadows off, then puts the paper's shadow back", async () => {

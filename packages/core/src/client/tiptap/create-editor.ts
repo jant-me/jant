@@ -54,6 +54,10 @@ export function createTiptapEditor(options: CreateEditorOptions): Editor {
     }),
     content: options.content ?? undefined,
     editorProps: {
+      // The document is the post body being written, so it wears the class the
+      // published body wears and takes the reader's typography as it is. A
+      // second copy of those rules for the editor is what drifted before.
+      attributes: { class: "prose" },
       scrollMargin: { top: 5, right: 5, bottom: 80, left: 5 },
       scrollThreshold: { top: 5, right: 5, bottom: 80, left: 5 },
     },

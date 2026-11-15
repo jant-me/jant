@@ -145,7 +145,7 @@ sitemapRoutes.get("/:file{sitemap-posts-[0-9]+\\.xml}", async (c) => {
           translated.map((entry) => entry.id),
           // A sitemap is public: a draft or private translation must not
           // show up here, not even as an address.
-          { status: "published", excludePrivate: true },
+          { status: "published", listedForReader: true },
         )
       : new Map<string, Post[]>();
   const siblingIds = [...translationsMap.values()]

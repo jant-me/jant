@@ -376,7 +376,7 @@ describe("SearchService", () => {
 
       expect(await searchService.search("灯笼")).toEqual([]);
       expect(
-        await searchService.search("灯笼", { includePrivate: true }),
+        await searchService.search("灯笼", { asAuthor: true }),
       ).toHaveLength(1);
     });
 
@@ -401,7 +401,7 @@ describe("SearchService", () => {
         DEFAULT_TEST_SITE_ID,
       );
       const results = await searchService.search("lanterns", {
-        includePrivate: true,
+        asAuthor: true,
       });
 
       const visibilityById = new Map(
@@ -444,7 +444,7 @@ describe("SearchService", () => {
 
   describe("private posts on Postgres", () => {
     const VISIBILITY_CLAUSE =
-      "COALESCE(post.visibility, root_post.visibility) != 'private'";
+      "COALESCE(post.visibility, root_post.visibility) IN ('public', 'latest_hidden')";
 
     /** Records every statement; returns no rows so FTS falls back to LIKE. */
     function createCapturingRawQuery() {
@@ -524,8 +524,8 @@ describe("SearchService", () => {
         "pg",
       );
 
-      await searchService.search("lanterns", { includePrivate: true });
-      await searchService.search("灯笼", { includePrivate: true });
+      await searchService.search("lanterns", { asAuthor: true });
+      await searchService.search("灯笼", { asAuthor: true });
 
       expect(calls).toHaveLength(3);
       for (const call of calls) {

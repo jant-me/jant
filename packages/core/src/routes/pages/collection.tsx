@@ -163,7 +163,7 @@ export async function renderCollectionPage(
       collectionIds,
       {
         status: "published",
-        excludePrivate: !isAuthenticated,
+        listedForReader: !isAuthenticated,
         hasRating: true,
       },
       2,
@@ -201,7 +201,7 @@ export async function renderCollectionPage(
     const acrossLanguages =
       await c.var.services.posts.countCollectionThreadRootsForCollections(
         collectionIds,
-        { status: "published", excludePrivate: !navData.isAuthenticated },
+        { status: "published", listedForReader: !navData.isAuthenticated },
       );
     if (acrossLanguages > 0) {
       const alternatives = buildLanguageSwitcher(c, {
@@ -309,7 +309,7 @@ export async function renderCollectionFeed(
       selection.collections.map((collection) => collection.id),
       {
         status: "published",
-        excludePrivate: true,
+        listedForReader: true,
         lang: getViewLang(c) ?? undefined,
         ignoreCollectionPinnedSort: true,
         publishedBefore,

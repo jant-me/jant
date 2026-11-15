@@ -61,7 +61,9 @@ class EmbedNodeView {
     this.editor = editor;
 
     const card = document.createElement("div");
-    card.className = "tiptap-embed-card";
+    // `not-prose`: this is editor chrome, not post content, so the reader's
+    // typography defaults stay out of its controls.
+    card.className = "tiptap-embed-card not-prose";
     card.dataset.selected = "false";
     this.dom = card;
 

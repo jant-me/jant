@@ -342,7 +342,7 @@ export function createSmartCollectionService(
       excludeReplies: true,
       // The floor, always. A smart collection is public, but the posts inside
       // it are only as visible as they are anywhere else.
-      excludePrivate: !viewer.isAuthenticated,
+      listedForReader: !viewer.isAuthenticated,
       excludeLatestHidden: false,
       // Membership never depends on presentation, so the year condition is
       // pinned to the publication axis whatever the chosen order is.
@@ -403,7 +403,7 @@ export function createSmartCollectionService(
         {
           status: "published",
           excludeReplies: true,
-          excludePrivate: !viewer.isAuthenticated,
+          listedForReader: !viewer.isAuthenticated,
           excludeLatestHidden: false,
           lang: viewer.lang,
         },
@@ -598,7 +598,7 @@ export function createSmartCollectionService(
       const base: PostFilters = {
         status: "published",
         excludeReplies: true,
-        excludePrivate: !viewer.isAuthenticated,
+        listedForReader: !viewer.isAuthenticated,
         excludeLatestHidden: false,
         lang: viewer.lang,
       };

@@ -5,10 +5,10 @@
 
   Takes a dict: `feed`, true for the Atom feed.
 
-  A root is on Latest when it is published and public: Hidden from Latest
-  and private roots are left out, as are drafts, which are exported as Hugo
-  drafts and never reach here; status and visibility are checked again so a
-  `--buildDrafts` preview agrees with Jant.
+  A root is on Latest when it is published and public: Hidden from Latest,
+  Unlisted, and private roots are left out, as are drafts, which are
+  exported as Hugo drafts and never reach here; status and visibility are
+  checked again so a `--buildDrafts` preview agrees with Jant.
 
   Order, each key after the one before it:
     pinned       page only: pinned roots first, most recently pinned first

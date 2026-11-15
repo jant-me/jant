@@ -697,7 +697,7 @@ export function createCollectionService(
     // page. The two numbers are shown one click apart and have to agree.
     const readerConditions = buildReaderVisibilityConditions(posts, siteId, {
       status: "published",
-      excludePrivate: !viewer.isAuthenticated,
+      listedForReader: !viewer.isAuthenticated,
       lang: viewer.lang,
     });
 

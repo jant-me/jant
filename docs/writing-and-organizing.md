@@ -37,7 +37,7 @@ A post can carry an optional rating from 1 to 5, typically used for things with 
 
 Publishing settings sit in two places:
 
-- **Publish settings** (next to the main **Publish** button): visibility (Public / Hidden from Latest / Private, shared by the whole Thread), plus saving a draft and opening Drafts.
+- **Publish settings** (next to the main **Publish** button): visibility (Public / Hidden from Latest / Unlisted / Private, shared by the whole Thread), plus saving a draft and opening Drafts.
 - **Date and link** (top right of each post, reading `Now · /…` by default): sets the publish time and URL of that one post. It appears when you hover the post, and stays visible on narrow screens.
 
 ### Published on
@@ -64,7 +64,7 @@ A Thread is a structure that strings multiple posts together in chronological or
 
 Good for the kind of content where you think as you write and update across several sittings: you might not know exactly where it's going at the start, but you want readers to follow it in order.
 
-The whole Thread shares the visibility of the root post (Public / Hidden / Private), but Featured state is independent — a single reply can be featured on its own, with no need for the root post to be featured too.
+The whole Thread shares the visibility of the root post (Public / Hidden from Latest / Unlisted / Private), but Featured state is independent — a single reply can be featured on its own, with no need for the root post to be featured too.
 
 To extend a Thread, click "Reply" at the bottom of the post detail page.
 
@@ -165,14 +165,23 @@ Once published, the page lives at `/about` — Jant derives the slug from the ti
 
 ### Publishing states
 
-A post has four publishing states:
+A post has five publishing states:
 
 - **`Public`**: public, appears on the homepage Latest, visible to anonymous visitors.
 - **`Hidden from Latest`**: hidden from the homepage, but still public — direct links work, its Thread can belong to a Collection, and it appears in `/archive`.
+- **`Unlisted`**: opens for anyone who has its link, and is listed nowhere on the site. See [Share a post by link](#share-a-post-by-link).
 - **`Private`**: visible only after sign-in.
 - **`Draft`**: unpublished, visible only to you.
 
 `/archive` is a complete index of every public post on the site.
+
+### Share a post by link
+
+Set the post to **Unlisted** and send its address to the people you want to read it. Anyone with the address can open it. The site lists it nowhere — not on Latest, in `/archive`, in search, in a feed, in the sitemap, or on a Collection page — and the page asks search engines not to index it. Signed in, you still see it everywhere.
+
+- To stop sharing, switch it to **Private**. The address then answers 404.
+- To send a new link and retire the old one, change its **Custom link**. The old address answers 404. A [custom URL](#custom-urls) keeps opening the post until you delete it.
+- An Unlisted post can belong to a Collection. Only you see it there, while signed in.
 
 ### Featured
 
@@ -207,6 +216,7 @@ The table below assumes the default `MAIN_RSS_FEED=featured`.
 | `Public` and Featured | Yes        | Yes    | Yes        | Yes        | Yes             | Yes        |
 | `Public`              | Yes        | Yes    | Yes        | Yes        | No              | Yes        |
 | `Hidden from Latest`  | Yes        | No     | Yes        | Yes        | No              | Yes        |
+| `Unlisted`            | Yes        | No     | Login only | Login only | No              | Login only |
 | `Private`             | Login only | No     | Login only | Login only | No              | Login only |
 | `Draft`               | No         | No     | No         | No         | No              | No         |
 
@@ -214,10 +224,10 @@ If you switch `MAIN_RSS_FEED` to `latest`, the default `/feed` behavior shifts a
 
 ### What stays reachable
 
-`Private` and `Draft` keep a post off every page and feed a visitor can open. Two things work differently:
+`Private` and `Draft` keep a post off every page and feed a visitor can open, and `Unlisted` keeps it off every list. Two things work differently:
 
 - **Attachments.** An uploaded file has its own address under `/media/`, and that address opens for anyone who has it. It is long and random, so it can't be guessed, but a file shared while the post was public still opens at that address after the post turns private. Deleting the attachment takes the address down; a copy a browser or CDN already cached can outlive that, for up to a year.
-- **The sitemap.** Search engines read `/sitemap.xml`. A post made private drops out of it within a few minutes, or within a day on a site with more than 500 posts, whose older sitemap pages are cached longer.
+- **The sitemap.** Search engines read `/sitemap.xml`. A post made private or Unlisted drops out of it within a few minutes, or within a day on a site with more than 500 posts, whose older sitemap pages are cached longer.
 
 ## URLs and browse pages
 
@@ -258,18 +268,18 @@ fetch it. See
 to match all of them. The archive's filter controls write them, so a filtered
 page's address can be bookmarked or subscribed to as it is.
 
-| Parameter    | Values                                                                                  | Selects                                                                                       |
-| ------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `collection` | Collection slugs, comma-separated                                                       | Threads in any of these Collections                                                           |
-| `format`     | `note`, `link`, `quote`                                                                 | Posts in this format                                                                          |
-| `title`      | `any`, `none`                                                                           | Posts with a title, or without one                                                            |
-| `year`       | A year, such as 2024                                                                    | Posts published that year; with `sort=updated`, Threads last active that year                 |
-| `media`      | `any`, `none`, or kinds, comma-separated: `image`, `video`, `audio`, `text`, `document` | Posts with any attachment, none, or one of these kinds                                        |
-| `replies`    | `any`, `none`                                                                           | Threads with replies, or single posts                                                         |
-| `visibility` | `public`, `featured`, `hidden`, `private`                                               | Public, Featured, or `Hidden from Latest` posts; `private` only while you're signed in        |
-| `sort`       | `published`, `updated`                                                                  | Order and month headings by publication (the default), or by activity, quiet replies included |
-| `layout`     | `list`, `grid`                                                                          | The page's layout; feeds ignore it                                                            |
-| `page`       | A page number                                                                           | Which page; feeds ignore it                                                                   |
+| Parameter    | Values                                                                                  | Selects                                                                                               |
+| ------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `collection` | Collection slugs, comma-separated                                                       | Threads in any of these Collections                                                                   |
+| `format`     | `note`, `link`, `quote`                                                                 | Posts in this format                                                                                  |
+| `title`      | `any`, `none`                                                                           | Posts with a title, or without one                                                                    |
+| `year`       | A year, such as 2024                                                                    | Posts published that year; with `sort=updated`, Threads last active that year                         |
+| `media`      | `any`, `none`, or kinds, comma-separated: `image`, `video`, `audio`, `text`, `document` | Posts with any attachment, none, or one of these kinds                                                |
+| `replies`    | `any`, `none`                                                                           | Threads with replies, or single posts                                                                 |
+| `visibility` | `public`, `featured`, `hidden`, `unlisted`, `private`                                   | Public, Featured, or `Hidden from Latest` posts; `unlisted` and `private` only while you're signed in |
+| `sort`       | `published`, `updated`                                                                  | Order and month headings by publication (the default), or by activity, quiet replies included         |
+| `layout`     | `list`, `grid`                                                                          | The page's layout; feeds ignore it                                                                    |
+| `page`       | A page number                                                                           | Which page; feeds ignore it                                                                           |
 
 Links with older spellings keep working. The archive page redirects them to
 the current one, and feeds read them as they are:
@@ -322,7 +332,7 @@ Useful when you want to graft content imported from another platform back onto i
 
 Custom URLs used to include an `Archive` type: a short path holding a hand-typed archive query. [Smart Collections](#smart-collections) replace it — same result, without writing `format=note&title=none` into a text field, and with a title, a description, and a feed.
 
-Existing archive paths keep working, and there are no plans to change that. To move one over, read the query printed on its row — `/archive?format=note&title=none` — then delete the custom URL and create a Smart Collection with the same conditions at the same path. Deleting comes first because the custom URL holds that address for as long as it exists, and nothing else can be saved there. A path that filters on `Private` has no Smart Collection form at all, since a Smart Collection is always public; leave that one as it is.
+Existing archive paths keep working, and there are no plans to change that. To move one over, read the query printed on its row — `/archive?format=note&title=none` — then delete the custom URL and create a Smart Collection with the same conditions at the same path. Deleting comes first because the custom URL holds that address for as long as it exists, and nothing else can be saved there. A path that filters on `Unlisted` or `Private` has no Smart Collection form at all, since a Smart Collection is always public; leave that one as it is.
 
 ### Redirect rules
 

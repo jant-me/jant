@@ -216,9 +216,12 @@ describe("JantPostMenu", () => {
     await menu.updateComplete;
 
     expect(menu.querySelector("[data-visibility-panel]")).not.toBeNull();
-    expect(menu.textContent).toContain("Public");
-    expect(menu.textContent).toContain("Hidden from Latest");
-    expect(menu.textContent).toContain("Private");
+    expect(
+      Array.from(
+        menu.querySelectorAll("[data-post-menu-visibility-option]"),
+        (option) => option.textContent?.trim(),
+      ),
+    ).toEqual(["Public", "Hidden from Latest", "Unlisted", "Private"]);
   });
 
   it("returns to the main menu before closing on Escape", async () => {
@@ -872,6 +875,20 @@ describe("JantPostMenu", () => {
       await menu.updateComplete;
 
       expect(warmShareImageMock).toHaveBeenCalledTimes(1);
+    });
+
+    // Anyone with the link opens an Unlisted post, so its QR code works.
+    it("is offered for an Unlisted post", async () => {
+      const { menu, trigger } = await createMenu();
+      requireElement(
+        document.querySelector("article"),
+        "expected the post article",
+      ).setAttribute("data-post-visibility", "unlisted");
+
+      click(trigger);
+      await menu.updateComplete;
+
+      expect(menu.querySelector("[data-post-menu-share-image]")).not.toBeNull();
     });
 
     // The image carries a QR code to the post; a reader cannot open a draft

@@ -310,6 +310,12 @@ export async function exportRichSite(): Promise<ExportContentFile[]> {
     bodyMarkdown: "Draft",
     status: "draft",
   });
+  // Built, but kept out of every list and the sitemap.
+  await services.posts.create({
+    format: "note",
+    bodyMarkdown: "Unlisted",
+    visibility: "unlisted",
+  });
   const page = await services.posts.create({
     format: "note",
     title: "About",

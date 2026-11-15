@@ -268,6 +268,10 @@ const COMPOSE_PUBLISH_VISIBILITY_ICONS: Record<ComposeVisibility, string> = {
     />
     <path d="M4.35 11.1 11.65 4.9" />
   `,
+  unlisted: `
+    <path d="M6.8 8.6a3 3 0 0 0 4.524.324l1.8-1.8a3 3 0 0 0-4.242-4.242l-1.032 1.026" />
+    <path d="M9.2 7.4a3 3 0 0 0-4.524-.324l-1.8 1.8a3 3 0 0 0 4.242 4.242l1.026-1.026" />
+  `,
   private: `
     <rect x="4.05" y="7.05" width="7.9" height="5.4" rx="1.75" />
     <path d="M5.95 7.05V5.9A2.05 2.05 0 0 1 8 3.85a2.05 2.05 0 0 1 2.05 2.05v1.15" />
@@ -614,7 +618,14 @@ export class JantComposeDialog extends LitElement {
       const v = globalThis.localStorage.getItem(
         JantComposeDialog._collectionVisibilityKey(collectionId),
       );
-      if (v === "public" || v === "latest_hidden" || v === "private") return v;
+      if (
+        v === "public" ||
+        v === "latest_hidden" ||
+        v === "unlisted" ||
+        v === "private"
+      ) {
+        return v;
+      }
     } catch {
       // localStorage unavailable
     }
@@ -5041,6 +5052,7 @@ export class JantComposeDialog extends LitElement {
     if (this._visibility === "latest_hidden") {
       return this.labels.postHiddenFromLatest;
     }
+    if (this._visibility === "unlisted") return this.labels.postUnlisted;
     if (this._visibility === "private") return this.labels.postPrivately;
     return this.labels.post;
   }
@@ -5335,6 +5347,7 @@ export class JantComposeDialog extends LitElement {
       "compose-publish-visibility-icon-public": visibility === "public",
       "compose-publish-visibility-icon-latest_hidden":
         visibility === "latest_hidden",
+      "compose-publish-visibility-icon-unlisted": visibility === "unlisted",
       "compose-publish-visibility-icon-private": visibility === "private",
     });
     return renderComposePublishVisibilityIcon(
@@ -6433,6 +6446,11 @@ export class JantComposeDialog extends LitElement {
                     this.labels.publishVisibilityHiddenFromLatestHint,
                   )}
                   ${this._renderVisibilityRow(
+                    "unlisted",
+                    this.labels.publishVisibilityUnlisted,
+                    this.labels.publishVisibilityUnlistedHint,
+                  )}
+                  ${this._renderVisibilityRow(
                     "private",
                     this.labels.publishVisibilityPrivate,
                     this.labels.publishVisibilityPrivateHint,
@@ -6793,13 +6811,16 @@ export class JantComposeDialog extends LitElement {
   }
 
   /**
-   * Visibility has three states, so a checkbox cannot speak for all of them: it
+   * Visibility has four states, so a checkbox cannot speak for all of them: it
    * covers the public ↔ hidden-from-Latest pair and steps aside once the post
-   * is private, where the panel's radio list is the only honest control.
+   * is unlisted or private, where the panel's radio list is the only honest
+   * control.
    */
   private _renderHideFromLatestQuickToggle() {
     if (this._visibilityLocked) return nothing;
-    if (this._visibility === "private") return nothing;
+    if (this._visibility === "unlisted" || this._visibility === "private") {
+      return nothing;
+    }
 
     const checked = this._visibility === "latest_hidden";
     return html`

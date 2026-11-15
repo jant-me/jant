@@ -24,16 +24,16 @@ API_TOKEN = YOUR_API_TOKEN
 
 字段说明：
 
-| 字段            | 说明                                                            |
-| --------------- | --------------------------------------------------------------- |
-| `format`        | 固定为 `"link"`                                                 |
-| `title`         | **必填**，清理后的网页标题，最长 300 字符                       |
-| `url`           | **必填**，当前网页完整 URL，支持 `http:`、`https:`、`mailto:`   |
-| `slug`          | 可选，自定义 slug，不传则由服务端自动生成                       |
-| `bodyMarkdown`  | 可选，描述内容，用 markdown 格式；与 `body`（TipTap JSON）互斥  |
-| `collectionIds` | 可选，归属的 collection ID 数组，最多 20 个                     |
-| `status`        | 可选，`draft` \| `published`，默认 `"published"`                |
-| `visibility`    | 可选，`public` \| `latest_hidden` \| `private`，默认 `"public"` |
+| 字段            | 说明                                                                          |
+| --------------- | ----------------------------------------------------------------------------- |
+| `format`        | 固定为 `"link"`                                                               |
+| `title`         | **必填**，清理后的网页标题，最长 300 字符                                     |
+| `url`           | **必填**，当前网页完整 URL，支持 `http:`、`https:`、`mailto:`                 |
+| `slug`          | 可选，自定义 slug，不传则由服务端自动生成                                     |
+| `bodyMarkdown`  | 可选，描述内容，用 markdown 格式；与 `body`（TipTap JSON）互斥                |
+| `collectionIds` | 可选，归属的 collection ID 数组，最多 20 个                                   |
+| `status`        | 可选，`draft` \| `published`，默认 `"published"`                              |
+| `visibility`    | 可选，`public` \| `latest_hidden` \| `unlisted` \| `private`，默认 `"public"` |
 
 **成功响应：** `201 Created`，返回完整 post 对象。
 

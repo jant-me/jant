@@ -132,6 +132,17 @@ describe("BUILTIN_FONT_THEMES", () => {
     expect(variables["--font-cjk-sans-fallback"]).toContain('"Noto Sans KR"');
   });
 
+  it("sets a CJK page's headings in the medium weight", () => {
+    for (const language of ["zh-Hans", "zh-Hant", "ja", "ko"]) {
+      const variables = getCjkFontCssVariables(language);
+
+      expect(variables["--type-heading-weight"]).toBe("var(--fw-medium)");
+      expect(variables["--type-display-weight"]).toBe("var(--fw-medium)");
+      expect(variables["--type-body-leading"]).toBe("1.75");
+      expect(variables["--type-heading-leading"]).toBe("1.3");
+    }
+  });
+
   it("derives the profile from the language alone", () => {
     expect(resolveCjkFontProfile("zh-Hant")).toBe("zh-Hant");
     expect(resolveCjkFontProfile("zh-CN")).toBe("zh-Hans");

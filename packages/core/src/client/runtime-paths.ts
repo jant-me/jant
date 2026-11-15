@@ -50,6 +50,18 @@ export function publicPath(path: string): string {
 }
 
 /**
+ * Where the page's static assets are served from: the site's own `_assets`
+ * directory, or the host `ASSET_BASE_URL` names.
+ *
+ * @returns Absolute URL of the asset base, ending in `/`
+ * @example
+ * assetBaseUrl().href; // "https://media.jant.me/_assets/" with a CDN
+ */
+export function assetBaseUrl(): URL {
+  return new URL(`${publicPath(ASSET_BASE_PATH)}/`, window.location.href);
+}
+
+/**
  * Build a link to a target the caller knows exists once per language.
  *
  * The client-side counterpart of the server's `toViewPath`: it always carries

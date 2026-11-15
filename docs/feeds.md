@@ -54,7 +54,7 @@ The feed takes every archive filter, not only these four; [Writing and organizin
 
 **Publication delay.** A post stays out of every feed for five minutes after publishing, so a typo caught right away never reaches anyone's reader. Change it with `RSS_PUBLISH_DELAY_SECONDS`, or set it to `0` to publish immediately.
 
-**Private posts** never appear in any feed. Drafts do not either.
+**Unlisted and private posts** never appear in any feed. Drafts do not either.
 
 **Threads** arrive as one entry, with the replies included in the body, so a thread does not fill a reader with fragments.
 
@@ -76,7 +76,7 @@ Your site takes part once you say so, under **Settings → General → Site visi
 
 Turning it on sends your feed address to the directory, so it knows your site exists. Nothing else is sent. It is sent again when you turn Discover off and back on, or when you press **Announce my site** under the setting. Answering yes during setup sends it there and then — a directory decides for itself what a blog needs before it is listed, and re-reads the feed on its own schedule, so a site with nothing published yet loses nothing by saying hello early. The directory is the one your deployment belongs to: your own control plane when you run one, otherwise Jant's. `DISCOVER_PING_URL` overrides that; set it empty to announce nowhere.
 
-To pull a post back out, remove it from the feed it was read from — unmark it Featured, tick **Hidden from Latest**, set it private, or move it back to draft. A directory learns it the next time it reads the feed, or, for an older post the feed no longer carries, the next time it asks about that post.
+To pull a post back out, remove it from the feed it was read from — unmark it Featured, tick **Hidden from Latest**, set it Unlisted or private, or move it back to draft. A directory learns it the next time it reads the feed, or, for an older post the feed no longer carries, the next time it asks about that post.
 
 What a directory does with the feeds is its own policy: which list a post reaches, how long it waits before it is shown, and what a blog needs before it is listed are answered where the directory lives.
 
@@ -133,7 +133,7 @@ GET https://example.com/api/discover/posts?id=pst_01jpyx3m7gw4w3h7m4bknq0v1d&id=
 ```
 
 - `latest` says whether the post is in the Latest feed, `featured` whether its thread is in the featured feed. Both follow the feeds' own rules, the publication delay included.
-- `false` on both covers every way a post can be gone — deleted, private, back to draft — and an ID the site does not know. The directory does not need the reason.
+- `false` on both covers every way a post can be gone — deleted, Unlisted, private, back to draft — and an ID the site does not know. The directory does not need the reason.
 - Up to 50 IDs per request, the ones from `<jant:id>`. Each is answered once, in the order asked.
 - The address answers only while the site is listed in Discover. It follows that setting rather than `PUBLIC_API_ENABLED`, because it tells nothing the public feeds do not.
 

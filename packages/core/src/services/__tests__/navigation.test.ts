@@ -1169,7 +1169,7 @@ describe("NavItemService", () => {
   });
 
   describe("getCollectionFreshness", () => {
-    const READER = { status: "published" as const, excludePrivate: true };
+    const READER = { status: "published" as const, listedForReader: true };
 
     beforeEach(() => {
       insertTestCollection(sqlite, TEST_COLLECTION_ID, "design", "Design");
@@ -1214,7 +1214,7 @@ describe("NavItemService", () => {
       );
       const author = await navItemService.getCollectionFreshness(
         [TEST_COLLECTION_ID],
-        { status: "published", excludePrivate: false },
+        { status: "published", listedForReader: false },
       );
       expect(signedOut.size).toBe(0);
       expect(author.has(TEST_COLLECTION_ID)).toBe(true);
