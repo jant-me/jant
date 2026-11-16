@@ -94,6 +94,38 @@ find_run() {
   return 1
 }
 
+# Run a command up to five times, for API calls that time out now and then.
+retry() {
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    "$@" && return 0
+    [ "$attempt" -eq 5 ] || sleep 5
+  done
+  return 1
+}
+
+# Follow a run to its end and succeed only if it did. `gh run watch` also
+# exits non-zero when a single API call times out, so its exit status alone
+# does not say the run failed: the run's own conclusion decides.
+# Usage: watch_run <repo> <run id> [gh run watch flags...]
+watch_run() {
+  local repo="$1" id="$2"
+  shift 2
+  local state
+  for _ in $(seq 1 30); do
+    gh run watch "$id" --repo "$repo" --exit-status "$@" && return 0
+    state="$(gh run view "$id" --repo "$repo" --json status,conclusion \
+      --jq '.status + " " + .conclusion' 2>/dev/null || true)"
+    case "$state" in
+      "completed success") return 0 ;;
+      completed*) return 1 ;;
+    esac
+    echo "note: lost track of the run, watching again..." >&2
+    sleep 10
+  done
+  return 1
+}
+
 echo "Deploying $branch (${remote_sha:0:12}) to $url"
 dispatch_output="$(gh workflow run deploy-studio.yml --repo "$REPO" --ref "$branch" -f service="$SERVICE" 2>&1)" || {
   echo "$dispatch_output" >&2
@@ -106,21 +138,22 @@ if [ -z "$run_id" ]; then
   run_id="$(find_run "$REPO" deploy-studio.yml "Deploy $SERVICE" --branch "$branch" --event workflow_dispatch)" ||
     die "Could not find the dispatched run. See https://github.com/$REPO/actions/workflows/deploy-studio.yml"
 fi
-gh run watch "$run_id" --repo "$REPO" --exit-status --compact >/dev/null ||
+watch_run "$REPO" "$run_id" --compact >/dev/null ||
   die "The dispatch run failed: https://github.com/$REPO/actions/runs/$run_id"
 
 # The dispatch may have run on a commit pushed after the check above.
-sha="$(gh run view "$run_id" --repo "$REPO" --json headSha --jq .headSha)"
+sha="$(retry gh run view "$run_id" --repo "$REPO" --json headSha --jq .headSha)" ||
+  die "Could not read the dispatched run: https://github.com/$REPO/actions/runs/$run_id"
 
 wait_minutes=5
-if gh run list --repo "$BUILD_REPO" --limit 1 >/dev/null 2>&1; then
+if retry gh run list --repo "$BUILD_REPO" --limit 1 >/dev/null 2>&1; then
   echo "Waiting for the $BUILD_REPO deploy (about four minutes)..."
   build_id="$(find_run "$BUILD_REPO" deploy-external-apps.yml "External · $SERVICE · $branch · " --event repository_dispatch)" ||
     die "No $BUILD_REPO run for $SERVICE · $branch appeared. See https://github.com/$BUILD_REPO/actions"
-  gh run watch "$build_id" --repo "$BUILD_REPO" --exit-status --compact -i 10 ||
+  watch_run "$BUILD_REPO" "$build_id" --compact -i 10 ||
     die "The deploy failed: https://github.com/$BUILD_REPO/actions/runs/$build_id"
 else
-  echo "note: no access to $BUILD_REPO, so only the site itself is watched." >&2
+  echo "note: $BUILD_REPO did not answer, so only the site itself is watched." >&2
   wait_minutes=15
 fi
 
