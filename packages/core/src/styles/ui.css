@@ -2414,9 +2414,25 @@
     color: var(--site-text-primary);
   }
 
+  /* The external-link mark, after the domain. */
   .feed-link-domain-icon {
     width: 0.72rem;
     height: 0.72rem;
+    margin-left: 0.1rem;
+    flex-shrink: 0;
+  }
+
+  /* The linked site's own icon, before the domain: sized to the text rather
+     than to the arrow's thin stroke, and set on a backdrop that only dark
+     mode fills. */
+  .feed-link-domain-favicon {
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.15rem;
+    padding: 1px;
+    border-radius: 3px;
+    background: var(--site-link-icon-backdrop);
+    object-fit: contain;
     flex-shrink: 0;
   }
 
@@ -3604,30 +3620,6 @@
     text-decoration: underline;
   }
 
-  .post-footer-external-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 0.72rem;
-    color: var(--site-text-secondary);
-    text-decoration: none;
-    transition:
-      color 0.18s ease,
-      background-color 0.16s ease;
-    flex-shrink: 0;
-  }
-
-  .post-footer-external-link:hover {
-    color: var(--site-text-primary);
-  }
-
-  .post-footer-external-link svg {
-    width: 1.05rem;
-    height: 1.05rem;
-  }
-
   .post-collection-tags {
     display: inline-flex;
     align-items: center;
@@ -4769,8 +4761,7 @@
     }
 
     .post-menu-trigger,
-    .reply-trigger,
-    .post-footer-external-link {
+    .reply-trigger {
       width: 2.2rem;
       height: 2.2rem;
       border-radius: 0.88rem;
@@ -4786,8 +4777,7 @@
     }
 
     .post-menu-trigger svg,
-    .reply-trigger svg,
-    .post-footer-external-link svg {
+    .reply-trigger svg {
       width: 1.18rem;
       height: 1.18rem;
     }

@@ -105,9 +105,9 @@ import { getOrBuildEntry } from "../i18n/supported-locales.js";
 import { suggestPostLanguage } from "../lib/lang-detect.js";
 import { createPathService, type PathService } from "./path.js";
 import {
-  extractYouTubeVideoId,
-  getYouTubeThumbnailUrls,
-} from "../lib/youtube.js";
+  resolveLinkPreview,
+  type LinkPreviewImage,
+} from "../lib/link-preview.js";
 import { getPreviewStorageKey } from "../lib/upload.js";
 import { generateRandomId } from "../lib/nanoid.js";
 import { resolveSummaryConfig } from "../lib/resolve-config.js";
@@ -1377,83 +1377,92 @@ export function createPostService(
   }
 
   /**
-   * Fetch a link preview thumbnail and store it.
-   * Silently returns without updating if the URL is not a recognized provider
-   * or if the fetch fails.
+   * Resolve a Link post's preview from its URL and store it, replacing the
+   * preview it had: the video thumbnail (with its kind and provider) and the
+   * site's icon. Called when a post is created and when its URL or format
+   * changes; any other format ends up with no preview.
+   *
+   * The page is fetched before anything changes, the new fields land in one
+   * write, and only then are the old files deleted, so a failure at any step
+   * leaves the post with one complete preview or none. Best-effort throughout:
+   * a page that can't be read leaves the post without a preview, never
+   * without the save.
    */
-  async function resolveAndStorePreview(
-    postId: string,
-    format: string,
-    url: string | null | undefined,
+  async function refreshLinkPreview(
+    post: Pick<
+      Post,
+      "id" | "format" | "url" | "previewImageKey" | "previewIconKey"
+    >,
     storage: StorageDriver | null | undefined,
   ): Promise<void> {
-    if (!storage || format !== "link" || !url) return;
+    const previousKeys = [post.previewImageKey, post.previewIconKey];
+    const preview =
+      storage && post.format === "link" && post.url
+        ? await resolveLinkPreview(post.url)
+        : null;
+    if (!preview && previousKeys.every((key) => !key)) return;
 
-    const videoId = extractYouTubeVideoId(url);
-    if (!videoId) return;
-
-    const thumbnailUrls = getYouTubeThumbnailUrls(videoId);
-    let imageBytes: Uint8Array | null = null;
-    let contentType = "image/jpeg";
-
-    for (const thumbUrl of thumbnailUrls) {
-      try {
-        const response = await fetch(thumbUrl);
-        if (response.ok) {
-          const ct = response.headers.get("content-type");
-          // YouTube returns a grey placeholder (120×90) when maxresdefault
-          // is not available. Detect it by checking content-length.
-          const cl = response.headers.get("content-length");
-          if (cl && parseInt(cl, 10) < 5000) {
-            // Too small — likely a placeholder, try next quality
-            continue;
-          }
-          imageBytes = new Uint8Array(await response.arrayBuffer());
-          if (ct) contentType = ct;
-          break;
-        }
-      } catch {
-        // Network failure — try next URL
-      }
-    }
-
-    if (!imageBytes) return;
-
-    const ext = contentType.includes("webp")
-      ? "webp"
-      : contentType.includes("png")
-        ? "png"
-        : "jpg";
-    const suffix = generateRandomId(8);
-    const storageKey = getPreviewStorageKey(siteId, postId, suffix, ext);
+    const [imageKey, iconKey] = await Promise.all([
+      preview?.image
+        ? storePreviewFile(post.id, "", preview.image, storage)
+        : null,
+      preview?.icon
+        ? storePreviewFile(post.id, "icon-", preview.icon, storage)
+        : null,
+    ]);
 
     try {
-      await storage.put(storageKey, imageBytes, { contentType });
       await db
         .update(posts)
         .set({
-          previewImageKey: storageKey,
-          previewKind: "video",
-          previewProvider: "youtube",
+          previewImageKey: imageKey,
+          previewKind: imageKey ? (preview?.kind ?? null) : null,
+          previewProvider: imageKey ? (preview?.provider ?? null) : null,
+          previewIconKey: iconKey,
         })
-        .where(and(eq(posts.siteId, siteId), eq(posts.id, postId)));
+        .where(and(eq(posts.siteId, siteId), eq(posts.id, post.id)));
     } catch {
-      // Storage or DB failure — preview is best-effort
+      await deletePreviewFiles([imageKey, iconKey], storage);
+      return;
+    }
+    await deletePreviewFiles(previousKeys, storage);
+  }
+
+  /** Store one preview file under a fresh key; null when storing fails. */
+  async function storePreviewFile(
+    postId: string,
+    prefix: string,
+    file: LinkPreviewImage,
+    storage: StorageDriver | null | undefined,
+  ): Promise<string | null> {
+    if (!storage) return null;
+    const key = getPreviewStorageKey(
+      siteId,
+      postId,
+      `${prefix}${generateRandomId(8)}`,
+      file.ext,
+    );
+    try {
+      await storage.put(key, file.bytes, { contentType: file.contentType });
+      return key;
+    } catch {
+      return null;
     }
   }
 
-  /**
-   * Delete a preview image from storage if it exists.
-   */
-  async function deletePreviewImage(
-    previewImageKey: string | null | undefined,
+  /** Delete a post's preview files from storage. Best-effort. */
+  async function deletePreviewFiles(
+    keys: readonly (string | null | undefined)[],
     storage: StorageDriver | null | undefined,
   ): Promise<void> {
-    if (!storage || !previewImageKey) return;
-    try {
-      await storage.delete(previewImageKey);
-    } catch {
-      // Best-effort cleanup
+    if (!storage) return;
+    for (const key of keys) {
+      if (!key) continue;
+      try {
+        await storage.delete(key);
+      } catch {
+        // Best-effort cleanup
+      }
     }
   }
 
@@ -1883,6 +1892,7 @@ export function createPostService(
       previewImageKey: row.previewImageKey,
       previewKind: row.previewKind,
       previewProvider: row.previewProvider,
+      previewIconKey: row.previewIconKey,
       replyToId: row.replyToId,
       threadId: row.threadId,
       language: row.language,
@@ -3208,13 +3218,8 @@ export function createPostService(
           }
           await applyAttachmentAltUpdates(attachmentInputs, deps);
 
-          // Best-effort: fetch and store link preview thumbnail
-          await resolveAndStorePreview(
-            post.id,
-            post.format,
-            post.url,
-            deps.storage,
-          );
+          // Best-effort: the video thumbnail and the site's icon
+          await refreshLinkPreview(post, deps.storage);
 
           return post;
         } catch (error) {
@@ -3780,19 +3785,12 @@ export function createPostService(
           const formatChanged =
             data.format !== undefined && data.format !== existing.format;
           if (urlChanged || formatChanged) {
-            await deletePreviewImage(existing.previewImageKey, deps.storage);
-            await db
-              .update(posts)
-              .set({
-                previewImageKey: null,
-                previewKind: null,
-                previewProvider: null,
-              })
-              .where(and(eq(posts.siteId, siteId), eq(posts.id, post.id)));
-            await resolveAndStorePreview(
-              post.id,
-              post.format,
-              post.url,
+            await refreshLinkPreview(
+              {
+                ...post,
+                previewImageKey: existing.previewImageKey,
+                previewIconKey: existing.previewIconKey,
+              },
               deps.storage,
             );
           }
@@ -3850,24 +3848,12 @@ export function createPostService(
         const formatChanged =
           data.format !== undefined && data.format !== existingPost.format;
         if (urlChanged || formatChanged) {
-          // Clean up old preview image
-          await deletePreviewImage(existingPost.previewImageKey, deps.storage);
-
-          // Clear preview fields first (may be re-set by resolveAndStorePreview)
-          await db
-            .update(posts)
-            .set({
-              previewImageKey: null,
-              previewKind: null,
-              previewProvider: null,
-            })
-            .where(and(eq(posts.siteId, siteId), eq(posts.id, post.id)));
-
-          // Fetch new preview if applicable
-          await resolveAndStorePreview(
-            post.id,
-            post.format,
-            post.url,
+          await refreshLinkPreview(
+            {
+              ...post,
+              previewImageKey: existingPost.previewImageKey,
+              previewIconKey: existingPost.previewIconKey,
+            },
             deps.storage,
           );
         }
@@ -3918,7 +3904,10 @@ export function createPostService(
         }
 
         for (const p of affectedPosts) {
-          await deletePreviewImage(p.previewImageKey, deps.storage);
+          await deletePreviewFiles(
+            [p.previewImageKey, p.previewIconKey],
+            deps.storage,
+          );
         }
       }
 

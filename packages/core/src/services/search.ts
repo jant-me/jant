@@ -109,6 +109,7 @@ function mapRow(row: RawSearchRow): SearchResult {
       previewImageKey: null,
       previewKind: null,
       previewProvider: null,
+      previewIconKey: null,
       replyToId: row.reply_to_id,
       threadId: row.thread_id,
       language: row.language,

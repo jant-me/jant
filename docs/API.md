@@ -791,6 +791,7 @@ Public post responses include these fields:
 | `previewKind`     | string \| `null`            | Link preview kind                                                                                                       |
 | `previewProvider` | string \| `null`            | Link preview provider                                                                                                   |
 | `previewImageUrl` | string \| `null`            | Public preview image URL                                                                                                |
+| `previewIconUrl`  | string \| `null`            | Public URL of the linked site's icon                                                                                    |
 | `replyToId`       | `pst_*` string \| `null`    | Parent reply/post ID                                                                                                    |
 | `threadId`        | `pst_*` string              | Thread root ID                                                                                                          |
 | `language`        | string \| `null`            | BCP 47 content language, the same for every post in a Thread; `null` until the site first turns on multilingual content |

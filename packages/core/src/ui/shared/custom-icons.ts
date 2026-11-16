@@ -63,11 +63,6 @@ const CUSTOM_SYMBOLS = {
     viewBox: "0 0 24 24",
     inner: `<circle cx="5" cy="12" r="1.75" fill="currentColor" /><circle cx="12" cy="12" r="1.75" fill="currentColor" /><circle cx="19" cy="12" r="1.75" fill="currentColor" />`,
   },
-  // External arrow in a box (used in post footer external link affordance).
-  "post-external-link": {
-    viewBox: "0 0 24 24",
-    inner: `<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7" /><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 7h8v8" />`,
-  },
   // Reply arrow (used on "Reply" button).
   "post-reply": {
     viewBox: "0 0 24 24",

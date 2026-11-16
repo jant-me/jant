@@ -81,6 +81,8 @@ export interface PostView {
   previewProvider?: string;
   /** Pre-computed preview image URL */
   previewImageUrl?: string;
+  /** The linked site's icon, shown before a Link post's domain */
+  previewIconUrl?: string;
 
   // Time -- pre-formatted
   /** ISO 8601 string */

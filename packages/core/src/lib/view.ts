@@ -36,6 +36,7 @@ import {
 } from "./time.js";
 import { getCollectionPagePath } from "./collection-paths.js";
 import { getMediaUrl, getImageUrl, getPublicUrlForProvider } from "./image.js";
+import { getLinkPreviewIconImageOptions } from "./link-preview.js";
 import {
   extractSummaryHtml,
   extractBodyText,
@@ -402,6 +403,22 @@ export function toPostView(
           ),
           ctx.imageTransformUrl,
           { width: 1280, quality: 80, format: "auto", fit: "scale-down" },
+        )
+      : undefined,
+    previewIconUrl: post.previewIconKey
+      ? getImageUrl(
+          getMediaUrl(
+            post.previewIconKey,
+            getPublicUrlForProvider(
+              ctx.storageDriver ?? "r2",
+              ctx.r2PublicUrl,
+              ctx.s3PublicUrl,
+              ctx.localPublicUrl,
+            ),
+            ctx.sitePathPrefix,
+          ),
+          ctx.imageTransformUrl,
+          getLinkPreviewIconImageOptions(post.previewIconKey),
         )
       : undefined,
     publishedAt: toISOString(publishedAt),

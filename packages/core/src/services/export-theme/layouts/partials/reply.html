@@ -10,10 +10,10 @@
       {{- with urls.Parse $linkUrl -}}{{- $domain = .Host -}}{{- end -}}
       {{- if $domain -}}
         <a href="{{ $linkUrl }}" class="reply-link-domain" rel="noopener noreferrer" target="_blank">
+          <span>{{ $domain }}</span>
           <svg class="post-card-link-domain-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
           </svg>
-          <span>{{ $domain }}</span>
         </a>
       {{- end -}}
     {{- end -}}
@@ -79,14 +79,6 @@
           {{ $reply.Date.Format "Jan 2, 2006 · 15:04" }}
         </time>
       </a>
-      {{- if and (eq $format "link") $linkUrl -}}
-        <a href="{{ $linkUrl }}" class="post-footer-external-link" target="_blank" rel="noopener noreferrer" aria-label="Open external link">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M7 17 17 7" />
-            <path d="M9 7h8v8" />
-          </svg>
-        </a>
-      {{- end -}}
     </div>
   </footer>
 </article>
