@@ -44,7 +44,6 @@ function entry(
     day: TODAY,
     hour: HOUR,
     referrer: "",
-    via: "page",
     count: 1,
     ...overrides,
   };

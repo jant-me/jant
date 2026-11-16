@@ -24,12 +24,6 @@
 /** How long a hit waits for company before the buffer is written out. */
 export const VIEW_FLUSH_DELAY_MS = 5_000;
 
-/**
- * How a view was counted: a page opened, or a Thread read in full in a list
- * without being opened. Only `page` views make up the site's totals.
- */
-export type ViewVia = "page" | "list";
-
 /** One reader opening one page, or reading one Thread in a list, as the counter files it. */
 export interface ViewHit {
   siteId: string;
@@ -41,7 +35,6 @@ export interface ViewHit {
   page: string;
   /** The referring host, or `""`. */
   referrer: string;
-  via: ViewVia;
 }
 
 /** A hit with the number of times it happened. */
@@ -71,7 +64,7 @@ interface ScheduledFlush {
 }
 
 function entryKey(hit: ViewHit): string {
-  return `${hit.siteId}\n${hit.hour}\n${hit.page}\n${hit.referrer}\n${hit.via}`;
+  return `${hit.siteId}\n${hit.hour}\n${hit.page}\n${hit.referrer}`;
 }
 
 function nextUtcMidnight(nowMs: number): number {

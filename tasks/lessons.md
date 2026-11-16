@@ -960,6 +960,11 @@ new column before the `ADD COLUMN` that creates it. A fresh database never sees
 it fail — `check-pg-smoke` replays from empty and passes either way — so upgrade
 a scratch Postgres database that holds rows, one migration behind.
 
+Taking a column back out of a primary key fails the same quiet way on both
+sides: rows that differed only in it become duplicates. The SQLite copy has to
+`GROUP BY` the remaining key and sum the counters; Postgres has to fold the
+duplicates before it adds the narrower key.
+
 ## Rewriting a migration is free only until something has run it — including your own dev database
 
 Regenerating `0033` (SQLite) and `0031` (PG) was safe for production, which had

@@ -390,9 +390,10 @@ describe("viewCounter", () => {
     await buffer.flush();
 
     const overview = await services.stats.getOverview(WINDOW);
-    // The total is pages opened: the home page, once.
-    expect(overview.total).toBe(1);
-    expect(overview.referrers.direct).toBe(1);
+    // A note read in the list is a view like a page opened: the home page
+    // and the note are two, both from where the reader came from.
+    expect(overview.total).toBe(2);
+    expect(overview.referrers.direct).toBe(2);
     expect(
       Object.fromEntries(overview.pages.map((row) => [row.key, row.views])),
     ).toEqual({ "/": 1, [note.id]: 1 });

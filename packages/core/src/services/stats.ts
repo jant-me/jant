@@ -17,13 +17,12 @@
  *   Thread opens the same page; the home page, the archive and an aggregate
  *   selection are counted by path. The key's shape says which
  *   (`viewPageKind`), and the list is named from it when read, never stored.
- * - **Opened, or read in a list.** A row's `via` is `page` for a page
- *   opened and `list` for a Thread a reader saw whole in a list without
- *   opening it (`client/list-views.ts` has what "whole" takes). A Thread's
- *   number is both; the site's total, the chart, the hours and the
- *   referrer list are pages opened alone, since a Thread read in a list was
- *   read during a page view they already count. The daily limit counts
- *   both, because both are writes.
+ * - **Opened, or read in a list.** A Thread a reader read whole in a list
+ *   without opening it (`client/list-views.ts` has what "whole" takes)
+ *   counts as a view of it, like its page opened, in every number: its own,
+ *   the site's total, the chart, the referrers. A view is something read,
+ *   not a visit — Jant has no visits — so the home page opened and three
+ *   notes read on it are four.
  * - **Thirty days.** Rows older than `VIEW_COUNT_RETENTION_DAYS` are deleted,
  *   once a day per site, by whichever flush comes first. Nothing is rolled up:
  *   a lifetime total is exactly the scoreboard this feature is not.
@@ -75,11 +74,7 @@ import {
 } from "../db/schema-bundle.js";
 import { getPostDisplayTitle } from "../lib/post-meta.js";
 import { now } from "../lib/time.js";
-import type {
-  ViewCountEntry,
-  ViewRecordResult,
-  ViewVia,
-} from "../lib/view-buffer.js";
+import type { ViewCountEntry, ViewRecordResult } from "../lib/view-buffer.js";
 import {
   dayKeysEndingAt,
   hourKeysOfDay,
@@ -175,7 +170,6 @@ interface ViewDayRow {
   day: string;
   page: string;
   referrer: string;
-  via: ViewVia;
   count: number;
 }
 
@@ -379,14 +373,14 @@ export interface StatsService {
 }
 
 function entryKey(entry: ViewDayRow): string {
-  return `${entry.siteId}\n${entry.day}\n${entry.page}\n${entry.referrer}\n${entry.via}`;
+  return `${entry.siteId}\n${entry.day}\n${entry.page}\n${entry.referrer}`;
 }
 
 /** The day table's rows for a batch: the hour folded away. */
 function foldByDay(entries: ViewCountEntry[]): ViewDayRow[] {
   const rows = new Map<string, ViewDayRow>();
-  for (const { siteId, day, page, referrer, via, count } of entries) {
-    const row: ViewDayRow = { siteId, day, page, referrer, via, count };
+  for (const { siteId, day, page, referrer, count } of entries) {
+    const row: ViewDayRow = { siteId, day, page, referrer, count };
     const known = rows.get(entryKey(row));
     if (known) known.count += count;
     else rows.set(entryKey(row), row);
@@ -394,14 +388,10 @@ function foldByDay(entries: ViewCountEntry[]): ViewDayRow[] {
   return [...rows.values()];
 }
 
-/**
- * The hour table's rows for a batch: the total per site and hour, of pages
- * opened. A Thread read in a list is part of a page view already counted.
- */
+/** The hour table's rows for a batch: the total per site and hour. */
 function foldByHour(entries: ViewCountEntry[]): ViewHourRow[] {
   const rows = new Map<string, ViewHourRow>();
-  for (const { siteId, hour, via, count } of entries) {
-    if (via !== "page") continue;
+  for (const { siteId, hour, count } of entries) {
     const key = `${siteId}\n${hour}`;
     const known = rows.get(key);
     if (known) known.count += count;
@@ -556,26 +546,22 @@ export function createStatsService(
         continue;
       }
 
-      // The busiest new pairs keep their own rows; the rest share one per
-      // way of counting, so the site's total still counts only pages.
+      // The busiest new pairs keep their own rows; the rest share one.
       const kept = new Set(
         [...unseen].sort((a, b) => b.count - a.count).slice(0, room),
       );
-      const overflow = new Map<ViewVia, number>();
+      let overflow = 0;
       for (const entry of group) {
         if (!unseen.has(entry) || kept.has(entry)) rows.push(entry);
-        else {
-          overflow.set(entry.via, (overflow.get(entry.via) ?? 0) + entry.count);
-        }
+        else overflow += entry.count;
       }
-      for (const [via, count] of overflow) {
+      if (overflow > 0) {
         rows.push({
           siteId: groupSite,
           day,
           page: VIEW_OVERFLOW_KEY,
           referrer: VIEW_OVERFLOW_KEY,
-          via,
-          count,
+          count: overflow,
         });
       }
     }
@@ -592,7 +578,6 @@ export function createStatsService(
           viewCounts.day,
           viewCounts.page,
           viewCounts.referrer,
-          viewCounts.via,
         ],
         // Qualified on purpose: Postgres has both the row and `excluded` in
         // scope in a DO UPDATE and rejects a bare `count` as ambiguous; SQLite
@@ -772,22 +757,16 @@ export function createStatsService(
     return (summed?.total ?? 0) >= dailyLimit;
   }
 
-  /**
-   * What a window query is narrowed to: one page, one referrer, one way of
-   * counting. A total is of pages opened (`via: "page"`): a Thread read in a
-   * list was read during a page view the total already has. A list of pages,
-   * and one page's own numbers, take both.
-   */
+  /** What a window query is narrowed to: one page, or one referrer. */
   interface WindowFilter {
     page?: string;
     referrer?: string;
-    via?: ViewVia;
   }
 
   function windowCondition(
     since: string,
     today: string,
-    { page, referrer, via }: WindowFilter = {},
+    { page, referrer }: WindowFilter = {},
   ) {
     return and(
       eq(viewCounts.siteId, siteId),
@@ -795,7 +774,6 @@ export function createStatsService(
       lte(viewCounts.day, today),
       page === undefined ? undefined : eq(viewCounts.page, page),
       referrer === undefined ? undefined : eq(viewCounts.referrer, referrer),
-      via === undefined ? undefined : eq(viewCounts.via, via),
     );
   }
 
@@ -1037,10 +1015,10 @@ export function createStatsService(
       const since = shiftDayKey(today, -(days - 1));
       const [seriesRows, hourRows, topRows, referrerRows, stored] =
         await Promise.all([
-          seriesQuery(since, today, { via: "page" }),
+          seriesQuery(since, today),
           days === 1 ? hoursQuery(today) : Promise.resolve([]),
           topPagesQuery(since, today),
-          referrersQuery(since, today, { via: "page" }),
+          referrersQuery(since, today),
           deps.settings.get("STATS_SINCE"),
         ]);
       const named = await describePages(topRows.map((row) => row.key));
@@ -1054,7 +1032,7 @@ export function createStatsService(
         since,
         until: today,
         start: await startOfRecord(stored, { since, today }, seriesRows),
-        // The day table's sum of pages opened, as the chart draws it.
+        // The day table's sum: the same rows the lists come from.
         total: dayPoints.reduce((sum, point) => sum + point.views, 0),
         series,
         pages: topRows.flatMap((row) => {
@@ -1108,7 +1086,7 @@ export function createStatsService(
       if (key === VIEW_OVERFLOW_KEY) return null;
       const since = shiftDayKey(today, -(days - 1));
       const [seriesRows, topRows, stored] = await Promise.all([
-        seriesQuery(since, today, { referrer: key, via: "page" }),
+        seriesQuery(since, today, { referrer: key }),
         topPagesQuery(since, today, { referrer: key }),
         deps.settings.get("STATS_SINCE"),
       ]);
