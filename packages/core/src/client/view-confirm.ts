@@ -12,6 +12,8 @@
  * The token names the page and where the reader came from, decided on the
  * server from the request; nothing about the reader is read here or sent.
  * No cookie, no storage, one request, and nothing waits for its answer.
+ * The Threads read in full in a list page's feed go out the same way, once
+ * the page is confirmed (`list-views.ts`).
  */
 
 import { publicPath } from "./runtime-paths.js";
@@ -20,7 +22,7 @@ import { publicPath } from "./runtime-paths.js";
 export const VIEW_CONFIRM_DWELL_MS = 5_000;
 
 /** Where the token goes; the same path `lib/view-token.ts` names. */
-const CONFIRM_PATH = "/_/seen";
+export const CONFIRM_PATH = "/_/seen";
 
 /** Anything a reader does that a crawler fetching a page does not. */
 const INTERACTION_EVENTS = [
@@ -32,17 +34,42 @@ const INTERACTION_EVENTS = [
   "scroll",
 ] as const;
 
-function deliver(url: string, token: string): void {
+/** Documents whose view has been confirmed. */
+const confirmed = new WeakSet<globalThis.Document>();
+
+/**
+ * Post a body to the site, surviving the page being closed: a beacon, or a
+ * `keepalive` fetch when the browser will not queue one.
+ *
+ * @param url - Where to post
+ * @param body - The plain-text body
+ * @returns Nothing; nothing waits for the answer
+ * @example
+ * deliver(publicPath(CONFIRM_PATH), token);
+ */
+export function deliver(url: string, body: string): void {
   const sent =
     typeof navigator.sendBeacon === "function" &&
-    navigator.sendBeacon(url, new Blob([token], { type: "text/plain" }));
+    navigator.sendBeacon(url, new Blob([body], { type: "text/plain" }));
   if (sent) return;
   void fetch(url, {
     method: "POST",
-    body: token,
+    body,
     keepalive: true,
     headers: { "content-type": "text/plain" },
   }).catch(() => {});
+}
+
+/**
+ * Whether this document has confirmed its view.
+ *
+ * @param doc - The document, the current one unless a test passes another
+ * @returns `true` once the confirmation went out
+ * @example
+ * if (isViewConfirmed()) report();
+ */
+export function isViewConfirmed(doc: globalThis.Document = document): boolean {
+  return confirmed.has(doc);
 }
 
 /**
@@ -89,6 +116,7 @@ export function confirmView(doc: globalThis.Document = document): void {
       doc.removeEventListener(event, send);
     }
     doc.removeEventListener("visibilitychange", onVisibility);
+    confirmed.add(doc);
     deliver(url, token);
   };
 

@@ -1,5 +1,17 @@
 export const MEDIA_LIGHTBOX_TOGGLE_EVENT = "jant:media-lightbox-toggle";
 
+/**
+ * Fired on `document` each time the lightbox shows an item, on opening and on
+ * paging: the element it was opened from (a gallery's `[data-lightbox-group]`
+ * or a post body) and the item's index there.
+ */
+export const MEDIA_LIGHTBOX_SHOW_EVENT = "jant:media-lightbox-show";
+
+export interface MediaLightboxShowDetail {
+  source: globalThis.Element | null;
+  index: number;
+}
+
 export const MEDIA_VIDEO_PLAYBACK_INTENT_EVENT =
   "jant:media-video-playback-intent";
 
