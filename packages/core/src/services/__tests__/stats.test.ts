@@ -36,7 +36,6 @@ function entry(
     day: TODAY,
     hour: HOUR,
     referrer: "",
-    via: "page",
     count: 1,
     ...overrides,
   };
@@ -639,83 +638,6 @@ describe("StatsService", () => {
         page: { kind: "post", key: post.id, post: null },
         total: 3,
       });
-    });
-  });
-
-  describe("Threads read in lists", () => {
-    const POST = "pst_01h455vb4pex5vsknk084sn02q";
-    const WINDOW = { days: 1, today: TODAY, hour: HOUR };
-
-    it("count toward their Thread, never toward the totals, the hours or the referrers", async () => {
-      await stats.record(
-        [
-          entry({ page: "/", referrer: "a.b", count: 4 }),
-          entry({ page: POST, referrer: "a.b", count: 1 }),
-          entry({ page: POST, referrer: "a.b", via: "list", count: 3 }),
-        ],
-        { dailyLimit: 0, today: TODAY },
-      );
-
-      const overview = await stats.getOverview(WINDOW);
-      expect(overview.total).toBe(5);
-      expect(overview.series.points.at(-1)).toEqual({ at: HOUR, views: 5 });
-      expect(overview.referrers.top).toEqual([{ host: "a.b", views: 5 }]);
-      expect(overview.pages.map((row) => [row.key, row.views])).toEqual([
-        ["/", 4],
-        [POST, 4],
-      ]);
-
-      // A Thread's own numbers are both, its sources included.
-      const page = await stats.getPage(POST, WINDOW);
-      expect(page?.total).toBe(4);
-      expect(page?.referrers.top).toEqual([{ host: "a.b", views: 4 }]);
-
-      // A referrer's total is pages opened; its pages, both.
-      const referrer = await stats.getReferrer("a.b", WINDOW);
-      expect(referrer?.total).toBe(5);
-      expect(referrer?.pages.map((row) => [row.key, row.views])).toEqual([
-        ["/", 4],
-        [POST, 4],
-      ]);
-
-      const hours = (await db.all(
-        sql`SELECT count FROM view_hour WHERE site_id = ${SITE}`,
-      )) as { count: number }[];
-      expect(hours).toEqual([{ count: 5 }]);
-    });
-
-    it("keep their own overflow row past the cap", async () => {
-      const capped = createStats(1);
-      await capped.record([entry({ page: "/" })], {
-        dailyLimit: 0,
-        today: TODAY,
-      });
-      await capped.record(
-        [
-          entry({ page: "/b", count: 2 }),
-          entry({ page: POST, via: "list", count: 5 }),
-        ],
-        { dailyLimit: 0, today: TODAY },
-      );
-
-      const rows = (await db.all(
-        sql`SELECT page, via, count FROM view_count WHERE site_id = ${SITE} ORDER BY page, via`,
-      )) as { page: string; via: string; count: number }[];
-      expect(rows).toEqual([
-        { page: VIEW_OVERFLOW_KEY, via: "list", count: 5 },
-        { page: VIEW_OVERFLOW_KEY, via: "page", count: 2 },
-        { page: "/", via: "page", count: 1 },
-      ]);
-      expect((await capped.getOverview(WINDOW)).total).toBe(3);
-    });
-
-    it("count toward the daily limit, since each one is a write", async () => {
-      expect(
-        await stats.record(
-          [entry({ page: "/" }), entry({ page: POST, via: "list", count: 2 })],
-          { dailyLimit: 3, today: TODAY },
-        ),
-      ).toEqual({ limitReached: true });
     });
   });
 

@@ -253,6 +253,13 @@
       "when": 1794800973860,
       "tag": "0035_flimsy_outlaw_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794806166183,
+      "tag": "0036_milky_wolverine",
+      "breakpoints": true
     }
   ]
 }

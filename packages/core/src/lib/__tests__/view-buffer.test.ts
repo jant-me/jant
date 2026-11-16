@@ -11,7 +11,6 @@ const HIT = {
   hour: "2026-11-08T12",
   page: "pst_one",
   referrer: "example.com",
-  via: "page" as const,
 };
 
 function sink(result = { limitReached: false }) {
@@ -39,9 +38,7 @@ describe("ViewBuffer", () => {
 
     for (let index = 0; index < 300; index++) buffer.add(HIT, target);
     buffer.add({ ...HIT, referrer: "" }, target);
-    // Read in a list is counted apart from opened.
-    buffer.add({ ...HIT, via: "list" }, target);
-    expect(buffer.size).toBe(3);
+    expect(buffer.size).toBe(2);
     expect(record).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(5_000);
@@ -50,7 +47,6 @@ describe("ViewBuffer", () => {
     expect(record.mock.calls[0]?.[0]).toEqual([
       { ...HIT, count: 300 },
       { ...HIT, referrer: "", count: 1 },
-      { ...HIT, via: "list", count: 1 },
     ]);
     expect(buffer.size).toBe(0);
   });

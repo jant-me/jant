@@ -53,11 +53,11 @@ export function createViewConfirmRoutes(buffer: ViewBuffer = viewBuffer) {
         };
         const sink = viewSinkFor(c);
         if (rest.length === 0) {
-          buffer.add({ ...hit, page: claims.page, via: "page" }, sink);
+          buffer.add({ ...hit, page: claims.page }, sink);
         } else {
           const listed = new Set(claims.units);
           for (const thread of new Set(rest.filter((id) => listed.has(id)))) {
-            buffer.add({ ...hit, page: thread, via: "list" }, sink);
+            buffer.add({ ...hit, page: thread }, sink);
           }
         }
       }

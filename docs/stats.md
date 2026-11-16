@@ -12,7 +12,7 @@ A view is a page a reader kept in front of them: the home page, a post, a collec
 
 A post's number is how often its page was opened, plus how often it was read in full in a list without being opened: on the home page, in a collection, on `/featured`, or in the archive's list view. Read in full means every part of it was on screen, nothing of it was left folded, every item of a media row that scrolls sideways was seen, and it stayed in view long enough to read its text. A titled post shows only an excerpt in a list, so only its page counts.
 
-A Thread counts as one post, listed under its first: opening any of its posts counts toward it, and so does reading all of it in a list. A Thread too long to show whole in a list counts only when opened. One page load counts a post once, and a post opened from the list counts on its own page. Reads in a list add to the post alone; the total, the chart, and the referrers count pages opened.
+A Thread counts as one post, listed under its first: opening any of its posts counts toward it, and so does reading all of it in a list. A Thread too long to show whole in a list counts only when opened. One page load counts a post once, and a post opened from the list counts on its own page. A read in a list is a view like a page opened, in the total, the chart, and the referrers too: the home page opened and three notes read on it are four views.
 
 The later pages of the home feed and a filtered archive count toward the home page and the archive. A post or a collection keeps its count when its address changes.
 
@@ -26,7 +26,7 @@ Uncheck **Count page views** at the bottom of the Stats page. Counting stops and
 
 ## Limits
 
-On Cloudflare, counting stops after 20,000 views in a day, reads in a list included, and resumes the next day. `STATS_DAILY_LIMIT` sets the number; `0` means no limit, and is the default with Docker. See [Configuration](configuration.md#stats-optional).
+On Cloudflare, counting stops after 20,000 views in a day and resumes the next day. `STATS_DAILY_LIMIT` sets the number; `0` means no limit, and is the default with Docker. See [Configuration](configuration.md#stats-optional).
 
 Stats are not part of an [export](export-and-import.md) and do not move with a site.
 
