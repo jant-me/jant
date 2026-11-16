@@ -13,7 +13,9 @@ import { LitElement, html, nothing, svg } from "lit";
 import { shouldUseShortVideoExperience } from "../../lib/video-playback.js";
 import {
   isMediaVideoPlaybackPaused,
+  MEDIA_LIGHTBOX_SHOW_EVENT,
   MEDIA_LIGHTBOX_TOGGLE_EVENT,
+  type MediaLightboxShowDetail,
   setMediaVideoPlaybackPaused,
 } from "../media-lightbox-events.js";
 
@@ -160,6 +162,9 @@ export class JantMediaLightbox extends LitElement {
   declare _videoPaused: boolean;
   declare _imageZoomed: boolean;
 
+  /** Where the open set of items came from, for `MEDIA_LIGHTBOX_SHOW_EVENT`. */
+  #source: globalThis.Element | null = null;
+
   createRenderRoot() {
     this.innerHTML = "";
     return this;
@@ -193,7 +198,12 @@ export class JantMediaLightbox extends LitElement {
     window.removeEventListener("resize", this.#handleViewportChange);
   }
 
-  open(images: LightboxImage[], index: number) {
+  open(
+    images: LightboxImage[],
+    index: number,
+    source: globalThis.Element | null = null,
+  ) {
+    this.#source = source;
     this.#syncViewport();
     this.#pauseCurrentVideo();
     this._images = images;
@@ -244,7 +254,7 @@ export class JantMediaLightbox extends LitElement {
           group.dataset.lightboxGroup ?? "[]",
         );
         if (images.length > 0) {
-          this.open(images, index);
+          this.open(images, index, group);
         }
       } catch {
         // JSON parse failed — fall through to default link behavior
@@ -272,7 +282,7 @@ export class JantMediaLightbox extends LitElement {
         ),
       }));
       const index = allImages.indexOf(img);
-      if (images.length > 0) this.open(images, Math.max(0, index));
+      if (images.length > 0) this.open(images, Math.max(0, index), container);
     }
   };
 
@@ -621,6 +631,11 @@ export class JantMediaLightbox extends LitElement {
     if (changed.has("_currentIndex") || changed.has("_open")) {
       this.#syncCurrentVideo();
       this.#focusCurrentMedia();
+      document.dispatchEvent(
+        new CustomEvent<MediaLightboxShowDetail>(MEDIA_LIGHTBOX_SHOW_EVENT, {
+          detail: { source: this.#source, index: this._currentIndex },
+        }),
+      );
     }
   }
 

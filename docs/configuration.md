@@ -433,9 +433,9 @@ location /_assets/ {
 
 ### Stats (optional)
 
-| Variable            | Default | Description                                                                                                                 |
-| ------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `STATS_DAILY_LIMIT` | `20000` | Views counted in one day before counting pauses until the next. `0` means no limit, and is the default with Node and Docker |
+| Variable            | Default | Description                                                                                                                                            |
+| ------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `STATS_DAILY_LIMIT` | `20000` | Views counted in one day, reads in a list included, before counting pauses until the next. `0` means no limit, and is the default with Node and Docker |
 
 The limit keeps a well-read day inside Cloudflare's free-tier D1 write quota. See [Stats](stats.md).
 

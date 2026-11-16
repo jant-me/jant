@@ -17,6 +17,12 @@
  * fresh and is this site's, and counts the view with the day and hour of
  * that moment.
  *
+ * A list page's token also names the Threads the page shows whole
+ * (`data-view-unit`, `lib/list-views.ts`). The browser posts the token again,
+ * followed by the ones a reader read there in full, and only those the token
+ * names are counted: a token for the home page cannot count a post that was
+ * never on it.
+ *
  * The time in the token is a ten-minute slot, not a timestamp, so every
  * response for the same page and source within a slot carries the same
  * token: the HTML stays byte-identical across readers, as it was. A token is
@@ -42,8 +48,11 @@ export const VIEW_TOKEN_SLOTS_ACCEPTED = 4;
 /** Hex characters of the HMAC kept: 128 bits. */
 const SIGNATURE_LENGTH = 32;
 
-/** Longer than any token this module writes; a longer one is not ours. */
-const TOKEN_MAX_LENGTH = 2048;
+/**
+ * Longer than any token this module writes, a list page's hundred Threads
+ * included; a longer one is not ours.
+ */
+const TOKEN_MAX_LENGTH = 8192;
 
 /** What a token says about the view. */
 export interface ViewTokenClaims {
@@ -52,6 +61,11 @@ export interface ViewTokenClaims {
   page: string;
   /** The referrer key: a host or tag, the site itself, or `""`. */
   referrer: string;
+  /**
+   * The Threads, by root id, the page shows whole in its lists: the ones a
+   * report of Threads read may name. Empty for any other page.
+   */
+  units: string[];
 }
 
 function toBase64Url(text: string): string {
@@ -100,12 +114,17 @@ async function signature(secret: string, payload: string): Promise<string> {
  * The token for a view, to be written into the page.
  *
  * @param secret - The deployment's `AUTH_SECRET`
- * @param claims - Which page, and where the reader came from
+ * @param claims - Which page, where the reader came from, and the Threads
+ *   it shows whole
  * @param timestamp - Unix timestamp in seconds, now
  * @returns `payload.signature`, both URL-safe
  * @example
  * ```ts
- * const token = await signViewToken(secret, { siteId, page: post.id, referrer: "" }, now());
+ * const token = await signViewToken(
+ *   secret,
+ *   { siteId, page: post.threadId, referrer: "", units: [] },
+ *   now(),
+ * );
  * ```
  */
 export async function signViewToken(
@@ -119,6 +138,7 @@ export async function signViewToken(
       p: claims.page,
       r: claims.referrer,
       t: viewTokenSlot(timestamp),
+      ...(claims.units.length > 0 ? { l: claims.units } : {}),
     }),
   );
   return `${payload}.${await signature(secret, payload)}`;
@@ -162,16 +182,18 @@ export async function verifyViewToken(
     return null;
   }
   if (typeof parsed !== "object" || parsed === null) return null;
-  const { s, p, r, t } = parsed as Record<string, unknown>;
+  const { s, p, r, t, l = [] } = parsed as Record<string, unknown>;
   if (
     typeof s !== "string" ||
     typeof p !== "string" ||
     typeof r !== "string" ||
-    typeof t !== "number"
+    typeof t !== "number" ||
+    !Array.isArray(l) ||
+    !l.every((unit) => typeof unit === "string")
   ) {
     return null;
   }
   const age = viewTokenSlot(timestamp) - t;
   if (age < 0 || age >= VIEW_TOKEN_SLOTS_ACCEPTED) return null;
-  return { siteId: s, page: p, referrer: r };
+  return { siteId: s, page: p, referrer: r, units: l as string[] };
 }

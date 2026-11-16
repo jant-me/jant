@@ -1173,11 +1173,14 @@ export const viewCounts = pgTable(
     day: text("day").notNull(),
     page: text("page").notNull(),
     referrer: text("referrer").notNull(),
+    via: text("via", { enum: ["page", "list"] })
+      .notNull()
+      .default("page"),
     count: integer("count").notNull().default(0),
   },
   (table) => [
     primaryKey({
-      columns: [table.siteId, table.day, table.page, table.referrer],
+      columns: [table.siteId, table.day, table.page, table.referrer, table.via],
     }),
   ],
 );

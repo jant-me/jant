@@ -6,6 +6,12 @@
  * The token says which page and where the reader came from; this route
  * adds when. It answers 204 whatever it thinks of the token: a forger
  * learns nothing, and a reader's browser has already moved on.
+ *
+ * The body is the token alone to confirm the page, or the token followed by
+ * the root ids, space-separated, of the Threads a reader read in full in the
+ * page's lists
+ * (`client/list-views.ts`). Those count toward the Threads, each once, and
+ * only the ones the token names; the page itself is not counted again.
  */
 
 import { Hono } from "hono";
@@ -36,22 +42,24 @@ export function createViewConfirmRoutes(buffer: ViewBuffer = viewBuffer) {
     const secret = getEnvString(c.env, "AUTH_SECRET");
     if (appConfig.stats.enabled && !c.var.isAuthenticated && secret) {
       const at = now();
-      const claims = await verifyViewToken(
-        secret,
-        (await c.req.text()).trim(),
-        at,
-      );
+      const [token = "", ...rest] = (await c.req.text()).trim().split(/\s+/);
+      const claims = await verifyViewToken(secret, token, at);
       if (claims && claims.siteId === c.var.currentSite.id) {
-        buffer.add(
-          {
-            siteId: claims.siteId,
-            day: formatDayKey(at, appConfig.timeZone),
-            hour: formatHourKey(at, appConfig.timeZone),
-            page: claims.page,
-            referrer: claims.referrer,
-          },
-          viewSinkFor(c),
-        );
+        const hit = {
+          siteId: claims.siteId,
+          day: formatDayKey(at, appConfig.timeZone),
+          hour: formatHourKey(at, appConfig.timeZone),
+          referrer: claims.referrer,
+        };
+        const sink = viewSinkFor(c);
+        if (rest.length === 0) {
+          buffer.add({ ...hit, page: claims.page, via: "page" }, sink);
+        } else {
+          const listed = new Set(claims.units);
+          for (const thread of new Set(rest.filter((id) => listed.has(id)))) {
+            buffer.add({ ...hit, page: thread, via: "list" }, sink);
+          }
+        }
       }
     }
     return c.body(null, 204);

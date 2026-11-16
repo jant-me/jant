@@ -12,6 +12,7 @@ const CLAIMS = {
   siteId: "sit_test00000000000000000000000",
   page: "pst_01h455vb4pex5vsknk084sn02q",
   referrer: "news.ycombinator.com",
+  units: [],
 };
 
 describe("view tokens", () => {
@@ -23,6 +24,29 @@ describe("view tokens", () => {
     // Another page, another token.
     expect(await signViewToken(SECRET, { ...CLAIMS, page: "/" }, NOW)).not.toBe(
       token,
+    );
+  });
+
+  it("carries the Threads a list page shows whole, and leaves them out otherwise", async () => {
+    const units = [
+      "pst_01h455vb4pex5vsknk084sn02q",
+      "pst_01h455vb4pex5vsknk084sn02r",
+    ];
+    const listPage = await signViewToken(
+      SECRET,
+      { ...CLAIMS, page: "/", units },
+      NOW,
+    );
+    expect(await verifyViewToken(SECRET, listPage, NOW)).toEqual({
+      ...CLAIMS,
+      page: "/",
+      units,
+    });
+    // A page with none writes no list at all.
+    const plain = await signViewToken(SECRET, CLAIMS, NOW);
+    const [payload] = plain.split(".") as [string];
+    expect(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))).not.toContain(
+      '"l"',
     );
   });
 

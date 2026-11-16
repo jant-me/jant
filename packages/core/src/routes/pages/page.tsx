@@ -316,7 +316,11 @@ async function renderPost(
   } = {},
 ) {
   // A preview is the author looking at their own draft, not a page read.
-  if (!options.isPreview) c.set("viewTarget", { kind: "post", id: post.id });
+  // Every post of a Thread renders the whole Thread, so each counts toward
+  // the Thread, by its root's id, as its canonical URL points to the root.
+  if (!options.isPreview) {
+    c.set("viewTarget", { kind: "post", id: post.threadId });
+  }
 
   // The chrome, the thread, and the translation links each need only the
   // post, so they load together. The chrome is scoped to the post's

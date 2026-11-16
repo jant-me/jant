@@ -1165,8 +1165,11 @@ export const rateLimit = sqliteTable(
  * `www.` removed; `""` is a direct or same-site visit. `page` and `referrer`
  * are both `*` on the one overflow row a site-day gets once it holds
  * `VIEW_COUNT_ROWS_PER_SITE_DAY` rows — a site's daily total stays exact while
- * its breakdown stops growing. Rows older than the retention window are
- * swept by the stats service; `services/stats.ts` has the whole policy.
+ * its breakdown stops growing. `via` says how the views were counted:
+ * `page` for a page opened, `list` for a Thread read in full in a list
+ * without being opened (`page` is then the Thread's root id). Rows older
+ * than the retention window are swept by the stats service;
+ * `services/stats.ts` has the whole policy.
  *
  * The primary key doubles as the only index: every read the stats page makes
  * is a range over a `(site_id, day)` prefix, and a counter update touches no
@@ -1181,11 +1184,14 @@ export const viewCounts = sqliteTable(
     day: text("day").notNull(),
     page: text("page").notNull(),
     referrer: text("referrer").notNull(),
+    via: text("via", { enum: ["page", "list"] })
+      .notNull()
+      .default("page"),
     count: integer("count").notNull().default(0),
   },
   (table) => [
     primaryKey({
-      columns: [table.siteId, table.day, table.page, table.referrer],
+      columns: [table.siteId, table.day, table.page, table.referrer, table.via],
     }),
   ],
 );
