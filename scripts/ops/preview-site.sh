@@ -13,16 +13,18 @@
 # The site is studio's external-apps/jant-site: single-site mode, SQLite and
 # media in a tmpfs, seeded from sites/demo-source/canonical/snapshot on every
 # start. Each deploy is a fresh database, so a branch's migrations never touch
-# a shared one.
+# a shared one. A same-repo pull request gets the same preview without this
+# (ci.yml, deploy-site-preview); this is for a branch that has none.
 
 set -euo pipefail
 
 REPO="jant-me/jant"
 BUILD_REPO="tonormal/build"
 SERVICE="jant-site"
-# Created by the seed in studio's external-apps/jant-site/.env.tpl.
-OWNER_EMAIL="owner@example.com"
-PASSWORD_PARAM="/studio-dev/JANT_SITE_OWNER_PASSWORD"
+# The public demo.jant.me account, which the seed in studio's
+# external-apps/jant-site/.env.tpl creates on every preview.
+OWNER_EMAIL="demo@jant.me"
+OWNER_PASSWORD="jantdemodemojant"
 
 die() {
   echo "error: $*" >&2
@@ -180,8 +182,7 @@ done
 cat <<EOF
 
 Preview ready: $url ($version)
-Sign in at $url/signin as $OWNER_EMAIL. To copy the password:
-  aws ssm get-parameter --name $PASSWORD_PARAM --with-decryption --query Parameter.Value --output text | pbcopy
-Every deploy starts from the demo snapshot again. Remove the preview from studio when done:
-  mise run preview-delete $branch $SERVICE
+Sign in at $url/signin as $OWNER_EMAIL / $OWNER_PASSWORD.
+Every deploy starts from the demo snapshot again. Remove the preview when done:
+  gh workflow run preview-site-cleanup.yml --repo $REPO -f branch=$branch
 EOF
