@@ -445,6 +445,19 @@ run = "bash scripts/i18n/translate-po.sh zh-Hant"
 # =============================================================================
 # Preview (deploy current branch for testing)
 # =============================================================================
+# preview-site deploys a pushed branch as a plain single-site Jant (Docker +
+# Node, as self-hosters run it) at https://jant-site-<branch>.forpreview.com,
+# seeded from the demo snapshot with a fresh database on every deploy; CI is
+# not waited for. A pull request gets the same preview by itself (ci.yml), so
+# this is for a branch without one. The site is studio's
+# external-apps/jant-site, whose README has the sign-in and cleanup steps.
+# deploy-preview is for the occasional Workers-only check (wrangler.toml env
+# `preview`).
+[tasks.preview-site]
+description = "Deploy the pushed current branch as a single-site Jant on the preview server: mise run preview-site [branch]"
+usage = 'arg "[branch]" help="Branch to preview (default: the current one, which must match origin)"'
+run = 'bash scripts/ops/preview-site.sh "${usage_branch:-}"'
+
 [tasks.deploy-preview]
 description = "Build and deploy current branch to preview environment"
 dir = "packages/core"
