@@ -1698,11 +1698,6 @@ msgstr ""
 msgid "Open a few links and check whether they still feel native to the page."
 msgstr ""
 
-#. @context: Accessible label for the external-link icon in the post footer
-#: src/ui/shared/PostFooter.tsx
-msgid "Open external link"
-msgstr ""
-
 #. @context: Inline editor button label for opening the original URL of a broken image
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Open image URL"

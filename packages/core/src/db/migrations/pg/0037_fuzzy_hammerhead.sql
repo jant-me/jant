@@ -1,0 +1,1 @@
+ALTER TABLE "post" ADD COLUMN "preview_icon_key" text;

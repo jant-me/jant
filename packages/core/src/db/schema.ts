@@ -173,6 +173,7 @@ export const posts = sqliteTable(
     previewImageKey: text("preview_image_key"),
     previewKind: text("preview_kind"),
     previewProvider: text("preview_provider"),
+    previewIconKey: text("preview_icon_key"),
     replyToId: text("reply_to_id"),
     threadId: text("thread_id").notNull(),
     /**

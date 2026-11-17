@@ -260,6 +260,13 @@
       "when": 1794806166183,
       "tag": "0036_milky_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794912193962,
+      "tag": "0037_fuzzy_hammerhead",
+      "breakpoints": true
     }
   ]
 }

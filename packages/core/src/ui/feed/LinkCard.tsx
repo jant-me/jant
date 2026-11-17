@@ -42,6 +42,22 @@ export const LinkCard: FC<TimelineCardProps> = ({
     ? "u-bookmark-of feed-link-title-link"
     : "feed-link-title-link";
 
+  /* The row reads: whose site (its icon, when one was stored with the post),
+     the domain, then the mark that the link leaves this site. The domain
+     stays even with an icon, since an icon a reader doesn't know says
+     nothing on its own. */
+  const faviconEl = post.previewIconUrl && (
+    <img
+      src={post.previewIconUrl}
+      alt=""
+      width={16}
+      height={16}
+      loading="lazy"
+      decoding="async"
+      class="feed-link-domain-favicon"
+    />
+  );
+
   const domainEl =
     domain &&
     (safeUrl ? (
@@ -51,12 +67,13 @@ export const LinkCard: FC<TimelineCardProps> = ({
         target="_blank"
         rel="noopener noreferrer"
       >
-        <Icon name="link-domain" class="feed-link-domain-icon" />
+        {faviconEl}
         <span>{domain}</span>
+        <Icon name="link-domain" class="feed-link-domain-icon" />
       </a>
     ) : (
       <div class="feed-link-domain">
-        <Icon name="link-domain" class="feed-link-domain-icon" />
+        {faviconEl}
         <span>{domain}</span>
       </div>
     ));

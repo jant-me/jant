@@ -605,10 +605,12 @@ html {
   overflow-wrap: break-word;
 }
 
-/* Attribution and domain lay their parts out with flex, so each part is a flex
-   item that refuses to shrink below its min-content width. `break-word` leaves
+/* The attribution lays its parts out with flex, so each part is a flex item
+   that refuses to shrink below its min-content width. `break-word` leaves
    min-content at the longest word and the item still overflows; `anywhere` also
-   shrinks min-content, which is what lets the row wrap. */
+   shrinks min-content, which is what lets the row wrap. The domain row is
+   inline text, where either value would do; it keeps `anywhere` so a long
+   domain breaks the same way in both rows. */
 .feed-quote-attribution,
 .feed-link-domain {
   overflow-wrap: anywhere;

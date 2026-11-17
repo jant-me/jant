@@ -117,6 +117,46 @@ describe("timeline cards", () => {
     }
   });
 
+  it("puts the linked site's icon before the domain and the arrow after it", () => {
+    const post = createPostView({
+      format: "link",
+      previewIconUrl: "/media/site/previews/post-1-icon-a.png",
+    });
+
+    for (const mode of ["feed", "compact", "detail"] as const) {
+      const html = renderWithI18n(LinkCard({ post, mode }));
+      const domain = html.slice(
+        html.indexOf('class="feed-link-domain"'),
+        html.indexOf("</a>", html.indexOf('class="feed-link-domain"')),
+      );
+
+      expect(domain).toContain(
+        'src="/media/site/previews/post-1-icon-a.png" alt=""',
+      );
+      expect(domain.indexOf("feed-link-domain-favicon")).toBeLessThan(
+        domain.indexOf("<span>example.com</span>"),
+      );
+      expect(domain.indexOf("<span>example.com</span>")).toBeLessThan(
+        domain.indexOf("<svg"),
+      );
+    }
+  });
+
+  it("keeps only the domain and the arrow when the post has no site icon", () => {
+    const html = renderWithI18n(
+      LinkCard({ post: createPostView({ format: "link" }), mode: "feed" }),
+    );
+    const domain = html.slice(
+      html.indexOf('class="feed-link-domain"'),
+      html.indexOf("</a>", html.indexOf('class="feed-link-domain"')),
+    );
+
+    expect(domain).not.toContain("<img");
+    expect(domain.indexOf("<span>example.com</span>")).toBeLessThan(
+      domain.indexOf("<svg"),
+    );
+  });
+
   it("marks a link post's referenced article as u-bookmark-of, never as the entry's own u-url", () => {
     const post = createPostView({ format: "link" });
 
