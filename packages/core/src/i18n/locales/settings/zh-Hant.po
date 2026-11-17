@@ -108,6 +108,16 @@ msgstr "302 (暫時)"
 msgid "A calm, cool backdrop."
 msgstr "沉靜、偏冷的底色。"
 
+#. @context: Subscribe page explanation of what a feed reader is and where it runs
+#: src/ui/pages/SubscribePage.tsx
+msgid "A feed reader checks these addresses for new posts and collects them in one place. Most are an app on your phone or computer; some are a website you sign in to."
+msgstr "閱讀器會檢查這些網址是否有新貼文，並彙整到一處。大多數是手機或電腦上的應用程式，也有登入使用的網站。"
+
+#. @context: Subscribe page link to the independent aboutfeeds.com explainer. The whole sentence is the link text.
+#: src/ui/pages/SubscribePage.tsx
+msgid "A longer introduction to feeds and readers, at aboutfeeds.com"
+msgstr "前往 aboutfeeds.com 閱讀更詳細的訂閱源與閱讀器介紹"
+
 #. @context: Help text for site description field
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "A short intro shown on your home page."
@@ -268,6 +278,11 @@ msgstr "加入導覽"
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Advanced"
 msgstr "進階"
+
+#. @context: Subscribe page name for the full archive feed. Matches the Archive page's own nav label.
+#: src/routes/pages/subscribe.tsx
+msgid "All"
+msgstr "All"
 
 #. @context: Description after API reference link
 #: src/ui/dash/settings/ApiTokensContent.tsx
@@ -626,6 +641,11 @@ msgstr "選集連結"
 msgid "Collections"
 msgstr "選集"
 
+#. @context: Subscribe page closing note, next to a small feed icon standing in for the ones on collection and archive pages
+#: src/ui/pages/SubscribePage.tsx
+msgid "Collections and filtered archive views have their own feeds. Look for this icon on those pages."
+msgstr "選集與篩選後的封存檢視也有各自的訂閱源，留意那些頁面上的這個圖示。"
+
 #. @context: Appearance settings heading
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Color theme"
@@ -765,12 +785,14 @@ msgstr "冷白"
 msgid "Copied"
 msgstr "已複製"
 
+#. @context: Button that copies a feed address to the clipboard
 #. @context: Button to copy a URL to the clipboard
 #. @context: Button to copy the Telegram binding code
 #. @context: Button to copy the Telegram binding code
 #. @context: Button to copy the Telegram binding code
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
+#: src/ui/pages/SubscribePage.tsx
 msgid "Copy"
 msgstr "複製"
 
@@ -784,6 +806,11 @@ msgstr "複製權杖"
 #: src/ui/dash/settings/ApiTokensContent.tsx
 msgid "Copy your token now — it won't be shown again."
 msgstr "請立即複製你的權杖 — 它不會再顯示。"
+
+#. @context: Toast when the clipboard is unavailable, pointing at selecting the address by hand
+#: src/ui/pages/SubscribePage.tsx
+msgid "Could not copy. Select the address and copy it."
+msgstr "無法複製。請選取網址後手動複製。"
 
 #. @context: Error toast when copying text to the clipboard fails
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -1221,6 +1248,11 @@ msgstr "請輸入頁面標題。"
 msgid "Every published post, including ones hidden from Latest."
 msgstr "已發布的全部貼文，包括從 Latest 中隱藏的那些。"
 
+#. @context: Subscribe page description of the full archive feed. Says what it adds over the other two rather than sounding like the default pick.
+#: src/routes/pages/subscribe.tsx
+msgid "Every published post, including those kept off the home page."
+msgstr "已發佈的全部貼文，包括不在首頁顯示的貼文。"
+
 #. @context: Placeholder link label shown in color theme preview cards
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Example link"
@@ -1245,6 +1277,8 @@ msgstr "頁首上的網站圖示與個人標記"
 #. @context: Post badge - featured
 #. @context: Row for the Featured page in the pages list on the stats page
 #. @context: Select option for using featured posts as the main RSS feed
+#. @context: Subscribe page name for the featured posts feed
+#: src/routes/pages/subscribe.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/StatsContent.tsx
@@ -1273,7 +1307,9 @@ msgid "Feed settings updated."
 msgstr "Feed 設定已更新。"
 
 #. @context: Toast after copying a feed URL to the clipboard
+#. @context: Toast after copying a feed URL to the clipboard
 #: src/ui/dash/settings/GeneralContent.tsx
+#: src/ui/pages/SubscribePage.tsx
 msgid "Feed URL copied."
 msgstr "已複製訂閱網址。"
 
@@ -1522,6 +1558,8 @@ msgstr "最後使用於 {date}"
 
 #. @context: Browse filter label for latest posts
 #. @context: Select option for using latest posts as the main RSS feed
+#. @context: Subscribe page name for the latest public posts feed
+#: src/routes/pages/subscribe.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest"
@@ -1633,6 +1671,8 @@ msgid "Locked"
 msgstr "已鎖定"
 
 #. @context: Label for the canonical /feed URL
+#. @context: Subscribe page name for the site's main feed
+#: src/routes/pages/subscribe.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Main feed"
 msgstr "主要訂閱來源"
@@ -1931,6 +1971,11 @@ msgstr "已啟用"
 msgid "One-time change to your existing posts"
 msgstr "啟用時會一次性標記既有貼文"
 
+#. @context: Subscribe page description of the featured posts feed
+#: src/routes/pages/subscribe.tsx
+msgid "Only the posts marked as featured."
+msgstr "僅包含標為 Featured 的貼文。"
+
 #. @context: Caption inside the manual Telegram binding fallback. {linkOpen}/{linkClose} wrap the bot username as a t.me link — keep them around the @username token in translations.
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Open {linkOpen}@{botUsername}{linkClose} and send:"
@@ -1951,6 +1996,11 @@ msgstr "啟用 Telegram 以連線"
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Open the bot and send the binding code, then anything you message it becomes a note."
 msgstr "啟用機器人並傳送綁定碼，之後你傳給它的任何訊息都會成為筆記。"
+
+#. @context: Tooltip on the subscribe page feed names, which link to the page whose posts that feed carries
+#: src/ui/pages/SubscribePage.tsx
+msgid "Open the page this feed carries"
+msgstr "開啟此訂閱源對應的頁面"
 
 #. @context: Accessible label on a language row's actions menu trigger
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -2616,10 +2666,19 @@ msgstr "第 {current} 步，共 {total} 步"
 msgid "Stop accepting posts from Telegram. Your existing notes stay published."
 msgstr "停止接受來自 Telegram 的貼文。你現有的筆記會保持已發佈。"
 
+#. @context: Browser page title for the subscribe page
+#. @context: Page title for the feed subscription page
 #. @context: Row for the subscribe page in the pages list on the stats page
+#: src/routes/pages/subscribe.tsx
 #: src/ui/dash/settings/StatsContent.tsx
+#: src/ui/pages/SubscribePage.tsx
 msgid "Subscribe"
 msgstr "訂閱"
+
+#. @context: Subscribe page note that subscribing is one-sided and how to undo it
+#: src/ui/pages/SubscribePage.tsx
+msgid "Subscribing creates no account here. To stop, delete the address from your reader."
+msgstr "訂閱不會在本站建立帳戶。要取消訂閱，從閱讀器裡刪掉網址即可。"
 
 #. @context: Section heading for suggested nav links
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -2771,6 +2830,11 @@ msgstr "根位址（/、/feed）顯示這個語言的內容。"
 msgid "The root address goes back to showing every language, and addresses like {prefix} redirect to it, so existing links and feed subscriptions keep working. Post addresses and each post's language are unchanged, so you can turn this back on any time."
 msgstr "根位址將恢復顯示所有語言，{prefix} 這類位址會重新導向到它，既有的連結和訂閱仍然有效。貼文網址和每篇貼文的語言都不受影響，隨時可以重新啟用。"
 
+#. @context: Subscribe page description of the latest posts feed. The home page and this feed run the same query, so they carry the same posts.
+#: src/routes/pages/subscribe.tsx
+msgid "The same posts as the home page."
+msgstr "與首頁相同的貼文。"
+
 #. @context: Custom URL target slug help text
 #: src/routes/dash/custom-urls.tsx
 msgid "The slug of the target post or collection"
@@ -2860,6 +2924,11 @@ msgstr "此設定未儲存。請檢查設定值並再試一次。"
 #: src/routes/dash/settings.tsx
 msgid "This site has no directory to announce to."
 msgstr "這個站點沒有可提交的目錄。"
+
+#. @context: Subscribe page introduction, above the feed addresses. States the format the site serves, then the one action to take.
+#: src/ui/pages/SubscribePage.tsx
+msgid "This site publishes Atom feeds. Copy one of these addresses into a feed reader."
+msgstr "本站發佈 Atom 訂閱源。複製下方任一網址到訂閱閱讀器。"
 
 #. @context: Warning text on account deletion page
 #: src/ui/dash/settings/DeleteAccountContent.tsx
@@ -3162,6 +3231,11 @@ msgstr "暖中性，適合長讀。"
 #: src/routes/auth/setup.tsx
 msgid "Welcome to Jant"
 msgstr "歡迎使用 Jant"
+
+#. @context: Subscribe page heading over the explanation of feed readers, for readers who have not used one
+#: src/ui/pages/SubscribePage.tsx
+msgid "What a feed reader does"
+msgstr "訂閱閱讀器是做什麼的"
 
 #. @context: Setup heading on a hosted site, where the language is all that is left to ask
 #: src/routes/auth/setup.tsx

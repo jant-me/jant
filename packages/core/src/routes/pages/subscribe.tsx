@@ -22,7 +22,12 @@ import type { Context } from "hono";
 import { msg } from "@lingui/core/macro";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
-import { getI18n } from "../../i18n/index.js";
+import {
+  baseLocale,
+  createI18n,
+  isValidContentLanguage,
+  resolveCatalogLocale,
+} from "../../i18n/i18n.js";
 import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
@@ -53,7 +58,14 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
   c.set("viewTarget", { kind: "path" });
 
   const navData = await getNavigationData(c);
-  const i18n = getI18n(c);
+  // Scope translation to this page's own copy (title, descriptions, reader
+  // explainer) without flipping the request-wide `c.get("i18n")`, which keeps
+  // the public header and footer consistent with every other reader page.
+  const pageLang = c.var.viewLang ?? appConfig.siteLanguage;
+  const pageLocale = isValidContentLanguage(pageLang)
+    ? resolveCatalogLocale(pageLang)
+    : baseLocale;
+  const i18n = createI18n(pageLocale);
 
   // Readers paste these into a reader, so they have to be whole addresses, and
   // they have to stay inside the language view they were read from.
@@ -176,7 +188,11 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
     alternateLanguages: buildSurfaceAlternates(c),
     navData,
     content: (
-      <SubscribePage mainFeed={mainFeed} otherFeeds={[otherEnd, archiveFeed]} />
+      <SubscribePage
+        mainFeed={mainFeed}
+        otherFeeds={[otherEnd, archiveFeed]}
+        i18n={i18n}
+      />
     ),
   });
 }

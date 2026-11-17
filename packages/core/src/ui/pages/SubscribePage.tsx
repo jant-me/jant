@@ -1,6 +1,7 @@
 import type { FC } from "hono/jsx";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../i18n/context.js";
+import type { I18n } from "../../i18n/i18n.js";
 import { getIconSvg } from "../../lib/icons.js";
 import { CopyField } from "../shared/CopyField.js";
 import { PaginatedPageHeader } from "../shared/PaginatedPageHeader.js";
@@ -35,6 +36,11 @@ export interface SubscribePageProps {
    * from the main feed, and the complete record.
    */
   otherFeeds: readonly SubscribeFeed[];
+  /**
+   * Page-scoped i18n instance resolved from the view/site language, so this
+   * page's prose translates while surrounding public chrome stays on `en`.
+   */
+  i18n?: I18n;
 }
 
 /**
@@ -60,8 +66,10 @@ const COLUMN_CLASS = "max-w-xl";
 export const SubscribePage: FC<SubscribePageProps> = ({
   mainFeed,
   otherFeeds,
+  i18n: pageI18n,
 }) => {
-  const { i18n } = useLingui();
+  const { i18n: contextI18n } = useLingui();
+  const i18n = pageI18n ?? contextI18n;
 
   const copyLabel = i18n._(
     msg({
