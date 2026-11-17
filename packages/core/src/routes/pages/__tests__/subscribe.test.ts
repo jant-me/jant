@@ -290,19 +290,17 @@ describe("subscribe page", () => {
 
     expect(html).toContain("<title>订阅");
     expect(html).toContain(
-      "本站发布 Atom 订阅源。复制下面任一地址到订阅阅读器。",
+      "本站提供 Atom feed，复制任一地址到 RSS 阅读器即可。",
     );
     expect(html).toContain("主订阅源");
-    expect(html).toContain("与首页相同的帖子。");
-    expect(html).toContain("仅包含标为 Featured 的帖子。");
-    expect(html).toContain("已发布的全部帖子，包括不在首页显示的帖子。");
+    expect(html).toContain("与首页内容一致。");
+    expect(html).toContain("只包含标为 Featured 的帖子。");
+    expect(html).toContain("所有已发布的帖子，包括不在首页显示的。");
     expect(html).toContain(">All<");
-    expect(html).toContain("订阅源 URL 已复制。");
-    expect(html).toContain("无法复制。请选中地址手动复制。");
-    expect(html).toContain("订阅阅读器是做什么的");
-    expect(html).toContain(
-      "前往 aboutfeeds.com 阅读更详细的订阅源与阅读器介绍",
-    );
+    expect(html).toContain("已复制订阅地址。");
+    expect(html).toContain("复制失败，请选中地址手动复制。");
+    expect(html).toContain("什么是 RSS 阅读器");
+    expect(html).toContain("进一步了解 RSS 与阅读器（aboutfeeds.com）");
     // Surrounding public header chrome (`Search` lives in `settings` too as
     // `搜索`) stays English so `/subscribe` does not diverge from `/` or `/archive`.
     expect(html).toContain('aria-label="Search"');
@@ -316,10 +314,10 @@ describe("subscribe page", () => {
     const html = await (await app.request("/subscribe")).text();
 
     expect(html).toContain("<title>訂閱");
-    expect(html).toContain("主要訂閱來源");
-    expect(html).toContain("與首頁相同的貼文。");
+    expect(html).toContain("主要訂閱源");
+    expect(html).toContain("與首頁內容一致。");
     expect(html).toContain(
-      "選集與篩選後的封存檢視也有各自的訂閱源，留意那些頁面上的這個圖示。",
+      "選集與封存篩選頁也有獨立的訂閱網址，在對應頁面找這個圖示即可。",
     );
     expect(html).toContain(">All<");
   });
@@ -336,14 +334,14 @@ describe("subscribe page", () => {
     const hantHtml = await (await app.request("/zh-hant/subscribe")).text();
     const jaHtml = await (await app.request("/ja/subscribe")).text();
 
-    expect(rootHtml).toContain("订阅阅读器是做什么的");
+    expect(rootHtml).toContain("什么是 RSS 阅读器");
     expect(enHtml).toContain("What a feed reader does");
     expect(feedPaths(enHtml)).toEqual([
       "/en/feed",
       "/en/featured/feed",
       "/en/archive/feed",
     ]);
-    expect(hantHtml).toContain("訂閱閱讀器是做什麼的");
+    expect(hantHtml).toContain("什麼是 RSS 閱讀器");
     expect(feedPaths(hantHtml)).toEqual([
       "/zh-hant/feed",
       "/zh-hant/featured/feed",
@@ -362,7 +360,7 @@ describe("subscribe page", () => {
     const html = await (await app.request("/subscribe")).text();
 
     expect(html).toContain("What a feed reader does");
-    expect(html).not.toContain("订阅阅读器是做什么的");
+    expect(html).not.toContain("什么是 RSS 阅读器");
   });
 
   // A slug may not shadow the page: `subscribe` is in RESERVED_PATHS, so this
