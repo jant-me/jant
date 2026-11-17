@@ -126,8 +126,26 @@ export async function createRichFeedSite() {
   });
   await db
     .update(posts)
-    .set({ previewImageKey: "media/site/preview.jpg" })
+    .set({
+      previewImageKey: "media/site/preview.jpg",
+      previewIconKey: "media/site/preview-icon.png",
+    })
     .where(eq(posts.id, link.id));
+
+  const loneLink = await services.posts.create({
+    format: "link",
+    title: "A lone link",
+    url: "https://example.net/article",
+    bodyMarkdown: "Worth reading.",
+    language: "en",
+  });
+  await db
+    .update(posts)
+    .set({
+      previewImageKey: "media/site/lone-preview.jpg",
+      previewIconKey: "media/site/lone-icon.png",
+    })
+    .where(eq(posts.id, loneLink.id));
 
   const photo = await reply({ format: "note" });
   await services.media.create({

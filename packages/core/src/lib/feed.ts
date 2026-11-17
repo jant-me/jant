@@ -716,6 +716,14 @@ function renderThreadElement(entry: FeedEntry, siteUrl: string): string {
         );
       }
 
+      // The linked site's icon, stored with the post on the same basis.
+      const rowIcon = member.previewIconUrl?.trim();
+      if (rowIcon) {
+        rowAttrs.push(
+          `icon="${escapeXml(toAbsoluteFeedUrl(rowIcon, siteUrl))}"`,
+        );
+      }
+
       // Whether the fold hid this post. Every other decision on this row is
       // declared rather than inferred, and this was the last one a consumer
       // had to reverse-engineer from the summary's shape — which does not
@@ -1250,6 +1258,14 @@ export function defaultFeedRenderer(data: FeedData): string {
         ? `\n    <media:thumbnail url="${escapeXml(toAbsoluteFeedUrl(previewImageUrl, siteUrl))}"/>`
         : "";
 
+      // The linked site's icon, in Jant's own namespace: Atom has `<icon>` only
+      // on `<feed>`, and putting a 16 px favicon in `media:thumbnail` would
+      // blow it up into the entry's card image in feed readers.
+      const previewIconUrl = post.previewIconUrl?.trim();
+      const iconElement = previewIconUrl
+        ? `\n    <jant:icon>${escapeXml(toAbsoluteFeedUrl(previewIconUrl, siteUrl))}</jant:icon>`
+        : "";
+
       // What kind of post this is, in Jant's own namespace. Atom has no field
       // for it, and `<category>` is the wrong place: a reader would show
       // "quote" as a tag the author never wrote. A namespaced element is
@@ -1330,7 +1346,7 @@ export function defaultFeedRenderer(data: FeedData): string {
     <link href="${alternateLink}" rel="alternate"/>${relatedLink}${enclosureLinks}
     <id>${escapedPermalink}</id>${idElement}
     <published>${publishedAt}</published>
-    <updated>${updatedAt}</updated>${formatElement}${threadElement}${truncatedElement}${categoryElements}${thumbnailElement}${mediaContentElements}${summaryElement}
+    <updated>${updatedAt}</updated>${formatElement}${iconElement}${threadElement}${truncatedElement}${categoryElements}${thumbnailElement}${mediaContentElements}${summaryElement}
     <content type="html"><![CDATA[${escapeCdata(contentMarkup)}]]></content>
   </entry>`;
     })
