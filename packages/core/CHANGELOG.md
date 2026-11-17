@@ -1,5 +1,79 @@
 # @jant/core
 
+## 1.3.0
+
+### Minor Changes
+
+- [#186](https://github.com/jant-me/jant/pull/186) [`c67f813`](https://github.com/jant-me/jant/commit/c67f8138499ffd8a0fcbb2c172dce3a758661c63) Thanks [@theowenyoung](https://github.com/theowenyoung)! - On **Settings → Stats**, a post now also counts when a reader read all of it in a list without opening its page: on the home page, in a collection, on `/featured`, or in the archive's list view. An untitled note is read in full on the home page and rarely opened, so its count used to stay near zero beside titled posts that show only an excerpt in a list. Read in full means every part of the post was on screen, nothing of it was left folded, every item of a media row that scrolls sideways was seen, and it stayed in view long enough to read its text.
+
+  A Thread counts as one post, listed under its first: opening any of its posts counts toward it, and so does reading all of it in a list. One page load counts a post once, and a read in a list counts in the total, the chart, the hours, and the referrers too. Nothing about any reader is stored or kept.
+
+  **Upgrade notes**
+
+  - Two database migrations on `view_count`. Run `jant migrate` before starting the new version, as on every upgrade.
+
+- [#186](https://github.com/jant-me/jant/pull/186) [`76afc9e`](https://github.com/jant-me/jant/commit/76afc9edd6bc01178a29a08a1e0fe8b5be755637) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A Link post shows the linked site's icon in front of its domain, and a link to a video shows the video's thumbnail with a play mark on any site that marks its pages as videos, not only YouTube. Bilibili and Vimeo links also get their provider's name on the thumbnail. When a Link post is saved, the server reads the linked page's `<head>` once: an `og:type` of `video.*` or an `og:video` tag makes it a video, and `og:image` is its thumbnail. YouTube thumbnails still come from the video id, without reading the page. The icon and the thumbnail are stored with the post and served from the site, never loaded from the linked site, so a reader's browser contacts only your site. A page that can't be read within three seconds leaves the post without a preview; the post is saved either way. Existing posts get an icon and a preview when their URL changes.
+
+  A Link post's footer no longer has its own ↗ link to the page, since the domain row above it already links there.
+
+  The HTTP API's post objects carry the icon as `previewIconUrl`.
+
+  For themes: the domain row's arrow, `<svg class="feed-link-domain-icon">`, now follows the domain instead of leading it, and a post with a site icon starts the row with `<img class="feed-link-domain-favicon">`. The row is now inline text instead of flex (`.feed-link-domain` is `display: inline-block`), and both icons use `vertical-align: middle` to sit on the middle of the domain's lowercase letters. `--site-link-icon-backdrop` sets the tile behind the icon, which only dark mode fills. The exported Hugo theme's link cards put their arrow after the host too. The footer's `<a class="post-footer-external-link">` is gone, from the site and from the exported Hugo theme.
+
+  **Upgrade notes**
+
+  - One database migration, which adds the `post.preview_icon_key` column. Run `jant migrate` before starting the new version, as on every upgrade.
+
+- [#182](https://github.com/jant-me/jant/pull/182) [`f334d5f`](https://github.com/jant-me/jant/commit/f334d5f62fafcea0cbc08eaf8a0492be582fd224) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A post can be Unlisted: anyone with its link can read it, and the site lists it nowhere — not on Latest, in the archive, in search, in a feed, in the sitemap, or on a Collection page — and the page asks search engines not to index it. It sits between Hidden from Latest and Private in **Publish settings** and in a post's **Visibility** menu. Switching it to Private turns the link off, and changing its Custom link retires the old address. Signed in, you still see it everywhere, including in the Collections it belongs to. The hint under Hidden from Latest now says it still appears in the archive and search.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - The HTTP API and MCP accept and return `unlisted` wherever they take a post's `visibility`. `/api/threads` and the archive take `visibility=unlisted` for the signed-in author; `/api/public/threads` answers `400` to it, as it does to `private`.
+  - The site export format is now version 3. An Unlisted post exports with `visibility: unlisted`, and an older Jant refuses to import a newer export instead of publishing those posts as Public.
+  - Theme hooks: `data-post-visibility` can be `unlisted`, and a post card carries a `.post-status-unlisted` badge that readers see too.
+  - The bundled Hugo templates leave Unlisted Threads out of every list, feed, and the sitemap, and mark their pages `noindex`.
+
+### Patch Changes
+
+- [#182](https://github.com/jant-me/jant/pull/182) [`f87301c`](https://github.com/jant-me/jant/commit/f87301c2665261273c58a01c949dae7682acc345) Thanks [@theowenyoung](https://github.com/theowenyoung)! - On a page in Chinese, Japanese or Korean, titles and headings are set in the medium weight instead of semibold. The CJK serif faces have no semibold, so a Song title came out in Bold, far heavier than the Latin heading beside it and than the body under it, most of all on a phone. In medium, Songti and the Noto Serif the site ships fall to Regular and the title's size carries the hierarchy, as a book sets a chapter title; PingFang and the other sans faces have a Medium and take the half step. Pages in other languages keep semibold.
+
+  For themes: a CJK page sets `--type-heading-weight` and `--type-display-weight` to `var(--fw-medium)` on `:root` ahead of the theme style, the way it already sets the leadings, so a font theme or custom CSS that sets either still wins.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [#182](https://github.com/jant-me/jant/pull/182) [`b4b4ed1`](https://github.com/jant-me/jant/commit/b4b4ed1c9722c425e139f750e1953d771bdbf7a0) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A heading at level four to six — written through the API or MCP, imported, or pasted as Markdown — opens in the editor at its own level, where it used to look like a top-level heading. A heading pasted from a web page keeps its level instead of turning into a paragraph. New headings are still made at three levels.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [#182](https://github.com/jant-me/jant/pull/182) [`33550d1`](https://github.com/jant-me/jant/commit/33550d13fca18df1b4fb191d5c15de4b79e4f4ad) Thanks [@theowenyoung](https://github.com/theowenyoung)! - The editor sets a draft the way the post is read. Inline code had no visible background in the composer, and headings, lists, quotes, code blocks, rules, tables and images were each a little off from the published post; the editor now uses the post body's own styles. In dark mode, quotes and code blocks keep their fill on the composer's raised background.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [#182](https://github.com/jant-me/jant/pull/182) [`12bb191`](https://github.com/jant-me/jant/commit/12bb1910a146e80427f26ad56a00decc88d41b0b) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A share image keeps its fine marks on a site that serves its assets from another host through `ASSET_BASE_URL`, as Jant's hosted sites do: the fade where the summary stops short of the post, a Thread's rail and the dots between its posts, and the short rule before a quote's source. The image used to leave them all out. The share stylesheet was linked without CORS, so the page could not read its rules, and the capture paints a `::before` or `::after` only from rules it can read. The asset host already has to allow cross-origin requests for the client bundle, so its setup stays the same.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [#182](https://github.com/jant-me/jant/pull/182) [`56f4879`](https://github.com/jant-me/jant/commit/56f487946880b92e7dfbe2e9c19162606996b5f5) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A share image keeps the font theme's web fonts on a site that serves its assets from another host through `ASSET_BASE_URL`, as Jant's hosted sites do. The image used to fall back to a local font while the card was laid out in the web font, so its lines broke in other places and a gap could open under the title. The capture can now read the font rules in the site's stylesheets on the asset host, and it refetches any stylesheet whose cached copy it cannot read.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`0dc7b22`](https://github.com/jant-me/jant/commit/0dc7b22454aeece8b48fdd7962d0033dce91f452) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Pointing at a bar of the chart on **Settings → Stats** shows its hour or day and its count, at once and above the bar, where it used to take the browser's own tooltip a second to appear. The whole column answers, so a short bar is as easy to read as a tall one.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
 ## 1.2.0
 
 ### Minor Changes
