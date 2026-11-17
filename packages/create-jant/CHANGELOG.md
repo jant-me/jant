@@ -1,5 +1,19 @@
 # create-jant
 
+## 1.4.0
+
+### Minor Changes
+
+- [#187](https://github.com/jant-me/jant/pull/187) [`f622c31`](https://github.com/jant-me/jant/commit/f622c31509ed3b491a0c2a130dcd7ff0e9837e00) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Atom feeds now carry a Link post's stored site icon: `<jant:icon>` on the entry, and `icon` on `<jant:post>` inside a Thread.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+### Patch Changes
+
+- [#187](https://github.com/jant-me/jant/pull/187) [`b672051`](https://github.com/jant-me/jant/commit/b6720517d99c05fc87738e414f6b72f498071d38) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Translate the `/subscribe` page into Simplified and Traditional Chinese when the site or active multilingual view uses Chinese, while keeping the surrounding public header and footer on the reader shell.
+
 ## 1.3.0
 
 ### Minor Changes
