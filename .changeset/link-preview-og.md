@@ -8,7 +8,7 @@ A Link post's footer no longer has its own ↗ link to the page, since the domai
 
 The HTTP API's post objects carry the icon as `previewIconUrl`.
 
-For themes: the domain row's arrow, `<svg class="feed-link-domain-icon">`, now follows the domain instead of leading it, and a post with a site icon starts the row with `<img class="feed-link-domain-favicon">`. `--site-link-icon-backdrop` sets the tile behind the icon, which only dark mode fills. The exported Hugo theme's link cards put their arrow after the host too. The footer's `<a class="post-footer-external-link">` is gone, from the site and from the exported Hugo theme.
+For themes: the domain row's arrow, `<svg class="feed-link-domain-icon">`, now follows the domain instead of leading it, and a post with a site icon starts the row with `<img class="feed-link-domain-favicon">`. The row is now inline text instead of flex (`.feed-link-domain` is `display: inline-block`), and both icons use `vertical-align: middle` to sit on the middle of the domain's lowercase letters. `--site-link-icon-backdrop` sets the tile behind the icon, which only dark mode fills. The exported Hugo theme's link cards put their arrow after the host too. The footer's `<a class="post-footer-external-link">` is gone, from the site and from the exported Hugo theme.
 
 **Upgrade notes**
 

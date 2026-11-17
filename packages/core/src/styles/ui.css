@@ -2392,10 +2392,13 @@
     margin-top: 1.4rem;
   }
 
+  /* Inline text rather than flex, so `vertical-align: middle` can set both
+     icons on the middle of the domain's x-height, where a lowercase domain's
+     letters sit; centering on the line box put them a pixel or two high.
+     Nothing breaks between an icon and the domain, but a long domain still
+     wraps (`overflow-wrap: anywhere` in preset.css). */
   .feed-link-domain {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
+    display: inline-block;
     max-width: 100%;
     margin-bottom: 0.65rem;
     padding: 0;
@@ -2407,7 +2410,12 @@
     font-weight: var(--fw-regular);
     line-height: 1.3;
     text-decoration: none;
+    white-space: nowrap;
     transition: color 0.18s ease;
+  }
+
+  .feed-link-domain > span {
+    white-space: normal;
   }
 
   .feed-link-domain:hover {
@@ -2416,24 +2424,26 @@
 
   /* The external-link mark, after the domain. */
   .feed-link-domain-icon {
+    display: inline-block;
     width: 0.72rem;
     height: 0.72rem;
-    margin-left: 0.1rem;
-    flex-shrink: 0;
+    margin-left: 0.35rem;
+    vertical-align: middle;
   }
 
   /* The linked site's own icon, before the domain: sized to the text rather
      than to the arrow's thin stroke, and set on a backdrop that only dark
      mode fills. */
   .feed-link-domain-favicon {
+    display: inline-block;
     width: 1rem;
     height: 1rem;
-    margin-right: 0.15rem;
+    margin-right: 0.4rem;
     padding: 1px;
     border-radius: 3px;
     background: var(--site-link-icon-backdrop);
     object-fit: contain;
-    flex-shrink: 0;
+    vertical-align: middle;
   }
 
   /* The two post titles that do not carry their own heading font: the detail
