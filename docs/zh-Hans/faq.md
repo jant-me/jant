@@ -28,6 +28,10 @@ Jant 不内置评论。需要的话，可以通过[代码注入](code-injection.
 
 没有单独的「页面」类型。把一篇标题为 `About` 的 Note 设为 **Hidden from Latest**（从首页隐去），它就是一个独立页面。Jant 用标题生成 slug，地址默认就是 `/about`；想用别的地址，点帖子右上角显示 `Now · /…` 的按钮，在 **Custom link** 里手动填。详见 [写作与内容组织 § 创建独立页面](writing-and-organizing.md#创建独立页面about-页)。
 
+## 怎么让帖子只给拿到链接的人看？
+
+在 **Publish settings** 里设为 **Unlisted**。拿到地址的人都能打开，站内任何地方都不列出它：Latest、`/archive`、搜索、feed 和 sitemap 里都没有。详见 [写作与内容组织 § 凭链接分享帖子](writing-and-organizing.md#凭链接分享帖子)。
+
 ## 怎么发布一篇日期是过去的帖子？
 
 撰写界面里每条帖子右上角有个显示 `Now · /…` 的按钮，点开把 **Published on** 改成更早的日期——帖子会按那个时间排进时间线。常用于补录从别处搬来的旧文章。只能选今天或更早，Jant 不做定时发布。详见 [写作与内容组织 § 发布设置](writing-and-organizing.md#发布设置)。

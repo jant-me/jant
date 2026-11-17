@@ -173,6 +173,7 @@ export const posts = sqliteTable(
     previewImageKey: text("preview_image_key"),
     previewKind: text("preview_kind"),
     previewProvider: text("preview_provider"),
+    previewIconKey: text("preview_icon_key"),
     replyToId: text("reply_to_id"),
     threadId: text("thread_id").notNull(),
     /**
@@ -1165,8 +1166,10 @@ export const rateLimit = sqliteTable(
  * `www.` removed; `""` is a direct or same-site visit. `page` and `referrer`
  * are both `*` on the one overflow row a site-day gets once it holds
  * `VIEW_COUNT_ROWS_PER_SITE_DAY` rows — a site's daily total stays exact while
- * its breakdown stops growing. Rows older than the retention window are
- * swept by the stats service; `services/stats.ts` has the whole policy.
+ * its breakdown stops growing. A Thread read in full in a list counts under
+ * its root's id like the Thread's page opened. Rows older than the
+ * retention window are swept by the stats service; `services/stats.ts` has
+ * the whole policy.
  *
  * The primary key doubles as the only index: every read the stats page makes
  * is a range over a `(site_id, day)` prefix, and a counter update touches no

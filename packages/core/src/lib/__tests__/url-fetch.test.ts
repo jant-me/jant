@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertPublicHttpUrl,
   assertResolvesPublic,
+  fetchHtmlHead,
   fetchImageBytes,
   isPrivateAddress,
 } from "../url-fetch.js";
@@ -240,5 +241,150 @@ describe("fetchImageBytes", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.bytes.byteLength).toBe(bytes.byteLength);
+  });
+});
+
+describe("fetchHtmlHead", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const options = { maxBytes: 4096, timeoutMs: 5000 };
+
+  /** A response whose body arrives in the given chunks. */
+  function streamed(chunks: string[], contentType = "text/html"): Response {
+    const encoder = new TextEncoder();
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+          controller.close();
+        },
+      }),
+      { headers: { "content-type": contentType } },
+    );
+  }
+
+  it("stops reading at </head>, even split across chunks", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        streamed([
+          '<html><head><meta property="og:type" content="video.other"></he',
+          "ad><body>",
+          "x".repeat(10_000),
+        ]),
+      ),
+    );
+
+    const { html } = await fetchHtmlHead(
+      new URL("https://example.com/"),
+      options,
+    );
+
+    expect(html).toBe(
+      '<html><head><meta property="og:type" content="video.other">',
+    );
+  });
+
+  it("stops at <body> when the head is never closed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        streamed(['<meta name="a" content="b"><body class="x">']),
+      ),
+    );
+
+    const { html } = await fetchHtmlHead(
+      new URL("https://example.com/"),
+      options,
+    );
+
+    expect(html).toBe('<meta name="a" content="b">');
+  });
+
+  it("returns a truncated head instead of failing at maxBytes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => streamed(["<head>", "y".repeat(10_000)])),
+    );
+
+    const { html } = await fetchHtmlHead(
+      new URL("https://example.com/"),
+      options,
+    );
+
+    expect(html.length).toBe(options.maxBytes);
+    expect(html.startsWith("<head>")).toBe(true);
+  });
+
+  it("refuses a response that isn't HTML", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => streamed(["%PDF-1.7"], "application/pdf")),
+    );
+
+    await expect(
+      fetchHtmlHead(new URL("https://example.com/paper.pdf"), options),
+    ).rejects.toThrow(/not HTML/);
+  });
+
+  it("refuses an error status", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("Forbidden", { status: 403 })),
+    );
+
+    await expect(
+      fetchHtmlHead(new URL("https://example.com/"), options),
+    ).rejects.toThrow("Couldn't fetch the page (HTTP 403).");
+  });
+
+  it("reports the URL after redirects", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(null, {
+            status: 302,
+            headers: { location: "https://www.example.com/video/1/" },
+          }),
+        )
+        .mockResolvedValueOnce(streamed(["<head></head>"])),
+    );
+
+    const { url } = await fetchHtmlHead(new URL("https://ex.am/1"), options);
+
+    expect(url.toString()).toBe("https://www.example.com/video/1/");
+  });
+
+  it("refuses a redirect to a private address", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(null, {
+            status: 301,
+            headers: { location: "http://127.0.0.1:8080/admin" },
+          }),
+      ),
+    );
+
+    await expect(
+      fetchHtmlHead(new URL("https://example.com/"), options),
+    ).rejects.toThrow("That URL points to a private address.");
+  });
+
+  it("sends no Referer", async () => {
+    const fetchMock = vi.fn(async () => streamed(["<head></head>"]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchHtmlHead(new URL("https://example.com/"), options);
+
+    const headers = (fetchMock.mock.calls[0] as unknown[] | undefined)?.[1] as
+      { headers?: Record<string, string> } | undefined;
+    expect(headers?.headers?.Referer).toBeUndefined();
+    expect(headers?.headers?.Accept).toMatch(/^text\/html/);
   });
 });

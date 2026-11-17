@@ -659,9 +659,22 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     publishVisibilityHiddenFromLatestHint: i18n._(
       msg({
         message:
-          "Doesn't appear in Latest. Still appears in collections you add it to.",
+          "Doesn't appear in Latest. Still appears in the archive, search, and collections.",
         comment:
           "@context: Compose publish settings help text for posts hidden from Latest",
+      }),
+    ),
+    publishVisibilityUnlisted: i18n._(
+      msg({
+        message: "Unlisted",
+        comment: "@context: Compose publish settings visibility option",
+      }),
+    ),
+    publishVisibilityUnlistedHint: i18n._(
+      msg({
+        message: "Not listed anywhere. Only people with the link can see it.",
+        comment:
+          "@context: Compose publish settings help text for unlisted visibility",
       }),
     ),
     publishVisibilityPrivate: i18n._(
@@ -821,6 +834,12 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         message: "Post hidden",
         comment:
           "@context: Compose publish button for posts hidden from Latest",
+      }),
+    ),
+    postUnlisted: i18n._(
+      msg({
+        message: "Post unlisted",
+        comment: "@context: Compose publish button for unlisted visibility",
       }),
     ),
     postPrivately: i18n._(

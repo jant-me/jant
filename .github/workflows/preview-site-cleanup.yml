@@ -1,0 +1,46 @@
+name: Remove Site Preview
+run-name: Remove jant-site preview · ${{ github.event.pull_request.head.ref || inputs.branch }}
+
+# A pull request's jant-site preview (ci.yml, deploy-site-preview) is removed
+# when the pull request closes, merged or not. tonormal/build's
+# delete-preview.yml does the work: it waits for a deploy of the branch that is
+# still running, then removes the container, its Caddy route and its app
+# directory from the preview server. A manual run removes the preview of a
+# branch deployed with `mise run preview-site`.
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch whose jant-site preview to remove, as pushed (e.g. feat/editor)"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  remove:
+    name: Remove jant-site preview
+    # Fork pull requests never got a preview, and get no secrets to ask with.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref != 'preview')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask tonormal/build to remove the preview
+        env:
+          BUILD_REPO_TOKEN: ${{ secrets.BUILD_REPO_TOKEN }}
+          BRANCH: ${{ github.event.pull_request.head.ref || inputs.branch }}
+        run: |
+          curl -sS --fail-with-body -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token ${BUILD_REPO_TOKEN}" \
+            https://api.github.com/repos/tonormal/build/dispatches \
+            -d "$(jq -n --arg branch "$BRANCH" '{
+              event_type: "delete-preview",
+              client_payload: { service: "jant-site", branch: $branch }
+            }')"
+          echo "Asked tonormal/build to remove the jant-site preview of $BRANCH."

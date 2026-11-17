@@ -21,6 +21,7 @@ import {
   type PostFilterSelection,
 } from "../lib/filter-dimensions.js";
 import { foldReplyWindows, type ThreadFold } from "../lib/thread-fold.js";
+import { isOpenableByReader } from "../types/constants.js";
 import type {
   CollectionSortOrder,
   Post,
@@ -263,6 +264,9 @@ export function createThreadService(deps: {
       if (reader && visibility === "private") {
         throw new ValidationError("Private posts aren't listed here.");
       }
+      if (reader && visibility === "unlisted") {
+        throw new ValidationError("Unlisted posts aren't listed here.");
+      }
       if (
         visibility === "featured" &&
         query.sort !== undefined &&
@@ -273,7 +277,7 @@ export function createThreadService(deps: {
 
       const base = {
         status: reader ? ("published" as const) : (query.status ?? "published"),
-        excludePrivate: reader,
+        listedForReader: reader,
         excludeLatestHidden:
           reader && visibility === undefined && !query.includeHidden,
         lang: query.lang,
@@ -344,7 +348,7 @@ export function createThreadService(deps: {
       if (!root) return null;
       if (
         audience === "reader" &&
-        (root.status !== "published" || root.visibility === "private")
+        (root.status !== "published" || !isOpenableByReader(root.visibility))
       ) {
         return null;
       }

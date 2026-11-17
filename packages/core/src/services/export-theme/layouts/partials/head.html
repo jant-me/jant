@@ -25,6 +25,8 @@
 {{- end -}}
 {{- $noindex := false -}}
 {{- with $jant -}}{{- if eq .noindex true -}}{{- $noindex = true -}}{{- end -}}{{- end -}}
+{{- /* An Unlisted Thread opens for anyone with its link, never in a search engine. */ -}}
+{{- if eq .Params.visibility "unlisted" -}}{{- $noindex = true -}}{{- end -}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ $pageTitle }}</title>

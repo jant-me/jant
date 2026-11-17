@@ -1,10 +1,12 @@
 name: Deploy via Build
+# Only a dispatch uses this; a caller's run keeps the caller's name.
+run-name: Deploy ${{ inputs.service || 'jant' }} · ${{ github.ref_name }}
 
 on:
   workflow_call:
     inputs:
       service:
-        description: "Studio external app to deploy (jant is hosted, jant-demo the Docker demo)"
+        description: "Studio external app to deploy (jant is hosted, jant-demo the Docker demo, jant-site the single-site preview)"
         required: false
         type: string
         default: "jant"
@@ -29,7 +31,18 @@ on:
       BUILD_REPO_TOKEN:
         description: "GitHub token for tonormal/build repository dispatch"
         required: true
+  # Deploys the ref it runs on: main to production, any other branch to
+  # preview. `mise run preview-site` dispatches jant-site from a branch.
   workflow_dispatch:
+    inputs:
+      service:
+        description: "Studio external app to deploy (jant is hosted, jant-site a single site on preview only)"
+        required: true
+        type: choice
+        options:
+          - jant
+          - jant-site
+        default: jant
 
 permissions:
   contents: read

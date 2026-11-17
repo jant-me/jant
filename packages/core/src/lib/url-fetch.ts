@@ -1,19 +1,19 @@
 /**
- * Safe remote URL fetching for server-side image sideloading.
+ * Safe remote URL fetching on the server.
  *
- * When an author pastes an article from another site, its `<img>` tags point at
- * remote URLs. To rehost those images into the site's own storage the server
- * must fetch the bytes itself (a browser `fetch` of a third-party image is
- * blocked by CORS for most hosts). Because the URL comes from pasted HTML it is
- * attacker-influenced, so every fetch passes through an SSRF guard and a bounded
- * reader that caps size and time.
+ * Two callers fetch URLs an author supplied. Image sideloading rehosts the
+ * `<img>` sources of an article pasted from another site (a browser `fetch` of
+ * a third-party image is blocked by CORS for most hosts). Link previews read
+ * the `<head>` of the page a Link post points at, and the images it names.
+ * Either URL is attacker-influenced, so every fetch passes through an SSRF
+ * guard and a bounded reader that caps size and time.
  *
  * Two layers guard the address. {@link assertPublicHttpUrl} refuses a URL whose
  * host is a private name or IP literal, in any of the forms an IPv6 address can
- * carry an IPv4 one. On Node, {@link fetchImageBytes} also resolves each host
- * and refuses it when any address it resolves to is private, which catches
- * names like `127.0.0.1.nip.io`. A Worker's fetch can't reach a private network
- * at all, so it skips the lookup. A host that answers a public address to the
+ * carry an IPv4 one. On Node, every fetch here also resolves each host and
+ * refuses it when any address it resolves to is private, which catches names
+ * like `127.0.0.1.nip.io`. A Worker's fetch can't reach a private network at
+ * all, so it skips the lookup. A host that answers a public address to the
  * check and a private one to the fetch a moment later (DNS rebinding) is out of
  * reach of both; that needs network-level egress control.
  */
@@ -21,8 +21,52 @@
 import { ValidationError } from "./errors.js";
 
 /** A browser-like UA — many CDNs serving article images block unknown bots. */
-const FETCH_USER_AGENT =
+const IMAGE_USER_AGENT =
   "Mozilla/5.0 (compatible; Jant image sideloader) AppleWebKit/537.36";
+
+/** The UA a page is read with for a Link preview. */
+const PAGE_USER_AGENT =
+  "Mozilla/5.0 (compatible; Jant link preview; +https://jant.me) AppleWebKit/537.36";
+
+/** What a fetch is for, which names it in the errors it throws. */
+export type FetchTarget = "image" | "page";
+
+const FETCH_ERRORS: Record<
+  FetchTarget,
+  {
+    invalid: string;
+    protocol: string;
+    credentials: string;
+    privateAddress: string;
+    unresolved: string;
+    timeout: string;
+    failed: string;
+    redirects: string;
+  }
+> = {
+  image: {
+    invalid: "That doesn't look like a valid image URL.",
+    protocol: "Only http and https image URLs can be fetched.",
+    credentials: "Image URLs can't include credentials.",
+    privateAddress: "That image URL points to a private address.",
+    unresolved: "Couldn't find the image's host.",
+    timeout: "Timed out fetching the image.",
+    failed: "Couldn't fetch the image",
+    redirects: "Too many redirects fetching the image.",
+  },
+  page: {
+    invalid: "That doesn't look like a valid URL.",
+    protocol: "Only http and https pages can be fetched.",
+    credentials: "Page URLs can't include credentials.",
+    privateAddress: "That URL points to a private address.",
+    unresolved: "Couldn't find the page's host.",
+    timeout: "Timed out fetching the page.",
+    failed: "Couldn't fetch the page",
+    redirects: "Too many redirects fetching the page.",
+  },
+};
+
+const IMAGE_TOO_LARGE = "That image is too large.";
 
 export interface FetchedImage {
   bytes: Uint8Array;
@@ -39,6 +83,22 @@ export interface FetchImageBytesOptions {
   maxRedirects?: number;
 }
 
+export interface FetchedHtmlHead {
+  /** The document up to its `</head>` or `<body>`, or up to `maxBytes`. */
+  html: string;
+  /** The URL the document came from, after redirects. */
+  url: URL;
+}
+
+export interface FetchHtmlHeadOptions {
+  /** Stop reading (without failing) once this many bytes have arrived. */
+  maxBytes: number;
+  /** Abort the whole request after this many milliseconds. */
+  timeoutMs: number;
+  /** Maximum redirect hops to follow (each re-validated). Default 5. */
+  maxRedirects?: number;
+}
+
 /**
  * Validate that a string is a public http(s) URL safe to fetch server-side.
  *
@@ -47,25 +107,30 @@ export interface FetchImageBytesOptions {
  * literals (including the `169.254.169.254` cloud-metadata address).
  *
  * @param raw - The candidate URL string
+ * @param target - What the URL is fetched for, which names it in the error
  * @returns The parsed {@link URL}
  * @example
  * ```ts
  * const url = assertPublicHttpUrl("https://example.com/photo.jpg");
  * ```
  */
-export function assertPublicHttpUrl(raw: string): URL {
+export function assertPublicHttpUrl(
+  raw: string,
+  target: FetchTarget = "image",
+): URL {
+  const errors = FETCH_ERRORS[target];
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
-    throw new ValidationError("That doesn't look like a valid image URL.");
+    throw new ValidationError(errors.invalid);
   }
 
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new ValidationError("Only http and https image URLs can be fetched.");
+    throw new ValidationError(errors.protocol);
   }
   if (url.username || url.password) {
-    throw new ValidationError("Image URLs can't include credentials.");
+    throw new ValidationError(errors.credentials);
   }
 
   // A trailing dot names the same host (`localhost.` is `localhost`).
@@ -75,7 +140,7 @@ export function assertPublicHttpUrl(raw: string): URL {
     host.endsWith(".localhost") ||
     isPrivateAddress(host)
   ) {
-    throw new ValidationError("That image URL points to a private address.");
+    throw new ValidationError(errors.privateAddress);
   }
 
   return url;
@@ -87,6 +152,7 @@ export function assertPublicHttpUrl(raw: string): URL {
  * Skipped on Cloudflare Workers, whose fetch can't reach a private network.
  *
  * @param url - A URL already accepted by {@link assertPublicHttpUrl}
+ * @param target - What the URL is fetched for, which names it in the error
  * @throws {ValidationError} When the host resolves to a private address or
  *   doesn't resolve
  * @example
@@ -94,21 +160,38 @@ export function assertPublicHttpUrl(raw: string): URL {
  * await assertResolvesPublic(new URL("https://127.0.0.1.nip.io/a.png")); // throws
  * ```
  */
-export async function assertResolvesPublic(url: URL): Promise<void> {
+export async function assertResolvesPublic(
+  url: URL,
+  target: FetchTarget = "image",
+): Promise<void> {
   if (isCloudflareWorker()) return;
   const host = url.hostname.replace(/^\[|\]$/g, "");
   if (isIpLiteral(host)) return; // Already checked by assertPublicHttpUrl.
 
-  const { lookup } = await import("node:dns/promises");
+  const errors = FETCH_ERRORS[target];
+  const lookup = await loadDnsLookup();
   let addresses: { address: string }[];
   try {
     addresses = await lookup(host, { all: true, verbatim: true });
   } catch {
-    throw new ValidationError("Couldn't find the image's host.");
+    throw new ValidationError(errors.unresolved);
   }
   if (addresses.some(({ address }) => isPrivateAddress(address))) {
-    throw new ValidationError("That image URL points to a private address.");
+    throw new ValidationError(errors.privateAddress);
   }
+}
+
+type DnsLookup = (typeof import("node:dns/promises"))["lookup"];
+let dnsLookup: Promise<DnsLookup> | undefined;
+
+/**
+ * `node:dns/promises`, imported once. A preview resolves its thumbnail and
+ * its icon side by side, so two lookups often start together; they share one
+ * import rather than each starting their own.
+ */
+function loadDnsLookup(): Promise<DnsLookup> {
+  dnsLookup ??= import("node:dns/promises").then(({ lookup }) => lookup);
+  return dnsLookup;
 }
 
 function isCloudflareWorker(): boolean {
@@ -120,6 +203,67 @@ function isCloudflareWorker(): boolean {
 
 function isIpLiteral(host: string): boolean {
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":");
+}
+
+/**
+ * GET a URL, following redirects by hand so that every hop passes the SSRF
+ * guard, and return the first response that isn't a redirect.
+ */
+async function fetchFollowingPublicRedirects(
+  startUrl: URL,
+  input: {
+    target: FetchTarget;
+    headers: (url: URL) => Record<string, string>;
+    signal: AbortController["signal"];
+    maxRedirects: number;
+  },
+): Promise<{ response: Response; url: URL }> {
+  const errors = FETCH_ERRORS[input.target];
+  let url = startUrl;
+  let response: Response | null = null;
+
+  for (let hop = 0; hop <= input.maxRedirects; hop++) {
+    await assertResolvesPublic(url, input.target);
+    response = await fetch(url.toString(), {
+      method: "GET",
+      redirect: "manual",
+      signal: input.signal,
+      headers: input.headers(url),
+    }).catch((error) => {
+      if (input.signal.aborted) {
+        throw new ValidationError(errors.timeout);
+      }
+      throw new ValidationError(
+        error instanceof Error
+          ? `${errors.failed}: ${error.message}`
+          : `${errors.failed}.`,
+      );
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) break; // No target — fall through to the (failing) checks.
+      if (hop === input.maxRedirects) {
+        throw new ValidationError(errors.redirects);
+      }
+      // Re-validate every hop so a redirect can't escape the SSRF guard.
+      url = assertPublicHttpUrl(
+        new URL(location, url).toString(),
+        input.target,
+      );
+      continue;
+    }
+    break;
+  }
+
+  if (!response) {
+    throw new ValidationError(`${errors.failed}.`);
+  }
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => {});
+    throw new ValidationError(`${errors.failed} (HTTP ${response.status}).`);
+  }
+  return { response, url };
 }
 
 /**
@@ -142,64 +286,29 @@ export async function fetchImageBytes(
   startUrl: URL,
   options: FetchImageBytesOptions,
 ): Promise<FetchedImage> {
-  const maxRedirects = options.maxRedirects ?? 3;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs);
 
   try {
-    let url = startUrl;
-    let response: Response | null = null;
-
-    for (let hop = 0; hop <= maxRedirects; hop++) {
-      await assertResolvesPublic(url);
-      response = await fetch(url.toString(), {
-        method: "GET",
-        redirect: "manual",
-        signal: controller.signal,
-        headers: {
-          Accept: "image/*,*/*;q=0.8",
-          "User-Agent": FETCH_USER_AGENT,
-          // Many CDNs (Douban, WeChat, etc.) reject hotlinked image requests
-          // that lack a Referer. Sending the image's own origin satisfies the
-          // common "referer must be same-site" hotlink check.
-          Referer: `${url.origin}/`,
-        },
-      }).catch((error) => {
-        if (controller.signal.aborted) {
-          throw new ValidationError("Timed out fetching the image.");
-        }
-        throw new ValidationError(
-          error instanceof Error
-            ? `Couldn't fetch the image: ${error.message}`
-            : "Couldn't fetch the image.",
-        );
-      });
-
-      if (response.status >= 300 && response.status < 400) {
-        const location = response.headers.get("location");
-        if (!location) break; // No target — fall through to the (failing) checks.
-        if (hop === maxRedirects) {
-          throw new ValidationError("Too many redirects fetching the image.");
-        }
-        // Re-validate every hop so a redirect can't escape the SSRF guard.
-        url = assertPublicHttpUrl(new URL(location, url).toString());
-        continue;
-      }
-      break;
-    }
-
-    if (!response) {
-      throw new ValidationError("Couldn't fetch the image.");
-    }
-    if (!response.ok) {
-      throw new ValidationError(
-        `Couldn't fetch the image (HTTP ${response.status}).`,
-      );
-    }
+    const { response } = await fetchFollowingPublicRedirects(startUrl, {
+      target: "image",
+      signal: controller.signal,
+      maxRedirects: options.maxRedirects ?? 3,
+      headers: (url) => ({
+        Accept: "image/*,*/*;q=0.8",
+        "User-Agent": IMAGE_USER_AGENT,
+        // Many CDNs (Douban, WeChat, Bilibili, etc.) reject hotlinked image
+        // requests that lack a Referer or carry a foreign one. Sending the
+        // image's own origin satisfies the common "referer must be same-site"
+        // hotlink check.
+        Referer: `${url.origin}/`,
+      }),
+    });
 
     const declared = Number(response.headers.get("content-length"));
     if (Number.isFinite(declared) && declared > options.maxBytes) {
-      throw new ValidationError("That image is too large.");
+      await response.body?.cancel().catch(() => {});
+      throw new ValidationError(IMAGE_TOO_LARGE);
     }
 
     const contentType = normalizeContentType(
@@ -212,6 +321,114 @@ export async function fetchImageBytes(
   }
 }
 
+/**
+ * Fetch the `<head>` of an HTML page with an SSRF-checked redirect chain and a
+ * timeout. Reading stops at `</head>` or `<body>`, or once `maxBytes` have
+ * arrived — a truncated head is returned, not refused, because the metadata a
+ * preview needs sits near the top. Only HTML is read: a response that declares
+ * another content type is refused before its body is touched.
+ *
+ * The bytes are decoded as UTF-8 whatever the page's charset: callers read
+ * attribute values that are URLs and keywords, which are ASCII in any
+ * charset a page is likely to use.
+ *
+ * @param startUrl - A URL already validated by {@link assertPublicHttpUrl}
+ * @param options - Read cap, timeout, and redirect budget
+ * @returns The head's HTML and the URL it came from after redirects
+ * @example
+ * ```ts
+ * const { html, url } = await fetchHtmlHead(
+ *   assertPublicHttpUrl("https://example.com/post", "page"),
+ *   { maxBytes: 512 * 1024, timeoutMs: 3000 },
+ * );
+ * ```
+ */
+export async function fetchHtmlHead(
+  startUrl: URL,
+  options: FetchHtmlHeadOptions,
+): Promise<FetchedHtmlHead> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs);
+
+  try {
+    const { response, url } = await fetchFollowingPublicRedirects(startUrl, {
+      target: "page",
+      signal: controller.signal,
+      maxRedirects: options.maxRedirects ?? 5,
+      headers: () => ({
+        Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1",
+        "User-Agent": PAGE_USER_AGENT,
+      }),
+    });
+
+    const contentType = normalizeContentType(
+      response.headers.get("content-type"),
+    );
+    if (
+      contentType &&
+      contentType !== "text/html" &&
+      contentType !== "application/xhtml+xml"
+    ) {
+      await response.body?.cancel().catch(() => {});
+      throw new ValidationError(`${FETCH_ERRORS.page.failed}: not HTML.`);
+    }
+
+    const html = await readHead(response, options.maxBytes).catch((error) => {
+      if (controller.signal.aborted) {
+        throw new ValidationError(FETCH_ERRORS.page.timeout);
+      }
+      throw error;
+    });
+    return { html, url };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Where a document's head ends: its closing tag, or the body's opening one. */
+const HEAD_END = /<\/head[\s>]|<body[\s>]/i;
+
+/** Longest tail of one chunk that could start a {@link HEAD_END} match. */
+const HEAD_END_OVERLAP = 6;
+
+async function readHead(response: Response, maxBytes: number): Promise<string> {
+  const decoder = new TextDecoder("utf-8");
+  const body = response.body;
+  if (!body) {
+    const text = decoder.decode(
+      new Uint8Array(await response.arrayBuffer()).subarray(0, maxBytes),
+    );
+    return cutAtHeadEnd(text);
+  }
+
+  const reader = body.getReader();
+  let text = "";
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      const room = maxBytes - total;
+      const chunk = value.byteLength > room ? value.subarray(0, room) : value;
+      total += chunk.byteLength;
+      const searchFrom = Math.max(0, text.length - HEAD_END_OVERLAP);
+      text += decoder.decode(chunk, { stream: true });
+      const end = text.slice(searchFrom).search(HEAD_END);
+      if (end !== -1) return text.slice(0, searchFrom + end);
+      if (total >= maxBytes) break;
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+  return text + decoder.decode();
+}
+
+function cutAtHeadEnd(text: string): string {
+  const end = text.search(HEAD_END);
+  return end === -1 ? text : text.slice(0, end);
+}
+
 async function readBounded(
   response: Response,
   maxBytes: number,
@@ -220,7 +437,7 @@ async function readBounded(
   if (!body) {
     const buffer = new Uint8Array(await response.arrayBuffer());
     if (buffer.byteLength > maxBytes) {
-      throw new ValidationError("That image is too large.");
+      throw new ValidationError(IMAGE_TOO_LARGE);
     }
     return buffer;
   }
@@ -235,7 +452,7 @@ async function readBounded(
     total += value.byteLength;
     if (total > maxBytes) {
       await reader.cancel().catch(() => {});
-      throw new ValidationError("That image is too large.");
+      throw new ValidationError(IMAGE_TOO_LARGE);
     }
     chunks.push(value);
   }

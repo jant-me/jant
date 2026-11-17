@@ -951,7 +951,19 @@ The generated SQL for a rebuild is not reviewed by the type checker and not
 covered by any test that does not actually run the migrations. After
 `db-schema-generate`, replay the whole directory against a scratch database
 **with rows already in the affected tables**, and diff the row counts across the
-rebuild. The `SELECT` list has to say `NULL` for anything the old table lacks.
+rebuild. The `SELECT` list has to say `NULL` for anything the old table lacks,
+or leave the column out so its default fills it.
+
+The Postgres side has its own version: adding a column to a composite primary
+key, `db-schema-generate-pg` wrote the `ADD CONSTRAINT … PRIMARY KEY` naming the
+new column before the `ADD COLUMN` that creates it. A fresh database never sees
+it fail — `check-pg-smoke` replays from empty and passes either way — so upgrade
+a scratch Postgres database that holds rows, one migration behind.
+
+Taking a column back out of a primary key fails the same quiet way on both
+sides: rows that differed only in it become duplicates. The SQLite copy has to
+`GROUP BY` the remaining key and sum the counters; Postgres has to fold the
+duplicates before it adds the narrower key.
 
 ## Rewriting a migration is free only until something has run it — including your own dev database
 
@@ -1283,3 +1295,11 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   local visual checks drive the Playwright headless Chromium already in
   `~/Library/Caches/ms-playwright` over CDP (screenshots per element, phone
   and dark emulation) instead of switching browsers or chasing `127.0.0.1`.
+
+## A watch that stops is not a run that failed
+
+- `gh run watch --exit-status` also exits non-zero when one API request times
+  out. A script that follows a run must ask the run for its conclusion
+  (`gh run view --json status,conclusion`) before reporting a failure, and
+  watch again while it is still going; `preview-site.sh` once reported "The
+  deploy failed" for a deploy that went on to succeed.

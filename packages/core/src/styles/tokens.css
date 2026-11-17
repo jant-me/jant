@@ -277,6 +277,10 @@
      it: hover states in navigation and menus, cards in the feed, code
      blocks. */
   --site-subtle-bg: var(--accent);
+  /* Behind a linked site's icon. Nothing on a light page; on a dark one a
+     light tile, because many icons are a black mark on transparency and
+     would vanish into the page. */
+  --site-link-icon-backdrop: transparent;
   --site-text-primary: var(--foreground);
   --site-text-secondary: var(--muted-foreground);
   --site-reading-title: color-mix(
@@ -592,6 +596,11 @@
       var(--site-raised-bg) 78%,
       var(--foreground)
     );
+    --site-link-icon-backdrop: color-mix(
+      in oklab,
+      var(--foreground) 88%,
+      transparent
+    );
   }
 }
 
@@ -637,6 +646,11 @@
     in oklab,
     var(--site-raised-bg) 78%,
     var(--foreground)
+  );
+  --site-link-icon-backdrop: color-mix(
+    in oklab,
+    var(--foreground) 88%,
+    transparent
   );
 }
 

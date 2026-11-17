@@ -272,7 +272,7 @@ describe("viewCounter", () => {
     // A token minted before the switch is worth nothing after it.
     const token = await signViewToken(
       SECRET,
-      { siteId: DEFAULT_TEST_SITE_ID, page: "/", referrer: "" },
+      { siteId: DEFAULT_TEST_SITE_ID, page: "/", referrer: "", units: [] },
       now(),
     );
     await confirm(app, token);
@@ -288,7 +288,7 @@ describe("viewCounter", () => {
       app,
       await signViewToken(
         "t".repeat(40),
-        { siteId, page: "/", referrer: "" },
+        { siteId, page: "/", referrer: "", units: [] },
         now(),
       ),
     );
@@ -296,7 +296,12 @@ describe("viewCounter", () => {
       app,
       await signViewToken(
         SECRET,
-        { siteId: "sit_00000000000000000000000000", page: "/", referrer: "" },
+        {
+          siteId: "sit_00000000000000000000000000",
+          page: "/",
+          referrer: "",
+          units: [],
+        },
         now(),
       ),
     );
@@ -304,7 +309,7 @@ describe("viewCounter", () => {
       app,
       await signViewToken(
         SECRET,
-        { siteId, page: "/", referrer: "" },
+        { siteId, page: "/", referrer: "", units: [] },
         now() - 3 * 3600,
       ),
     );
@@ -313,8 +318,85 @@ describe("viewCounter", () => {
     // The real thing, for contrast.
     await confirm(
       app,
-      await signViewToken(SECRET, { siteId, page: "/", referrer: "" }, now()),
+      await signViewToken(
+        SECRET,
+        { siteId, page: "/", referrer: "", units: [] },
+        now(),
+      ),
     );
     expect(buffer.size).toBe(1);
+  });
+
+  it("counts every post of a Thread toward the Thread", async () => {
+    const { app, services, buffer } = fixture;
+    const root = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "First",
+      status: "published",
+    });
+    const reply = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Second",
+      status: "published",
+      replyToId: root.id,
+    });
+
+    await openAndConfirm(app, `/${root.slug}`);
+    await openAndConfirm(app, `/${reply.slug}`);
+    await buffer.flush();
+
+    expect((await services.stats.getPage(root.id, WINDOW))?.total).toBe(2);
+    const overview = await services.stats.getOverview(WINDOW);
+    expect(overview.pages.map((row) => row.key)).toEqual([root.id]);
+  });
+
+  it("lists the Threads a list page shows whole, and counts the ones read there", async () => {
+    const { app, services, buffer } = fixture;
+    const note = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "A note read on the home page",
+      status: "published",
+    });
+    const article = await services.posts.create({
+      format: "note",
+      title: "An article",
+      bodyMarkdown: "Shown as an excerpt",
+      status: "published",
+    });
+    const root = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "A Thread",
+      status: "published",
+    });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Its second post",
+      status: "published",
+      replyToId: root.id,
+    });
+
+    const res = await app.request("/", { headers: navigationHeaders() });
+    const html = await res.text();
+    const token = tokenIn(html) as string;
+    const marked = [...html.matchAll(/data-view-unit="([^"]+)"/g)].map(
+      (match) => match[1],
+    );
+    expect(new Set(marked)).toEqual(new Set([note.id, root.id]));
+
+    await confirm(app, token);
+    // The report names a Thread the page showed whole, one it showed only in
+    // part, and one twice: the first counts once, the others not at all.
+    await confirm(app, `${token}\n${note.id} ${article.id} ${note.id}`);
+    await buffer.flush();
+
+    const overview = await services.stats.getOverview(WINDOW);
+    // A note read in the list is a view like a page opened: the home page
+    // and the note are two, both from where the reader came from.
+    expect(overview.total).toBe(2);
+    expect(overview.referrers.direct).toBe(2);
+    expect(
+      Object.fromEntries(overview.pages.map((row) => [row.key, row.views])),
+    ).toEqual({ "/": 1, [note.id]: 1 });
+    expect((await services.stats.getPage(note.id, WINDOW))?.total).toBe(1);
   });
 });

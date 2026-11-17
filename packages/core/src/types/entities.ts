@@ -71,6 +71,7 @@ export interface Post {
   previewImageKey: string | null;
   previewKind: string | null;
   previewProvider: string | null;
+  previewIconKey: string | null;
   replyToId: string | null;
   threadId: string;
   /**

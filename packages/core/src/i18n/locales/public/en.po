@@ -820,8 +820,8 @@ msgstr "Do you want to publish your changes or discard them?"
 
 #. @context: Compose publish settings help text for posts hidden from Latest
 #: src/ui/compose/ComposeDialog.tsx
-msgid "Doesn't appear in Latest. Still appears in collections you add it to."
-msgstr "Doesn't appear in Latest. Still appears in collections you add it to."
+msgid "Doesn't appear in Latest. Still appears in the archive, search, and collections."
+msgstr "Doesn't appear in Latest. Still appears in the archive, search, and collections."
 
 #. @context: Confirm action sheet - discard text attachment changes button
 #. @context: Confirm close action sheet - discard button
@@ -1615,6 +1615,11 @@ msgstr "No threads match these filters. Try adjusting your selection or clear al
 msgid "Not enough text to tell yet — publishes in {language}"
 msgstr "Not enough text to tell yet — publishes in {language}"
 
+#. @context: Compose publish settings help text for unlisted visibility
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Not listed anywhere. Only people with the link can see it."
+msgstr "Not listed anywhere. Only people with the link can see it."
+
 #. @context: Action to dismiss the post-create Collection navigation prompt
 #: src/ui/shared/CollectionsManager.tsx
 msgid "Not now"
@@ -1692,11 +1697,6 @@ msgstr "Only visible when signed in."
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Open a few links and check whether they still feel native to the page."
 msgstr "Open a few links and check whether they still feel native to the page."
-
-#. @context: Accessible label for the external-link icon in the post footer
-#: src/ui/shared/PostFooter.tsx
-msgid "Open external link"
-msgstr "Open external link"
 
 #. @context: Inline editor button label for opening the original URL of a broken image
 #: src/ui/compose/ComposeDialog.tsx
@@ -1791,6 +1791,11 @@ msgstr "Post hidden"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Post privately"
 msgstr "Post privately"
+
+#. @context: Compose publish button for unlisted visibility
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Post unlisted"
+msgstr "Post unlisted"
 
 #. @context: Smart collection dialog — conditions are combined with AND
 #: src/ui/shared/smart-collection-labels.ts
@@ -2686,6 +2691,15 @@ msgstr "Type / for commands"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Type the quote..."
 msgstr "Type the quote..."
+
+#. @context: Archive visibility filter - posts that open for anyone with the link but are listed nowhere
+#. @context: Compose publish settings visibility option
+#. @context: Post status badge for a post that opens for anyone with the link but is listed nowhere
+#: src/lib/filter-dimensions.ts
+#: src/ui/compose/ComposeDialog.tsx
+#: src/ui/feed/PostStatusBadges.tsx
+msgid "Unlisted"
+msgstr "Unlisted"
 
 #. @context: Archive filter - notes without a title
 #. @context: Archive filter - notes without a title

@@ -102,7 +102,7 @@ export type SettingsAboutPageStatus =
         id: string;
         title: string | null;
         status: "draft" | "published";
-        visibility: "public" | "latest_hidden" | "private";
+        visibility: "public" | "latest_hidden" | "unlisted" | "private";
       };
     }
   | {

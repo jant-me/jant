@@ -662,6 +662,12 @@ describe("archive visibility without a session", () => {
       status: "published",
       visibility: "private",
     });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "body shared by link",
+      status: "published",
+      visibility: "unlisted",
+    });
   }
 
   it("filters by Hidden-from-Latest for a signed-out reader", async () => {
@@ -683,6 +689,31 @@ describe("archive visibility without a session", () => {
     const res = await app.request("/archive?visibility=private&format=note");
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/archive?format=note");
+  });
+
+  it("strips unlisted from a signed-out reader's URL the same way", async () => {
+    const { app } = setupApp();
+
+    const res = await app.request("/archive?visibility=unlisted&format=note");
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/archive?format=note");
+  });
+
+  it("lists Unlisted posts for the author alone", async () => {
+    const reader = setupApp();
+    await seedVisibilities(reader.services);
+    const readerHtml = await (await reader.app.request("/archive")).text();
+    expect(readerHtml).toContain("body off the stream");
+    expect(readerHtml).not.toContain("body shared by link");
+
+    const author = setupAuthedApp();
+    await seedVisibilities(author.services);
+    const res = await author.app.request("/archive?visibility=unlisted");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("body shared by link");
+    expect(html).not.toContain("body kept back");
+    expect(html).not.toContain("body on the stream");
   });
 
   // 302, not 308: the URL moved for this reader at this moment, and has to
@@ -753,6 +784,8 @@ describe("archive visibility without a session", () => {
 
     const res = await app.request("/archive/feed?visibility=private");
     expect(res.status).toBe(404);
+    const unlisted = await app.request("/archive/feed?visibility=unlisted");
+    expect(unlisted.status).toBe(404);
   });
 });
 

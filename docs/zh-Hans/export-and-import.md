@@ -56,7 +56,7 @@ cd ./jant-site && hugo serve
 
 包含：
 
-- 所有帖子，含 Thread 的回复。草稿和私密帖子也在其中，front matter 标 `draft: true`，Hugo 只在 `hugo --buildDrafts` 时构建它们。
+- 所有帖子，含 Thread 的回复。草稿和私密帖子也在其中，front matter 标 `draft: true`，Hugo 只在 `hugo --buildDrafts` 时构建它们。Unlisted 的帖子照常构建，但不出现在任何列表和 sitemap 里。
 - 帖子和头像用到的媒体，下载到 `static/media/`，归档不依赖原站。`--no-pull-media` 跳过下载。
 - 合集、合集目录（顺序、分隔线、自定义链接及其说明）和导航（位置、标签、每一项指向的合集、智能合集或页面），写在 `data/jant.toml`。
 - 智能合集，条件和排序写在各自的 `content/{slug}/_index.md`。主题用这些条件筛选导出的帖子，页面列出的内容和 Jant 上一致，仓库里加了帖子也会跟着更新。
@@ -158,38 +158,39 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 
 帖子文件：Thread 的 root 是 `content/<slug>/_index.md`，每条回复是 `content/<root>/<slug>/index.md`。
 
-| 字段                        | 位置 | 说明                                                                                              |
-| --------------------------- | ---- | ------------------------------------------------------------------------------------------------- |
-| `id`                        | 都有 | 帖子 TypeID                                                                                       |
-| `title`                     | 都有 | 引用没有                                                                                          |
-| `date`                      | 都有 | 发布时间，UTC 的 RFC 3339；草稿是创建时间                                                         |
-| `created`、`updated`        | 都有 | 写作时间和最后编辑时间，和 `date` 不同时才写                                                      |
-| `slug`                      | 都有 | 规范 slug                                                                                         |
-| `type`                      | 都有 | `post`                                                                                            |
-| `draft`                     | 都有 | 草稿和私密帖子为 `true`，Hugo 只在 `--buildDrafts` 时构建                                         |
-| `format`                    | 都有 | `note`、`link` 或 `quote`                                                                         |
-| `status`                    | 都有 | `published` 或 `draft`                                                                            |
-| `visibility`                | 都有 | `public`、`latest_hidden` 或 `private`                                                            |
-| `summary_text`              | 都有 | 仅主题：纯文本摘要                                                                                |
-| `link_url`                  | 都有 | 链接帖子的链接                                                                                    |
-| `source_name`、`source_url` | 都有 | 引用的出处                                                                                        |
-| `quote_text`                | 都有 | 引用的原文                                                                                        |
-| `rating`                    | 都有 | `1` 到 `5`                                                                                        |
-| `featured_at`、`pinned_at`  | 都有 | UTC 的 RFC 3339                                                                                   |
-| `media`                     | 都有 | 按顺序的附件，见下表                                                                              |
-| `aliases`                   | root | Hugo 的别名页：root 的自定义 URL 和每条回复的 slug                                                |
-| `root_aliases`              | root | root 的自定义 URL，导入时重建                                                                     |
-| `language`                  | root | BCP 47 内容语言，整个 Thread 相同                                                                 |
-| `translation_group`         | root | 互为译文的帖子共用                                                                                |
-| `last_activity_at`          | root | Thread 里最新一篇帖子（不含用 **Reply quietly** 发布的回复），和 `date` 不同时才写                |
-| `collections`               | root | Thread 所属的合集，每项含 `slug`、`collected_at`、`position`、`pinned_at`，以及仅主题用的 `title` |
-| `weight`                    | 回复 | 在 Thread 里的位置                                                                                |
-| `build`                     | 回复 | Hugo 构建选项 `render` 和 `list`，让回复不出现在列表里                                            |
-| `quiet_reply`               | 回复 | 用 **Reply quietly** 发布的回复为 `true`                                                          |
-| `feed_id`                   | root | 仅主题：Jant 的 feed 给这个 Thread 的条目 ID                                                      |
-| `featured_post_ids`         | root | 仅主题                                                                                            |
-| `featured_sort_at`          | root | 仅主题                                                                                            |
-| `truncated`                 | 都有 | 仅主题                                                                                            |
+| 字段                        | 位置 | 说明                                                                                               |
+| --------------------------- | ---- | -------------------------------------------------------------------------------------------------- |
+| `id`                        | 都有 | 帖子 TypeID                                                                                        |
+| `title`                     | 都有 | 引用没有                                                                                           |
+| `date`                      | 都有 | 发布时间，UTC 的 RFC 3339；草稿是创建时间                                                          |
+| `created`、`updated`        | 都有 | 写作时间和最后编辑时间，和 `date` 不同时才写                                                       |
+| `slug`                      | 都有 | 规范 slug                                                                                          |
+| `type`                      | 都有 | `post`                                                                                             |
+| `draft`                     | 都有 | 草稿和私密帖子为 `true`，Hugo 只在 `--buildDrafts` 时构建                                          |
+| `format`                    | 都有 | `note`、`link` 或 `quote`                                                                          |
+| `status`                    | 都有 | `published` 或 `draft`                                                                             |
+| `visibility`                | 都有 | `public`、`latest_hidden`、`unlisted` 或 `private`                                                 |
+| `summary_text`              | 都有 | 仅主题：纯文本摘要                                                                                 |
+| `link_url`                  | 都有 | 链接帖子的链接                                                                                     |
+| `source_name`、`source_url` | 都有 | 引用的出处                                                                                         |
+| `quote_text`                | 都有 | 引用的原文                                                                                         |
+| `rating`                    | 都有 | `1` 到 `5`                                                                                         |
+| `featured_at`、`pinned_at`  | 都有 | UTC 的 RFC 3339                                                                                    |
+| `media`                     | 都有 | 按顺序的附件，见下表                                                                               |
+| `aliases`                   | root | Hugo 的别名页：root 的自定义 URL 和每条回复的 slug                                                 |
+| `root_aliases`              | root | root 的自定义 URL，导入时重建                                                                      |
+| `language`                  | root | BCP 47 内容语言，整个 Thread 相同                                                                  |
+| `translation_group`         | root | 互为译文的帖子共用                                                                                 |
+| `last_activity_at`          | root | Thread 里最新一篇帖子（不含用 **Reply quietly** 发布的回复），和 `date` 不同时才写                 |
+| `collections`               | root | Thread 所属的合集，每项含 `slug`、`collected_at`、`position`、`pinned_at`，以及仅主题用的 `title`  |
+| `weight`                    | 回复 | 在 Thread 里的位置                                                                                 |
+| `build`                     | 都有 | Hugo 构建选项：`render` 和 `list` 让回复不出现在列表里，`list: never` 让 Unlisted 的 root 也不出现 |
+| `sitemap`                   | root | 仅主题：Unlisted 的 root 上，`disable` 设为 `true`，让页面不进 Hugo 的 sitemap                     |
+| `quiet_reply`               | 回复 | 用 **Reply quietly** 发布的回复为 `true`                                                           |
+| `feed_id`                   | root | 仅主题：Jant 的 feed 给这个 Thread 的条目 ID                                                       |
+| `featured_post_ids`         | root | 仅主题                                                                                             |
+| `featured_sort_at`          | root | 仅主题                                                                                             |
+| `truncated`                 | 都有 | 仅主题                                                                                             |
 
 `media` 的每一项：
 

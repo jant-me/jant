@@ -56,7 +56,7 @@ cd ./jant-site && hugo serve
 
 Included:
 
-- Every post, Thread replies included. Drafts and private posts carry `draft: true` in front matter; Hugo builds them only with `hugo --buildDrafts`.
+- Every post, Thread replies included. Drafts and private posts carry `draft: true` in front matter; Hugo builds them only with `hugo --buildDrafts`. Unlisted posts are built, and stay out of every list and the sitemap.
 - Media used by posts and avatars, downloaded into `static/media/` so the archive stands on its own. `--no-pull-media` skips the download.
 - Collections, the Collections directory (order, dividers, custom links with their descriptions), and navigation (placement, labels, and the Collection, Smart Collection, or page each entry points at), in `data/jant.toml`.
 - Smart Collections, each as its conditions and sort order in `content/{slug}/_index.md`. The theme applies the conditions to the exported posts, so the page lists what it lists on Jant and keeps up as posts are added to the repository.
@@ -169,7 +169,7 @@ Post files: `content/<slug>/_index.md` for a Thread's root, and `content/<root>/
 | `draft`                     | both  | `true` for drafts and private posts, which Hugo builds only with `--buildDrafts`                              |
 | `format`                    | both  | `note`, `link`, or `quote`                                                                                    |
 | `status`                    | both  | `published` or `draft`                                                                                        |
-| `visibility`                | both  | `public`, `latest_hidden`, or `private`                                                                       |
+| `visibility`                | both  | `public`, `latest_hidden`, `unlisted`, or `private`                                                           |
 | `summary_text`              | both  | Theme only: a plain-text summary                                                                              |
 | `link_url`                  | both  | Link posts: the link                                                                                          |
 | `source_name`, `source_url` | both  | Quotes: the attribution                                                                                       |
@@ -184,7 +184,8 @@ Post files: `content/<slug>/_index.md` for a Thread's root, and `content/<root>/
 | `last_activity_at`          | root  | Newest post in the Thread, quiet replies left out, where it differs from `date`                               |
 | `collections`               | root  | The Thread's collections, each with `slug`, `collected_at`, `position`, `pinned_at`, and a theme-only `title` |
 | `weight`                    | reply | Position in the Thread                                                                                        |
-| `build`                     | reply | Hugo build options, `render` and `list`, that keep a reply out of lists                                       |
+| `build`                     | both  | Hugo build options: `render` and `list` keep a reply out of lists, and `list: never` an Unlisted root         |
+| `sitemap`                   | root  | Theme only: on an Unlisted root, `disable` set to `true` keeps the page out of Hugo's sitemap                 |
 | `quiet_reply`               | reply | `true` for a reply published quietly                                                                          |
 | `feed_id`                   | root  | Theme only: the entry ID Jant's feeds give the Thread                                                         |
 | `featured_post_ids`         | root  | Theme only                                                                                                    |

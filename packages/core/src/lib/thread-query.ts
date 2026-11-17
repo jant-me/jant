@@ -38,7 +38,11 @@ export type ThreadSelectionParse =
   | { kind: "empty" };
 
 const READER_VISIBILITIES = ["public", "featured", "hidden", "any"] as const;
-const AUTHOR_VISIBILITIES = [...READER_VISIBILITIES, "private"] as const;
+const AUTHOR_VISIBILITIES = [
+  ...READER_VISIBILITIES,
+  "unlisted",
+  "private",
+] as const;
 
 /** The `visibility` values an author's Thread list takes. */
 export const THREAD_AUTHOR_VISIBILITIES = AUTHOR_VISIBILITIES;
@@ -88,7 +92,7 @@ export function queryReader(query: object): ParamReader {
  * refused.
  *
  * @param read - Reads one parameter; `undefined` when absent
- * @param options.audience - A reader may not name `private`
+ * @param options.audience - A reader may not name `unlisted` or `private`
  * @param options.loadCollections - Loads the collection vocabulary, called only
  *   when a collection is named
  * @returns The selection, or `empty` when a named collection doesn't exist

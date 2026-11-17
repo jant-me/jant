@@ -1,0 +1,5 @@
+UPDATE "view_count" AS "opened" SET "count" = "opened"."count" + "read"."count" FROM "view_count" AS "read" WHERE "opened"."via" = 'page' AND "read"."via" = 'list' AND "read"."site_id" = "opened"."site_id" AND "read"."day" = "opened"."day" AND "read"."page" = "opened"."page" AND "read"."referrer" = "opened"."referrer";--> statement-breakpoint
+DELETE FROM "view_count" AS "read" USING "view_count" AS "opened" WHERE "read"."via" = 'list' AND "opened"."via" = 'page' AND "read"."site_id" = "opened"."site_id" AND "read"."day" = "opened"."day" AND "read"."page" = "opened"."page" AND "read"."referrer" = "opened"."referrer";--> statement-breakpoint
+ALTER TABLE "view_count" DROP CONSTRAINT "view_count_site_id_day_page_referrer_via_pk";--> statement-breakpoint
+ALTER TABLE "view_count" DROP COLUMN "via";--> statement-breakpoint
+ALTER TABLE "view_count" ADD CONSTRAINT "view_count_site_id_day_page_referrer_pk" PRIMARY KEY("site_id","day","page","referrer");

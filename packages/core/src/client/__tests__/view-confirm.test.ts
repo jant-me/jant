@@ -1,7 +1,11 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { confirmView, VIEW_CONFIRM_DWELL_MS } from "../view-confirm.js";
+import {
+  confirmView,
+  isViewConfirmed,
+  VIEW_CONFIRM_DWELL_MS,
+} from "../view-confirm.js";
 
 function setToken(token = "payload.0123456789abcdef0123456789abcdef"): void {
   const meta = document.createElement("meta");
@@ -54,6 +58,7 @@ describe("confirmView", () => {
     expect(beacon).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(beacon).toHaveBeenCalledTimes(1);
+    expect(isViewConfirmed()).toBe(true);
     const [url, body] = beacon.mock.calls[0] as unknown as [string, Blob];
     expect(url).toBe("/_/seen");
     expect(body).toBeInstanceOf(Blob);

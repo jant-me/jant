@@ -3,7 +3,9 @@
  *
  * Runs after the route and, when the route named what it rendered
  * (`c.var.viewTarget`) and the request was one reader opening that page,
- * writes a signed view token into the page's `<head>`. The view is counted
+ * writes a signed view token into the page's `<head>`. On a list page the
+ * token also names the Threads the page shows whole, read from the marks the
+ * feed left on them (`lib/list-views.ts`). The view is counted
  * only when the browser posts that token back (`routes/view-confirm.ts`),
  * which the reader bundle does once the page has been in front of the reader
  * for a few seconds or on the first interaction: a request can look exactly
@@ -29,6 +31,7 @@ import {
   viewPathKey,
   viewReferrer,
 } from "../lib/view-counting.js";
+import { viewUnitsInHtml } from "../lib/list-views.js";
 import { signViewToken, VIEW_TOKEN_META_NAME } from "../lib/view-token.js";
 import { viewBasePath } from "../lib/view-language.js";
 
@@ -105,6 +108,10 @@ export function viewCounter(): MiddlewareHandler<Env> {
       target.kind === "path"
         ? viewPathKey(c.req.path, viewBasePath(c))
         : target.id;
+
+    // The body is a rendered string; reading it consumes it, so the response
+    // is rebuilt either way.
+    const html = await c.res.text();
     const token = await signViewToken(
       secret,
       {
@@ -116,14 +123,12 @@ export function viewCounter(): MiddlewareHandler<Env> {
           ownHost: new URL(c.var.publicRequestUrl).hostname,
           fetchSite: c.req.header("sec-fetch-site"),
         }),
+        units: viewUnitsInHtml(html),
       },
       now(),
     );
 
-    // The body is a rendered string; reading it consumes it, so the response
-    // is rebuilt either way. The token is base64url and hex: safe as-is in
-    // an attribute.
-    const html = await c.res.text();
+    // The token is base64url and hex: safe as-is in an attribute.
     const head = html.indexOf("</head>");
     const body =
       head === -1

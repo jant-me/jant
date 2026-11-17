@@ -779,17 +779,17 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_posts_search",
     description:
-      "Search published posts, including private ones. Each result carries its visibility.",
+      "Search published posts, including unlisted and private ones. Each result carries its visibility.",
     inputSchema: toolInputSchema(SearchPostsToolSchema),
     async execute(args, context) {
       const input = SearchPostsToolSchema.parse(args ?? {});
-      // The author's search, the same as `GET /api/search`: private posts
-      // match, and each result says which visibility it has, so an agent can
-      // tell before linking one.
+      // The author's search, the same as `GET /api/search`: unlisted and
+      // private posts match, and each result says which visibility it has, so
+      // an agent can tell before linking one.
       const results = await context.services.search.search(input.q, {
         limit: input.limit,
         status: ["published"],
-        includePrivate: true,
+        asAuthor: true,
       });
 
       return {

@@ -10,6 +10,7 @@ import { TimelineItem } from "./TimelineItem.js";
 import { ThreadPreview } from "./ThreadPreview.js";
 import { CuratedThreadPreview } from "./CuratedThreadPreview.js";
 import { PagePagination } from "../shared/Pagination.js";
+import { VIEW_UNIT_ATTRIBUTE, wholeThreadOf } from "../../lib/list-views.js";
 
 interface TimelineFeedItemContentProps {
   item: TimelineItemView;
@@ -35,12 +36,14 @@ export const TimelineFeedItem: FC<TimelineFeedItemProps> = ({
   item,
   showDivider = false,
 }) => {
+  const wholeThread = wholeThreadOf(item);
   return (
     <div
       class="feed-item"
       data-timeline-item
       data-timeline-item-id={item.post.id}
       data-thread-root-id={item.post.threadRootId ?? item.post.id}
+      {...(wholeThread ? { [VIEW_UNIT_ATTRIBUTE]: wholeThread } : {})}
     >
       {showDivider && <hr class="feed-divider" />}
       <div data-timeline-item-content>

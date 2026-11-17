@@ -13,6 +13,7 @@ import { getCollectionPagePath } from "./collection-paths.js";
 import { toApiAttachment, toBodyMarkdown } from "./api-posts.js";
 import { getPostPath, toPublicPath } from "./url.js";
 import { getImageUrl, getMediaUrl, getPublicUrlForProvider } from "./image.js";
+import { getLinkPreviewIconImageOptions } from "./link-preview.js";
 
 export type PublicPostBaseResponse = {
   id: string;
@@ -31,6 +32,7 @@ export type PublicPostBaseResponse = {
   previewKind: string | null;
   previewProvider: string | null;
   previewImageUrl: string | null;
+  previewIconUrl: string | null;
   replyToId: string | null;
   threadId: string;
   /**
@@ -132,6 +134,13 @@ export function toPublicPost(
         { width: 1280, quality: 80, format: "auto", fit: "scale-down" },
       )
     : null;
+  const previewIconUrl = post.previewIconKey
+    ? getImageUrl(
+        getMediaUrl(post.previewIconKey, previewImagePublicUrl, sitePathPrefix),
+        imageTransformUrl,
+        getLinkPreviewIconImageOptions(post.previewIconKey),
+      )
+    : null;
 
   const base = {
     id: post.id,
@@ -149,6 +158,7 @@ export function toPublicPost(
     previewKind: post.previewKind,
     previewProvider: post.previewProvider,
     previewImageUrl,
+    previewIconUrl,
     replyToId: post.replyToId,
     threadId: post.threadId,
     language: post.language,

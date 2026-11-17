@@ -14,7 +14,6 @@ import type {
 } from "../../types.js";
 import { useLingui } from "../../i18n/context.js";
 import { canShareAsImage } from "../../lib/share-card.js";
-import { sanitizeUrl } from "../../lib/url.js";
 import { useViewer } from "../../lib/viewer-context.js";
 import { Icon } from "./Icon.js";
 
@@ -209,8 +208,6 @@ export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
               "@context: Tooltip and screen reader label for the featured-post icon in the post footer when no featured date is available",
           }),
         );
-  const safeExternalUrl =
-    post.format === "link" && post.url ? sanitizeUrl(post.url) : "";
   // Drafts get an ordinary footer — the Draft badge above already says what
   // they are, and their lifecycle actions live in the post menu next to Edit
   // and Delete rather than in a bespoke button row.
@@ -218,8 +215,7 @@ export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
   const hideActions = !!display?.hideActions;
   const hideReply = !!display?.hideReply;
   const showReply = !hideReply && post.isLastInThread;
-  const showCollectionSeparator =
-    showTimestamp || !!safeExternalUrl || post.featured;
+  const showCollectionSeparator = showTimestamp || post.featured;
   const visibleCollections =
     post.replyToId || post.threadRootId ? [] : post.collections;
 
@@ -246,23 +242,6 @@ export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
         )}
         {showTimestamp && (
           <PostPublishedLink post={post} className="u-url post-footer-link" />
-        )}
-        {safeExternalUrl && (
-          <a
-            href={safeExternalUrl}
-            class="post-footer-external-link"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={i18n._(
-              msg({
-                message: "Open external link",
-                comment:
-                  "@context: Accessible label for the external-link icon in the post footer",
-              }),
-            )}
-          >
-            <Icon name="post-external-link" />
-          </a>
         )}
         <CompactCollectionTags
           collections={visibleCollections}

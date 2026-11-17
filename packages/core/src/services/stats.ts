@@ -11,11 +11,18 @@
  * - **A row is a counter.** Ten thousand readers opening one post from one
  *   link are one row. The table grows with the variety of a day's traffic,
  *   never its volume.
- * - **A key names a page.** A post, a collection or a smart collection is
- *   counted by id, so its count survives a change of address; the home page,
- *   the archive and an aggregate selection are counted by path. The key's
- *   shape says which (`viewPageKind`), and the list is named from it when
- *   read, never stored.
+ * - **A key names a page.** A Thread (a lone post is a Thread of one), a
+ *   collection or a smart collection is counted by id — a Thread by its
+ *   root's — so its count survives a change of address and every post of a
+ *   Thread opens the same page; the home page, the archive and an aggregate
+ *   selection are counted by path. The key's shape says which
+ *   (`viewPageKind`), and the list is named from it when read, never stored.
+ * - **Opened, or read in a list.** A Thread a reader read whole in a list
+ *   without opening it (`client/list-views.ts` has what "whole" takes)
+ *   counts as a view of it, like its page opened, in every number: its own,
+ *   the site's total, the chart, the referrers. A view is something read,
+ *   not a visit — Jant has no visits — so the home page opened and three
+ *   notes read on it are four.
  * - **Thirty days.** Rows older than `VIEW_COUNT_RETENTION_DAYS` are deleted,
  *   once a day per site, by whichever flush comes first. Nothing is rolled up:
  *   a lifetime total is exactly the scoreboard this feature is not.

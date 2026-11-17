@@ -20,12 +20,13 @@ import { ID_PREFIX, isTypeId } from "./ids.js";
 import { canonicalSource } from "./referrer-aliases.js";
 
 /**
- * What the page a route rendered counts as: a post, a collection or a smart
- * collection, by id, so a count survives a change of address and an alias
- * and its canonical path are one page; or any other public page — the home
- * page, the archive, an aggregate selection — by its path. Routes set it on
- * the context (`viewTarget`) and `middleware/view-counter.ts` reads it after
- * the response.
+ * What the page a route rendered counts as: a Thread (by its root's id — a
+ * lone post is a Thread of one), a collection or a smart collection, by id,
+ * so a count survives a change of address and an alias and its canonical
+ * path are one page; or any other public page — the home page, the archive,
+ * an aggregate selection — by its path. Routes set it on the context
+ * (`viewTarget`) and `middleware/view-counter.ts` reads it after the
+ * response.
  */
 export type ViewTarget =
   | { kind: "post" | "collection" | "smartCollection"; id: string }

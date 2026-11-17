@@ -166,6 +166,9 @@ async function renderPostWithTextPreview(
     articlePublishedTime: display.articlePublishedTime,
     articleModifiedTime: display.articleModifiedTime,
     jsonLd: buildPostJsonLd(c, display, meta, canonicalHref, navData.siteName),
+    // An Unlisted post opens for anyone with its link, and stays out of
+    // search engines even after someone posts that link in public.
+    ...(post.visibility === "unlisted" ? { noindex: true } : {}),
     navData,
     composeContextLanguage: post.language,
     content: (
@@ -255,14 +258,16 @@ async function buildTranslationLinks(
   const pathByLanguage = new Map<string, string>();
   if (!post.language) return { alternates: [], pathByLanguage };
 
-  // Only the versions a reader can actually open. A draft or private
+  // Only the versions a reader may find listed. A draft or private
   // translation answers the same URL with a 404, and an `hreflang` pointing
   // at a 404 is worse than no `hreflang` at all — the switcher then falls
-  // back to that language's home, which is always somewhere real (§5).
+  // back to that language's home, which is always somewhere real (§5). An
+  // Unlisted translation opens, but linking it from every page of its group
+  // would list it.
   const translations = post.translationGroupId
     ? await c.var.services.posts.listTranslations(post.threadId, {
         status: "published",
-        excludePrivate: true,
+        listedForReader: true,
       })
     : [];
   const siblings = translations.filter(
@@ -311,7 +316,11 @@ async function renderPost(
   } = {},
 ) {
   // A preview is the author looking at their own draft, not a page read.
-  if (!options.isPreview) c.set("viewTarget", { kind: "post", id: post.id });
+  // Every post of a Thread renders the whole Thread, so each counts toward
+  // the Thread, by its root's id, as its canonical URL points to the root.
+  if (!options.isPreview) {
+    c.set("viewTarget", { kind: "post", id: post.threadId });
+  }
 
   // The chrome, the thread, and the translation links each need only the
   // post, so they load together. The chrome is scoped to the post's
@@ -425,6 +434,9 @@ async function renderPost(
       : {}),
     navData,
     composeContextLanguage: post.language,
+    // An Unlisted post opens for anyone with its link, and stays out of
+    // search engines even after someone posts that link in public.
+    ...(post.visibility === "unlisted" ? { noindex: true } : {}),
     ...(options.isPreview
       ? {
           pageChrome: <DraftPreviewBar editHref={draftEditHref} />,

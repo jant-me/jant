@@ -1,8 +1,8 @@
 {{- /*
   The Threads on Featured, in the order Jant lists them on the Featured page
   and in `/featured/feed` (`listFeaturedThreadRootIds`): a Thread belongs
-  when any published post in it is featured and it is not private. Hidden
-  from Latest is no bar here.
+  when any published post in it is featured and it is neither Unlisted nor
+  private. Hidden from Latest is no bar here.
 
   Order: the newest publication among the Thread's featured posts
   (`featured_sort_at`, which the export derives exactly that way), newest
@@ -17,7 +17,7 @@
 {{- range $roots -}}
   {{- $post := . -}}
   {{- $params := .Params -}}
-  {{- $visible := and (eq ($params.status | default "published") "published") (ne $params.visibility "private") -}}
+  {{- $visible := and (eq ($params.status | default "published") "published") (in (slice "public" "latest_hidden") ($params.visibility | default "public")) -}}
   {{- if and $visible $params.featured_sort_at -}}
     {{- $keyed = $keyed | append (dict
       "key" (printf "%020d %s" (time.AsTime $params.featured_sort_at).Unix $params.id)

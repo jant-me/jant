@@ -267,20 +267,38 @@ jobs:
     secrets:
       BUILD_REPO_TOKEN: ${{ secrets.BUILD_REPO_TOKEN }}
 
+  # The hosted stack is previewed from the preview branch alone. Pull requests
+  # get a single-site preview instead (deploy-site-preview).
   deploy-studio-preview:
     name: Deploy Jant Preview via Build
     needs: [ci, pg-smoke]
-    # Pushes to the preview branch deploy directly; PR-based preview deploys
-    # skip the preview branch itself so one push never dispatches twice.
-    if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/preview') ||
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.head.repo.full_name == github.repository &&
-       github.event.pull_request.head.ref != 'preview')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/preview'
     uses: ./.github/workflows/deploy-studio.yml
     with:
-      source_ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-      source_sha: ${{ github.event.pull_request.head.sha || github.sha }}
+      source_ref: ${{ github.ref_name }}
+      source_sha: ${{ github.sha }}
+      target_env: preview
+      github_environment: jant-preview
+    secrets:
+      BUILD_REPO_TOKEN: ${{ secrets.BUILD_REPO_TOKEN }}
+
+  # Every same-repo pull request gets a plain single-site Jant of its head at
+  # https://jant-site-<branch>.forpreview.com, seeded from the demo snapshot
+  # with a fresh database. It does not wait for CI. Closing the pull request
+  # removes it (preview-site-cleanup.yml). The preview branch is left out: it
+  # has the hosted preview, and its jant-site would have no branch suffix for
+  # the cleanup to find.
+  deploy-site-preview:
+    name: Deploy Site Preview via Build
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref != 'preview'
+    uses: ./.github/workflows/deploy-studio.yml
+    with:
+      service: jant-site
+      source_ref: ${{ github.event.pull_request.head.ref }}
+      source_sha: ${{ github.event.pull_request.head.sha }}
       target_env: preview
       github_environment: jant-preview
     secrets:
@@ -299,6 +317,7 @@ jobs:
       - deploy-content-lab
       - deploy-studio-prod
       - deploy-studio-preview
+      - deploy-site-preview
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -321,6 +340,7 @@ jobs:
           DEPLOY_CONTENT_LAB_RESULT: ${{ needs['deploy-content-lab'].result }}
           DEPLOY_STUDIO_PROD_RESULT: ${{ needs['deploy-studio-prod'].result }}
           DEPLOY_STUDIO_PREVIEW_RESULT: ${{ needs['deploy-studio-preview'].result }}
+          DEPLOY_SITE_PREVIEW_RESULT: ${{ needs['deploy-site-preview'].result }}
         run: |
           set -euo pipefail
 
@@ -328,6 +348,7 @@ jobs:
             printf '| %s | %s | %s |\n' "$1" "$2" "$3"
           }
 
+          preview_url=""
           {
             echo "## Deployment Summary"
             echo
@@ -350,13 +371,21 @@ jobs:
               write_row "jant preview build" "true" "$DEPLOY_STUDIO_PREVIEW_RESULT"
             elif [ "$EVENT_NAME" = "pull_request" ]; then
               if [ "$PR_HEAD_REPO" != "$REPOSITORY" ]; then
-                write_row "jant preview build" "no (fork PR)" "$DEPLOY_STUDIO_PREVIEW_RESULT"
+                write_row "jant-site preview build" "no (fork PR)" "$DEPLOY_SITE_PREVIEW_RESULT"
               elif [ "$PR_HEAD_REF" = "preview" ]; then
-                write_row "jant preview build" "no (deploys on push to preview)" "$DEPLOY_STUDIO_PREVIEW_RESULT"
+                write_row "jant-site preview build" "no (preview has the hosted preview)" "$DEPLOY_SITE_PREVIEW_RESULT"
               else
-                write_row "jant preview build" "true" "$DEPLOY_STUDIO_PREVIEW_RESULT"
+                write_row "jant-site preview build" "true" "$DEPLOY_SITE_PREVIEW_RESULT"
+                # The host the build gives the branch: scripts/ops/preview-site.sh.
+                site_host="jant-site-$(printf '%s' "$PR_HEAD_REF" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]' | cut -c1-30)"
+                preview_url="https://${site_host}.forpreview.com"
               fi
             else
               write_row "automatic deploys" "n/a" "not selected for this event"
+            fi
+
+            if [ -n "$preview_url" ]; then
+              echo
+              echo "Preview (ready about five minutes after the build starts): $preview_url"
             fi
           } >> "$GITHUB_STEP_SUMMARY"

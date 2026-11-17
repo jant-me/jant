@@ -5,7 +5,9 @@ import "../jant-media-lightbox.js";
 import type { JantMediaLightbox } from "../jant-media-lightbox.js";
 import { shouldUseScrollableLightboxImage } from "../jant-media-lightbox.js";
 import {
+  MEDIA_LIGHTBOX_SHOW_EVENT,
   MEDIA_VIDEO_PLAYBACK_INTENT_EVENT,
+  type MediaLightboxShowDetail,
   setMediaVideoPlaybackPaused,
   type MediaVideoPlaybackIntentDetail,
 } from "../../media-lightbox-events.js";
@@ -219,6 +221,33 @@ describe("JantMediaLightbox", () => {
     expect(nextStage?.classList.contains("media-lightbox-stage-scroll")).toBe(
       false,
     );
+  });
+
+  it("says which item it shows, and where it was opened from, on opening and on paging", async () => {
+    const el = await createElement();
+    const shown: MediaLightboxShowDetail[] = [];
+    const record = (event: Event) =>
+      shown.push((event as CustomEvent<MediaLightboxShowDetail>).detail);
+    document.addEventListener(MEDIA_LIGHTBOX_SHOW_EVENT, record);
+    const source = document.createElement("div");
+
+    el.open(
+      [
+        { url: "https://example.com/a.jpg", alt: "" },
+        { url: "https://example.com/b.jpg", alt: "" },
+      ],
+      0,
+      source,
+    );
+    await flush(el);
+    el.querySelector<HTMLButtonElement>(".media-lightbox-nav-next")?.click();
+    await flush(el);
+    document.removeEventListener(MEDIA_LIGHTBOX_SHOW_EVENT, record);
+
+    expect(shown).toEqual([
+      { source, index: 0 },
+      { source, index: 1 },
+    ]);
   });
 
   it("uses natural image dimensions for inline post-body images", async () => {

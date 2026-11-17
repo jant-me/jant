@@ -103,6 +103,7 @@ const NOT_IN_FIXTURE = new Set([
   "draft",
   "public",
   "latest_hidden",
+  "unlisted",
   "private",
   "image",
   "video",

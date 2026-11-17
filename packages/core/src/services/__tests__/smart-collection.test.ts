@@ -641,10 +641,10 @@ describe("SmartCollectionService", () => {
       });
 
       expect(
-        smartCollections.toPostFilters(created, anonymous).excludePrivate,
+        smartCollections.toPostFilters(created, anonymous).listedForReader,
       ).toBe(true);
       expect(
-        smartCollections.toPostFilters(created, author).excludePrivate,
+        smartCollections.toPostFilters(created, author).listedForReader,
       ).toBe(false);
     });
   });

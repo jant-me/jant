@@ -185,7 +185,7 @@ describe.skipIf(!hugoAvailable)(
         status: "published",
         excludeReplies: true,
         excludeLatestHidden: true,
-        excludePrivate: true,
+        listedForReader: true,
         limit: 1000,
       });
       expected.home = slugs(home.map((item) => item.id));
@@ -203,7 +203,7 @@ describe.skipIf(!hugoAvailable)(
       expected.featured = slugs(
         await posts.listFeaturedThreadRootIds({
           status: "published",
-          excludePrivate: true,
+          listedForReader: true,
         }),
       );
       expectedPages.featured = chunk(expected.featured, PAGE_SIZE);

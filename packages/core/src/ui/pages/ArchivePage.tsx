@@ -584,6 +584,7 @@ const VISIBILITY_ICONS: Record<
 > = {
   public: "globe",
   latest_hidden: "eye-off",
+  unlisted: "link",
   private: "lock",
 };
 

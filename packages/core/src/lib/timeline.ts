@@ -13,6 +13,7 @@ import type {
   TimelineItemView,
 } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
+import { isListedForReader } from "../types/constants.js";
 import { buildMediaMap } from "./media-helpers.js";
 import { createMediaContext, resolveDraftTailId, toPostView } from "./view.js";
 import { getViewLang } from "./view-language.js";
@@ -411,7 +412,7 @@ export async function assembleTimeline(
   const page = Math.max(1, options?.page ?? 1);
   const offset = (page - 1) * pageSize;
 
-  const excludePrivate = !(options?.isAuthenticated ?? false);
+  const listedForReader = !(options?.isAuthenticated ?? false);
 
   // Count + list are independent — run in parallel
   const lang = viewLangFilter(c);
@@ -421,14 +422,14 @@ export async function assembleTimeline(
       status: "published",
       excludeReplies: true,
       excludeLatestHidden: true,
-      excludePrivate,
+      listedForReader,
       lang,
     }),
     c.var.services.posts.list({
       status: "published",
       excludeReplies: true,
       excludeLatestHidden: true,
-      excludePrivate,
+      listedForReader,
       lang,
       limit: pageSize,
       offset,
@@ -461,7 +462,7 @@ export async function assembleTimelineItem(
   threadRootId: string,
   options?: { isAuthenticated?: boolean },
 ): Promise<TimelineItemView | null> {
-  const excludePrivate = !(options?.isAuthenticated ?? false);
+  const listedForReader = !(options?.isAuthenticated ?? false);
   const post = await c.var.services.posts.getById(threadRootId);
 
   if (
@@ -469,7 +470,7 @@ export async function assembleTimelineItem(
     post.replyToId !== null ||
     post.status !== "published" ||
     post.visibility === "latest_hidden" ||
-    (excludePrivate && post.visibility === "private")
+    (listedForReader && !isListedForReader(post.visibility))
   ) {
     return null;
   }
@@ -492,19 +493,19 @@ export async function assembleFeaturedTimeline(
   const pageSize = c.var.appConfig.pageSize;
   const page = Math.max(1, options?.page ?? 1);
   const offset = (page - 1) * pageSize;
-  const excludePrivate = !(options?.isAuthenticated ?? false);
+  const listedForReader = !(options?.isAuthenticated ?? false);
 
   const lang = viewLangFilter(c);
 
   const [totalCount, rootIds] = await Promise.all([
     c.var.services.posts.countFeaturedThreadRoots({
       status: "published",
-      excludePrivate,
+      listedForReader,
       lang,
     }),
     c.var.services.posts.listFeaturedThreadRootIds({
       status: "published",
-      excludePrivate,
+      listedForReader,
       lang,
       limit: pageSize,
       offset,
@@ -562,7 +563,7 @@ export async function assembleCollectionTimeline(
   const pageSize = c.var.appConfig.pageSize;
   const page = Math.max(1, options.page ?? 1);
   const offset = (page - 1) * pageSize;
-  const excludePrivate = !(options.isAuthenticated ?? false);
+  const listedForReader = !(options.isAuthenticated ?? false);
   const lang = viewLangFilter(c);
 
   const [totalCount, rootIds] = await Promise.all([
@@ -570,7 +571,7 @@ export async function assembleCollectionTimeline(
       options.collectionIds,
       {
         status: "published",
-        excludePrivate,
+        listedForReader,
         lang,
       },
     ),
@@ -578,7 +579,7 @@ export async function assembleCollectionTimeline(
       options.collectionIds,
       {
         status: "published",
-        excludePrivate,
+        listedForReader,
         lang,
         sortOrder: options.sortOrder,
         limit: pageSize,

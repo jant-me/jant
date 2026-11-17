@@ -1128,6 +1128,7 @@
         "lastActivityAt",
         "permalink",
         "pinnedAt",
+        "previewIconUrl",
         "previewImageUrl",
         "previewKind",
         "previewProvider",

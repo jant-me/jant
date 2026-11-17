@@ -24,14 +24,14 @@
 /** How long a hit waits for company before the buffer is written out. */
 export const VIEW_FLUSH_DELAY_MS = 5_000;
 
-/** One reader opening one page, as the counter files it. */
+/** One reader opening one page, or reading one Thread in a list, as the counter files it. */
 export interface ViewHit {
   siteId: string;
   /** The site's calendar day, `YYYY-MM-DD`. */
   day: string;
   /** The site's hour, `YYYY-MM-DDTHH`, for today's chart. */
   hour: string;
-  /** A post id, or the path of any other page. */
+  /** A Thread's root id, or the path of any other page. */
   page: string;
   /** The referring host, or `""`. */
   referrer: string;

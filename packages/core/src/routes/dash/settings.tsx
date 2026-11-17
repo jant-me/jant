@@ -606,7 +606,7 @@ settingsRoutes.get("/general", async (c) => {
     status: "published" as const,
     excludeReplies: true,
     excludeLatestHidden: true,
-    excludePrivate: true,
+    listedForReader: true,
   };
   const [navData, aboutPage, announceState, publicPostCount] =
     await Promise.all([

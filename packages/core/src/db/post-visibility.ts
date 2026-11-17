@@ -18,7 +18,11 @@
  */
 
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
-import type { Status, Visibility } from "../types/constants.js";
+import {
+  READER_LISTED_VISIBILITIES,
+  type Status,
+  type Visibility,
+} from "../types/constants.js";
 
 /** The `post` columns the visibility rules read, in either dialect's bundle. */
 export interface PostVisibilityColumns {
@@ -60,8 +64,12 @@ export interface ReaderVisibilityOptions {
   status?: Status;
   /** Narrow to exactly one visibility, as the archive's filter bar does. */
   visibility?: Visibility;
-  /** True for a signed-out reader. */
-  excludePrivate?: boolean;
+  /**
+   * True for a signed-out reader: keep only what a reader may find in a list,
+   * dropping `unlisted` and `private`. An Unlisted post still opens at its
+   * address; no list includes it.
+   */
+  listedForReader?: boolean;
   /** True where `latest_hidden` posts are held back, as on Latest. */
   excludeLatestHidden?: boolean;
   /** Restrict to one content language, for a per-language view. */
@@ -85,7 +93,7 @@ export interface ReaderVisibilityOptions {
  * ```ts
  * const conditions = buildReaderVisibilityConditions(posts, siteId, {
  *   status: "published",
- *   excludePrivate: !isAuthenticated,
+ *   listedForReader: !isAuthenticated,
  * });
  * ```
  */
@@ -103,8 +111,8 @@ export function buildReaderVisibilityConditions(
   if (options.visibility !== undefined) {
     conditions.push(sql`${effectiveVisibility} = ${options.visibility}`);
   }
-  if (options.excludePrivate) {
-    conditions.push(sql`${effectiveVisibility} != 'private'`);
+  if (options.listedForReader) {
+    conditions.push(buildListedForReaderCondition(effectiveVisibility));
   }
   if (options.excludeLatestHidden) {
     conditions.push(sql`${effectiveVisibility} != 'latest_hidden'`);
@@ -114,4 +122,27 @@ export function buildReaderVisibilityConditions(
   }
 
   return conditions;
+}
+
+/**
+ * The condition that keeps a visibility a signed-out reader may find in a
+ * list: `public` and `latest_hidden`, never `unlisted` or `private`.
+ *
+ * Pass the effective visibility ({@link buildEffectiveVisibilityExpr}) unless
+ * the query already restricts itself to Thread roots, whose own column is the
+ * effective value.
+ *
+ * @param visibility - A visibility expression or column
+ * @returns `visibility IN ('public', 'latest_hidden')`
+ *
+ * @example
+ * ```ts
+ * conditions.push(buildListedForReaderCondition(posts.visibility));
+ * ```
+ */
+export function buildListedForReaderCondition(visibility: SQLWrapper): SQL {
+  return sql`${visibility} IN (${sql.join(
+    READER_LISTED_VISIBILITIES.map((value) => sql`${value}`),
+    sql`, `,
+  )})`;
 }

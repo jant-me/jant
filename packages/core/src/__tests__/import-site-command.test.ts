@@ -1062,7 +1062,12 @@ describe("Hugo import CLI helpers", () => {
       replyToId: null,
     };
 
-    for (const visibility of ["public", "latest_hidden", "private"] as const) {
+    for (const visibility of [
+      "public",
+      "latest_hidden",
+      "unlisted",
+      "private",
+    ] as const) {
       const bundle = {
         ...base,
         frontMatter: { ...base.frontMatter, visibility },
