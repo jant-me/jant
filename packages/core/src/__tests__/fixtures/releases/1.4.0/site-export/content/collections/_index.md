@@ -1,0 +1,5 @@
+---
+title: "Collections"
+type: "collections"
+---
+
