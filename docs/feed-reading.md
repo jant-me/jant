@@ -65,6 +65,7 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
 | `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them                                                                                                  |
 | `published` / `updated`  | 1     | `published` is when the post was published, in every feed. `updated` is the latest of that, an edit, a reply in its Thread, and, in a collection's feed, when the collection took the post in    |
 | `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread. A later release can add a format; read one you don't recognize as `note`                                              |
+| `jant:icon`              | 0–1   | Link posts only: the linked site's icon                                                                                                                                                          |
 | `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                                                                                                                  |
 | `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". A row's `truncated` says which post. Never on a Quote                                                                                           |
 | `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL. `@scheme` is the site's collections directory; a category with another scheme is not a collection           |
@@ -99,7 +100,7 @@ A thread arrives as one entry — root and replies together, so a reader does no
   <jant:post href="https://ex.com/dialing-in" format="note" published="2026-03-14T09:00:00.000Z"/>
   <jant:post href="https://ex.com/r1" format="link" published="2026-03-15T09:00:00.000Z"
              title="The AeroPress guide" url="https://other.example/aeropress"
-             thumbnail="https://ex.com/m/prev.jpg"/>
+             thumbnail="https://ex.com/m/prev.jpg" icon="https://ex.com/m/icon.png"/>
   <jant:post href="https://ex.com/r2" format="quote" published="2026-03-16T09:00:00.000Z"/>
   <jant:post href="https://ex.com/r3" format="note" published="2026-03-17T09:00:00.000Z"
              title="Got it" truncated="true"/>
@@ -124,6 +125,7 @@ One row per post, in thread order. `gap`, `latest`, and every
 | `title`       | 0–1   | Absent when the post has none, and on every Quote                         |
 | `url`         | 0–1   | Link posts only: where it points                                          |
 | `thumbnail`   | 0–1   | Link posts only: the preview image                                        |
+| `icon`        | 0–1   | Link posts only: the linked site's icon                                   |
 | `folded`      | 0–1   | `"true"` when the fold hid this post; absent means the summary renders it |
 | `truncated`   | 0–1   | `"true"` when the summary cut this post's block                           |
 
@@ -164,7 +166,7 @@ A post with no text contributes no block and leaves no marker. A lone post has n
 A reply's title, and a Link reply's source line, sit in a `<header>` inside
 its block — the root's are in the entry's own `<title>` and
 `link[@rel="alternate"]` instead. Render it as it stands, or drop that one
-element and redraw from the row, which also has the `thumbnail` the text cannot
+element and redraw from the row, which also has the `thumbnail` and `icon` the text cannot
 show.
 
 **Do not parse `<hr/>`.** It is drawn between posts, but it also separates a Quote from the author's commentary, and an author can type one.

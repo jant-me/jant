@@ -507,11 +507,13 @@
         "status"
       ],
       "jant:format": [],
+      "jant:icon": [],
       "jant:id": [],
       "jant:post": [
         "folded",
         "format",
         "href",
+        "icon",
         "published",
         "thumbnail",
         "title",

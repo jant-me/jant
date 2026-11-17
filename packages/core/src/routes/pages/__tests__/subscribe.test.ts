@@ -8,12 +8,65 @@
  * page exists to end.
  */
 
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it, vi } from "vitest";
 import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { i18nMiddleware } from "../../../i18n/index.js";
 import { languageRoutes } from "../language.js";
 import { pageRoutes } from "../page.js";
 import { subscribeRoutes } from "../subscribe.js";
+
+const CORE_ROOT = resolve(import.meta.dirname, "../../../..");
+
+/**
+ * Vitest stubs `@lingui/core/macro` so `msg()` returns `id === message` rather
+ * than SWC's compiled hash IDs (`src/__tests__/helpers/lingui-core-macro-mock.ts`).
+ * Loading the `msgid → msgstr` pairs from `locales/settings/{locale}.po` lets
+ * route tests exercise both `lingui.config.ts` catalog membership and runtime
+ * locale selection end to end.
+ */
+function readSettingsPoCatalog(locale: string): Record<string, string> {
+  const po = readFileSync(
+    resolve(CORE_ROOT, `src/i18n/locales/settings/${locale}.po`),
+    "utf8",
+  );
+  const catalog: Record<string, string> = {};
+  for (const block of po.split(/\n{2,}/)) {
+    const field = (keyword: string) => {
+      const match = new RegExp(
+        `^${keyword} ("(?:[^"\\\\]|\\\\.)*"(?:\\n"(?:[^"\\\\]|\\\\.)*")*)`,
+        "m",
+      ).exec(block);
+      if (!match?.[1]) return null;
+      return match[1]
+        .split("\n")
+        .map((line) => JSON.parse(line) as string)
+        .join("");
+    };
+    const id = field("msgid");
+    const str = field("msgstr");
+    if (id && str) catalog[id] = str;
+  }
+  return catalog;
+}
+
+const zhHansPo = readSettingsPoCatalog("zh-Hans");
+const zhHantPo = readSettingsPoCatalog("zh-Hant");
+
+vi.mock("../../../i18n/i18n.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../i18n/i18n.js")>();
+  return {
+    ...actual,
+    createI18n(locale: Parameters<typeof actual.createI18n>[0]) {
+      const instance = actual.createI18n(locale);
+      instance.load("zh-Hans", zhHansPo);
+      instance.load("zh-Hant", zhHantPo);
+      instance.activate(locale);
+      return instance;
+    },
+  };
+});
 
 function createSubscribeTestApp() {
   const testApp = createTestApp();
@@ -226,6 +279,88 @@ describe("subscribe page", () => {
       "/ja/featured/feed",
       "/ja/archive/feed",
     ]);
+  });
+
+  it("renders Simplified Chinese copy on a zh-Hans site while keeping public chrome in English", async () => {
+    const { app, services } = createSubscribeTestApp();
+    await services.settings.set("SITE_LANGUAGE", "zh-Hans");
+    await services.settings.set("MAIN_RSS_FEED", "latest");
+
+    const html = await (await app.request("/subscribe")).text();
+
+    expect(html).toContain("<title>订阅");
+    expect(html).toContain(
+      "本站提供 Atom feed，复制任一地址到 RSS 阅读器即可。",
+    );
+    expect(html).toContain("主订阅源");
+    expect(html).toContain("与首页内容一致。");
+    expect(html).toContain("只包含标为 Featured 的帖子。");
+    expect(html).toContain("所有已发布的帖子，包括不在首页显示的。");
+    expect(html).toContain(">All<");
+    expect(html).toContain("已复制订阅地址。");
+    expect(html).toContain("复制失败，请选中地址手动复制。");
+    expect(html).toContain("什么是 RSS 阅读器");
+    expect(html).toContain("进一步了解 RSS 与阅读器（aboutfeeds.com）");
+    // Surrounding public header chrome (`Search` lives in `settings` too as
+    // `搜索`) stays English so `/subscribe` does not diverge from `/` or `/archive`.
+    expect(html).toContain('aria-label="Search"');
+  });
+
+  it("maps regional Traditional Chinese tags to the zh-Hant catalog", async () => {
+    const { app, services } = createSubscribeTestApp();
+    await services.settings.set("SITE_LANGUAGE", "zh-TW");
+    await services.settings.set("MAIN_RSS_FEED", "latest");
+
+    const html = await (await app.request("/subscribe")).text();
+
+    expect(html).toContain("<title>訂閱");
+    expect(html).toContain("主要訂閱源");
+    expect(html).toContain("與首頁內容一致。");
+    expect(html).toContain(
+      "選集與封存篩選頁也有獨立的訂閱網址，在對應頁面找這個圖示即可。",
+    );
+    expect(html).toContain(">All<");
+  });
+
+  it("matches each multilingual view's language and falls back to English when untranslated", async () => {
+    const { app, services } = createSubscribeTestApp();
+    await services.settings.set("SITE_LANGUAGE", "zh-Hans");
+    await services.settings.set("ADDITIONAL_LANGUAGES", "en,zh-Hant,ja");
+    await services.settings.set("MULTILINGUAL_ENABLED", "true");
+    await services.settings.set("MAIN_RSS_FEED", "latest");
+
+    const rootHtml = await (await app.request("/subscribe")).text();
+    const enHtml = await (await app.request("/en/subscribe")).text();
+    const hantHtml = await (await app.request("/zh-hant/subscribe")).text();
+    const jaHtml = await (await app.request("/ja/subscribe")).text();
+
+    expect(rootHtml).toContain("什么是 RSS 阅读器");
+    expect(enHtml).toContain("What a feed reader does");
+    expect(feedPaths(enHtml)).toEqual([
+      "/en/feed",
+      "/en/featured/feed",
+      "/en/archive/feed",
+    ]);
+    expect(hantHtml).toContain("什麼是 RSS 閱讀器");
+    expect(feedPaths(hantHtml)).toEqual([
+      "/zh-hant/feed",
+      "/zh-hant/featured/feed",
+      "/zh-hant/archive/feed",
+    ]);
+    expect(jaHtml).toContain("What a feed reader does");
+  });
+
+  // `DASHBOARD_LANGUAGE` is the author's private preference; `/subscribe` is
+  // read by visitors of the site's content language.
+  it("follows the site's content language rather than DASHBOARD_LANGUAGE", async () => {
+    const { app, services } = createSubscribeTestApp();
+    await services.settings.set("SITE_LANGUAGE", "en");
+    await services.settings.set("DASHBOARD_LANGUAGE", "zh-Hans");
+
+    const html = await (await app.request("/subscribe")).text();
+
+    expect(html).toContain("What a feed reader does");
+    expect(html).not.toContain("什么是 RSS 阅读器");
   });
 
   // A slug may not shadow the page: `subscribe` is in RESERVED_PATHS, so this

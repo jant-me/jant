@@ -67,6 +67,7 @@ describe("feed docs", () => {
         "jant:discover",
         "jant:id",
         "jant:format",
+        "jant:icon",
         "jant:thread",
         "jant:post",
         "jant:truncated",
@@ -78,7 +79,13 @@ describe("feed docs", () => {
       new Set(["posts", "hidden", "gap", "latest"]),
     );
     expect([...(elements.get("jant:post") ?? [])]).toEqual(
-      expect.arrayContaining(["url", "thumbnail", "folded", "truncated"]),
+      expect.arrayContaining([
+        "url",
+        "thumbnail",
+        "icon",
+        "folded",
+        "truncated",
+      ]),
     );
     expect([...jantAttributes].sort()).toEqual(["jant:page", "jant:post"]);
 

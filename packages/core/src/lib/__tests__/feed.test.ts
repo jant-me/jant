@@ -2007,6 +2007,7 @@ describe("feed entry thread segmentation", () => {
               title: "The AeroPress guide",
               url: "https://other.example/aeropress",
               previewImageUrl: "/media/preview.jpg",
+              previewIconUrl: "/media/icon.png",
             }),
             makeReply(2, { title: "A titled reply" }),
           ],
@@ -2017,11 +2018,39 @@ describe("feed entry thread segmentation", () => {
     expect(xml).toContain(
       '<jant:post href="https://example.com/reply-1" format="link" published="2026-03-21T00:00:00.000Z"' +
         ' title="The AeroPress guide" url="https://other.example/aeropress"' +
-        ' thumbnail="https://example.com/media/preview.jpg"/>',
+        ' thumbnail="https://example.com/media/preview.jpg"' +
+        ' icon="https://example.com/media/icon.png"/>',
     );
     expect(xml).toContain(
       '<jant:post href="https://example.com/reply-2" format="note" published="2026-03-22T00:00:00.000Z" title="A titled reply"/>',
     );
+  });
+
+  it("emits jant:icon on an entry only when the Link post has a stored site icon", () => {
+    const withIcon = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          format: "link",
+          title: "The AeroPress guide",
+          url: "https://other.example/aeropress",
+          previewIconUrl: "/media/icon.png",
+        }),
+      ),
+    );
+    expect(withIcon).toContain(
+      "<jant:icon>https://example.com/media/icon.png</jant:icon>",
+    );
+
+    const withoutIcon = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          format: "link",
+          title: "The AeroPress guide",
+          url: "https://other.example/aeropress",
+        }),
+      ),
+    );
+    expect(withoutIcon).not.toContain("<jant:icon>");
   });
 
   // The entry's own `<title>` is empty for a quote because the attribution is

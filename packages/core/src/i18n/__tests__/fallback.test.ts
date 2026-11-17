@@ -60,5 +60,7 @@ describe("i18n locale fallback", () => {
 
     expect(zhHansSettings).not.toContain("Jant 的帖子格式之一");
     expect(zhHantSettings).not.toContain("Jant 的貼文格式之一");
+    expect(zhHansSettings).not.toContain("未发布内容");
+    expect(zhHantSettings).not.toContain("API 權杖名稱欄位");
   });
 });
