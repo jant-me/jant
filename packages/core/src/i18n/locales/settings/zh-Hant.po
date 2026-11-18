@@ -644,7 +644,7 @@ msgstr "選集"
 #. @context: Subscribe page closing note, next to a small feed icon standing in for the ones on collection and archive pages
 #: src/ui/pages/SubscribePage.tsx
 msgid "Collections and filtered archive views have their own feeds. Look for this icon on those pages."
-msgstr "選集與封存篩選頁也有獨立的訂閱網址，在對應頁面找這個圖示即可。"
+msgstr "每個選集與篩選後的封存都有 feed，見頁面上的此圖示。"
 
 #. @context: Appearance settings heading
 #: src/ui/dash/appearance/ColorThemeContent.tsx

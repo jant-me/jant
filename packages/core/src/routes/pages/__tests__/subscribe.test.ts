@@ -317,7 +317,7 @@ describe("subscribe page", () => {
     expect(html).toContain("主要訂閱源");
     expect(html).toContain("與首頁內容一致。");
     expect(html).toContain(
-      "選集與封存篩選頁也有獨立的訂閱網址，在對應頁面找這個圖示即可。",
+      "每個選集與篩選後的封存都有 feed，見頁面上的此圖示。",
     );
     expect(html).toContain(">All<");
   });
