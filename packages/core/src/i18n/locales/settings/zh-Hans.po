@@ -644,7 +644,7 @@ msgstr "合集"
 #. @context: Subscribe page closing note, next to a small feed icon standing in for the ones on collection and archive pages
 #: src/ui/pages/SubscribePage.tsx
 msgid "Collections and filtered archive views have their own feeds. Look for this icon on those pages."
-msgstr "合集与归档筛选页也有独立的订阅地址，在对应页面找这个图标即可。"
+msgstr "每个合集和筛选后的归档都有 feed，见页面上的此图标。"
 
 #. @context: Appearance settings heading
 #: src/ui/dash/appearance/ColorThemeContent.tsx
