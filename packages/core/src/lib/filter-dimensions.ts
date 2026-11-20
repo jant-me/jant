@@ -30,11 +30,13 @@ import type { I18n } from "../i18n/i18n.js";
 // depend on the viewmodel that displays it.
 import type {
   ArchiveVisibility,
+  FilterMatchMode,
   Format,
   MediaKind,
 } from "../types/constants.js";
 import {
   EARLIEST_FILTERABLE_YEAR,
+  FILTER_MATCH_MODES,
   FORMATS,
   LATEST_FILTERABLE_YEAR,
   MEDIA_KINDS,
@@ -95,31 +97,49 @@ export function isMediaSelection(value: unknown): value is MediaSelection {
   );
 }
 
+export { FILTER_MATCH_MODES, type FilterMatchMode };
+
+/** Query-string parameter name for {@link FilterMatchMode}. */
+export const FILTER_MATCH_PARAM = "match";
+
 /** The value type each dimension carries once parsed. */
 export interface FilterDimensionValues {
   /** Collection ids, OR'd together: a post in any one of them matches. */
   collection: readonly string[];
-  format: Format;
+  /** Single format, or 2+ formats OR'd together. */
+  format: Format | readonly Format[];
   /** `true` = has a title, `false` = has none. */
   title: boolean;
-  /** Publication year (Gregorian, UTC). */
-  year: number;
+  /** Publication year (Gregorian), or 2+ years OR'd together. */
+  year: number | readonly number[];
   media: MediaSelection;
   /** `true` = thread roots with replies, `false` = posts without any. */
   replies: boolean;
-  visibility: ArchiveVisibility;
+  /** Single visibility, or 2+ visibilities OR'd together. */
+  visibility: ArchiveVisibility | readonly ArchiveVisibility[];
 }
 
 /**
- * One reader's selection: every dimension optional, at most one value each.
+ * One reader's selection: every dimension optional, at most one entry per key.
  *
- * There is no "match any" mode and no repeated dimension. Both would be lies —
- * the conditions are always AND'd, and every dimension but `media` and
- * `collection` is a single column.
+ * Multiple values inside a single dimension (`format`, `collection`, `year`,
+ * `media`, `visibility`) are always OR'd. Across dimensions, `match` chooses
+ * whether a post must satisfy `"all"` (AND, the default when omitted) or
+ * `"any"` (OR) of the active dimensions.
  */
 export type PostFilterSelection = {
   readonly [K in FilterDimensionKey]?: FilterDimensionValues[K];
+} & {
+  readonly match?: FilterMatchMode;
 };
+
+function asList<T>(value: T | readonly T[]): readonly T[] {
+  return Array.isArray(value) ? (value as readonly T[]) : [value as T];
+}
+
+function collapseSingle<T>(values: readonly T[]): T | readonly T[] {
+  return values.length === 1 ? (values[0] as T) : values;
+}
 
 // =============================================================================
 // Context
@@ -427,29 +447,37 @@ const COLLECTION_DIMENSION: Dimension<"collection"> = {
   },
   storage: {
     column: "collectionId",
-    // The archive can OR several collections together; a smart collection
-    // deliberately cannot (see the feature notes on OR within a dimension), so
-    // the column is a single foreign key and the stored value is a list of one.
-    // Keeping the value shape identical either way is what lets one registry
-    // serve both.
+    // Stored as one or more comma-joined collection IDs, matching the URL's
+    // comma-joined slug spelling. Single-collection rows read and write as a
+    // bare TypeID string, keeping pre-OR rows byte-identical.
     isStorable(value): value is readonly string[] {
       return (
         Array.isArray(value) &&
-        value.length === 1 &&
-        typeof value[0] === "string" &&
-        isTypeId(value[0], ID_PREFIX.collection)
+        value.length >= 1 &&
+        value.every(
+          (id) => typeof id === "string" && isTypeId(id, ID_PREFIX.collection),
+        )
       );
     },
     toColumn(value) {
-      return value[0] as string;
+      return [...new Set(value)].join(",");
     },
     fromColumn(raw) {
-      return typeof raw === "string" && raw ? [raw] : null;
+      if (typeof raw !== "string" || !raw) return null;
+      const ids = [
+        ...new Set(
+          raw
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean),
+        ),
+      ];
+      return ids.length > 0 ? ids : null;
     },
   },
   control: { kind: "collection" },
   toPostFilter(value) {
-    return { collectionIds: [...value] };
+    return { collectionIds: [...new Set(value)] };
   },
   describe(value, _i18n, ctx) {
     const titles = value
@@ -476,6 +504,12 @@ const FORMAT_LABELS_PLURAL: Record<Format, MessageDescriptor> = {
   }),
 };
 
+function isFormatValue(value: unknown): value is Format {
+  return (
+    typeof value === "string" && (FORMATS as readonly string[]).includes(value)
+  );
+}
+
 const FORMAT_DIMENSION: Dimension<"format"> = {
   key: "format",
   label: msg({
@@ -487,33 +521,45 @@ const FORMAT_DIMENSION: Dimension<"format"> = {
     parse(read) {
       const raw = read("format");
       if (!raw) return { state: "absent" };
-      if (!(FORMATS as readonly string[]).includes(raw)) {
+      const parts = raw
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      if (parts.length === 0) return { state: "absent" };
+      if (!parts.every(isFormatValue)) {
         return {
           state: "invalid",
           message: `Invalid format value. Allowed: ${FORMATS.join(", ")}`,
         };
       }
-      return { state: "value", value: raw as Format };
+      const unique = [...new Set(parts)];
+      return { state: "value", value: collapseSingle(unique) };
     },
     serialize(value) {
-      return value;
+      const unique = [...new Set(asList(value))];
+      return unique.length > 0 ? unique.join(",") : null;
     },
   },
   storage: {
     column: "format",
-    isStorable(value): value is Format {
+    isStorable(value): value is Format | readonly Format[] {
       return (
-        typeof value === "string" &&
-        (FORMATS as readonly string[]).includes(value)
+        isFormatValue(value) ||
+        (Array.isArray(value) && value.length > 0 && value.every(isFormatValue))
       );
     },
     toColumn(value) {
-      return value;
+      const selected = new Set(asList(value));
+      return FORMATS.filter((format) => selected.has(format)).join(",");
     },
     fromColumn(raw) {
-      return (FORMATS as readonly string[]).includes(raw as string)
-        ? (raw as Format)
-        : null;
+      if (typeof raw !== "string" || !raw) return null;
+      const parts = raw
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      if (parts.length === 0 || !parts.every(isFormatValue)) return null;
+      return collapseSingle([...new Set(parts)]);
     },
   },
   control: {
@@ -522,10 +568,15 @@ const FORMAT_DIMENSION: Dimension<"format"> = {
     labelOf: (value) => FORMAT_LABELS_PLURAL[value as Format],
   },
   toPostFilter(value) {
-    return { format: value };
+    const unique = [...new Set(asList(value))];
+    if (unique.length === 0) return {};
+    if (unique.length === 1) return { format: unique[0] };
+    return { formats: unique };
   },
   describe(value, i18n) {
-    return i18n._(FORMAT_LABELS_PLURAL[value]);
+    return asList(value)
+      .map((format) => i18n._(FORMAT_LABELS_PLURAL[format]))
+      .join(", ");
   },
 };
 
@@ -637,6 +688,38 @@ const TITLE_DIMENSION: Dimension<"title"> = {
 
 // --- year --------------------------------------------------------------------
 
+function isFilterableYear(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= EARLIEST_FILTERABLE_YEAR &&
+    value <= LATEST_FILTERABLE_YEAR
+  );
+}
+
+function parseSingleYearToken(raw: string): number | null {
+  if (!/^\d+$/.test(raw)) return null;
+  const year = Number.parseInt(raw, 10);
+  return isFilterableYear(year) ? year : null;
+}
+
+/** Merge contiguous calendar years (e.g. 2024, 2025) into `[start, endExclusive)` spans. */
+function coalesceYearSpans(
+  years: readonly number[],
+): Array<{ start: number; endExclusive: number }> {
+  const sorted = [...new Set(years)].sort((a, b) => a - b);
+  const spans: Array<{ start: number; endExclusive: number }> = [];
+  for (const year of sorted) {
+    const last = spans[spans.length - 1];
+    if (last && last.endExclusive === year) {
+      last.endExclusive = year + 1;
+    } else {
+      spans.push({ start: year, endExclusive: year + 1 });
+    }
+  }
+  return spans;
+}
+
 const YEAR_DIMENSION: Dimension<"year"> = {
   key: "year",
   label: msg({
@@ -648,56 +731,93 @@ const YEAR_DIMENSION: Dimension<"year"> = {
     parse(read) {
       const raw = read("year");
       if (!raw) return { state: "absent" };
-      const year = Number.parseInt(raw, 10);
-      // Bounded at both ends, and the ceiling is the load-bearing one:
-      // `toPostFilter` turns a year into `Date.UTC`-based bounds, which go `NaN`
-      // past year 275760. A NaN bound is a comparison every row fails, so the page
-      // would render empty with nothing to say why.
-      if (
-        !Number.isFinite(year) ||
-        year < EARLIEST_FILTERABLE_YEAR ||
-        year > LATEST_FILTERABLE_YEAR
-      ) {
-        return {
-          state: "invalid",
-          message: `Invalid year value. Allowed: ${EARLIEST_FILTERABLE_YEAR} to ${LATEST_FILTERABLE_YEAR}`,
-        };
+      const parts = raw
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      if (parts.length === 0) return { state: "absent" };
+      const years: number[] = [];
+      for (const part of parts) {
+        // Bounded at both ends, and the ceiling is the load-bearing one:
+        // `toPostFilter` turns a year into `Date.UTC`-based bounds, which go `NaN`
+        // past year 275760. A NaN bound is a comparison every row fails, so the
+        // page would render empty with nothing to say why.
+        const year = parseSingleYearToken(part);
+        if (year === null) {
+          return {
+            state: "invalid",
+            message: `Invalid year value. Allowed: ${EARLIEST_FILTERABLE_YEAR} to ${LATEST_FILTERABLE_YEAR}`,
+          };
+        }
+        years.push(year);
       }
-      return { state: "value", value: year };
+      const unique = [...new Set(years)];
+      return { state: "value", value: collapseSingle(unique) };
     },
     serialize(value) {
-      return String(value);
+      const unique = [...new Set(asList(value))];
+      return unique.length > 0 ? unique.map(String).join(",") : null;
     },
   },
   storage: {
     column: "year",
-    isStorable(value): value is number {
+    isStorable(value): value is number | readonly number[] {
       return (
-        typeof value === "number" &&
-        Number.isInteger(value) &&
-        value >= EARLIEST_FILTERABLE_YEAR &&
-        value <= LATEST_FILTERABLE_YEAR
+        isFilterableYear(value) ||
+        (Array.isArray(value) &&
+          value.length > 0 &&
+          value.every(isFilterableYear))
       );
     },
     toColumn(value) {
-      return value;
+      return [...new Set(asList(value))]
+        .sort((a, b) => a - b)
+        .map(String)
+        .join(",");
     },
     fromColumn(raw) {
-      return typeof raw === "number" && Number.isInteger(raw) ? raw : null;
+      if (isFilterableYear(raw)) return raw;
+      if (typeof raw !== "string" || !raw) return null;
+      const parts = raw
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      if (parts.length === 0) return null;
+      const years: number[] = [];
+      for (const part of parts) {
+        const year = parseSingleYearToken(part);
+        if (year === null) return null;
+        years.push(year);
+      }
+      return collapseSingle([...new Set(years)]);
     },
   },
   control: { kind: "year" },
   toPostFilter(value, ctx) {
-    const after = startOfMonthIn(value, 1, ctx.timeZone);
-    const before = startOfMonthIn(value + 1, 1, ctx.timeZone);
-    // `PostFilters` has no year field: a year is a pair of timestamp bounds on
-    // whichever column the caller is treating as the timeline.
-    return ctx.yearAxis === "sort"
-      ? { axisAfter: after, axisBefore: before }
-      : { publishedAfter: after, publishedBefore: before };
+    const spans = coalesceYearSpans(asList(value));
+    const [onlySpan, ...restSpans] = spans;
+    if (!onlySpan) return {};
+    if (restSpans.length === 0) {
+      const after = startOfMonthIn(onlySpan.start, 1, ctx.timeZone);
+      const before = startOfMonthIn(onlySpan.endExclusive, 1, ctx.timeZone);
+      // `PostFilters` has no year field: a year is a pair of timestamp bounds on
+      // whichever column the caller is treating as the timeline.
+      return ctx.yearAxis === "sort"
+        ? { axisAfter: after, axisBefore: before }
+        : { publishedAfter: after, publishedBefore: before };
+    }
+    const axis =
+      ctx.yearAxis === "sort" ? ("sort" as const) : ("published" as const);
+    return {
+      timeRanges: spans.map((span) => ({
+        after: startOfMonthIn(span.start, 1, ctx.timeZone),
+        before: startOfMonthIn(span.endExclusive, 1, ctx.timeZone),
+        axis,
+      })),
+    };
   },
   describe(value) {
-    return String(value);
+    return asList(value).map(String).join(", ");
   },
 };
 
@@ -939,6 +1059,20 @@ const VISIBILITY_LABELS: Record<ArchiveVisibility, MessageDescriptor> = {
   }),
 };
 
+function isPublicArchiveVisibility(value: unknown): value is ArchiveVisibility {
+  return (
+    typeof value === "string" &&
+    (PUBLIC_ARCHIVE_VISIBILITIES as readonly string[]).includes(value)
+  );
+}
+
+function isArchiveVisibilityValue(value: unknown): value is ArchiveVisibility {
+  return (
+    typeof value === "string" &&
+    (ARCHIVE_VISIBILITY_VALUES as readonly string[]).includes(value)
+  );
+}
+
 const VISIBILITY_DIMENSION: Dimension<"visibility"> = {
   key: "visibility",
   label: msg({
@@ -950,21 +1084,50 @@ const VISIBILITY_DIMENSION: Dimension<"visibility"> = {
     parse(read) {
       const raw = read("visibility");
       if (!raw) return { state: "absent" };
-      const legacy = LEGACY_VISIBILITY_VALUES.get(raw);
-      if (legacy) return legacy;
-      const stored = VISIBILITY_BY_URL_VALUE.get(raw);
-      if (!stored) {
-        return {
-          state: "invalid",
-          message: `Invalid visibility value. Allowed: ${[
-            ...VISIBILITY_BY_URL_VALUE.keys(),
-          ].join(", ")}`,
-        };
+      const trimmed = raw.trim();
+      if (!trimmed) return { state: "absent" };
+      if (trimmed === "all") return { state: "cleared" };
+
+      const parts = trimmed
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      if (parts.length === 0) return { state: "absent" };
+
+      const values: ArchiveVisibility[] = [];
+      for (const part of parts) {
+        const legacy = LEGACY_VISIBILITY_VALUES.get(part);
+        if (legacy) {
+          if (legacy.state === "cleared") {
+            return {
+              state: "invalid",
+              message: `Invalid visibility value. Allowed: ${[
+                ...VISIBILITY_BY_URL_VALUE.keys(),
+              ].join(", ")}`,
+            };
+          }
+          values.push(legacy.value);
+          continue;
+        }
+        const stored = VISIBILITY_BY_URL_VALUE.get(part);
+        if (!stored) {
+          return {
+            state: "invalid",
+            message: `Invalid visibility value. Allowed: ${[
+              ...VISIBILITY_BY_URL_VALUE.keys(),
+            ].join(", ")}`,
+          };
+        }
+        values.push(stored);
       }
-      return { state: "value", value: stored };
+      const unique = [...new Set(values)];
+      return { state: "value", value: collapseSingle(unique) };
     },
     serialize(value) {
-      return VISIBILITY_URL_SPELLING[value];
+      const unique = [...new Set(asList(value))];
+      return unique.length > 0
+        ? unique.map((v) => VISIBILITY_URL_SPELLING[v]).join(",")
+        : null;
     },
   },
   storage: {
@@ -974,21 +1137,32 @@ const VISIBILITY_DIMENSION: Dimension<"visibility"> = {
     // `unlisted` and `private` parse here and fail validation, which is
     // exactly what lets the "turn this link into a smart collection" flow
     // refuse them by name.
-    isStorable(value): value is ArchiveVisibility {
+    isStorable(
+      value,
+    ): value is ArchiveVisibility | readonly ArchiveVisibility[] {
       return (
-        typeof value === "string" &&
-        (PUBLIC_ARCHIVE_VISIBILITIES as readonly string[]).includes(value)
+        isPublicArchiveVisibility(value) ||
+        (Array.isArray(value) &&
+          value.length > 0 &&
+          value.every(isPublicArchiveVisibility))
       );
     },
     toColumn(value) {
-      return value;
+      const selected = new Set(asList(value));
+      return PUBLIC_ARCHIVE_VISIBILITIES.filter((v) => selected.has(v)).join(
+        ",",
+      );
     },
     fromColumn(raw) {
-      return (ARCHIVE_VISIBILITY_VALUES as readonly string[]).includes(
-        raw as string,
-      )
-        ? (raw as ArchiveVisibility)
-        : null;
+      if (typeof raw !== "string" || !raw) return null;
+      const parts = raw
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      if (parts.length === 0 || !parts.every(isArchiveVisibilityValue)) {
+        return null;
+      }
+      return collapseSingle([...new Set(parts)]);
     },
   },
   control: {
@@ -998,11 +1172,22 @@ const VISIBILITY_DIMENSION: Dimension<"visibility"> = {
   },
   toPostFilter(value) {
     // `featured` is a virtual visibility — a separate flag rather than a stored
-    // value — so it lands in a different field than the stored ones.
-    return value === "featured" ? { featured: true } : { visibility: value };
+    // value — so a single featured selection lands in `featured`, while a
+    // multi-value union lands in `archiveVisibilities`.
+    const unique = [...new Set(asList(value))];
+    const [single, ...more] = unique;
+    if (!single) return {};
+    if (more.length === 0) {
+      return single === "featured"
+        ? { featured: true }
+        : { visibility: single };
+    }
+    return { archiveVisibilities: unique };
   },
   describe(value, i18n) {
-    return i18n._(VISIBILITY_LABELS[value]);
+    return asList(value)
+      .map((visibility) => i18n._(VISIBILITY_LABELS[visibility]))
+      .join(", ");
   },
 };
 
@@ -1038,38 +1223,73 @@ export const FILTER_DIMENSIONS = {
 } as const satisfies { [K in FilterDimensionKey]: Dimension<K> };
 
 /**
- * Every query parameter any dimension reads, current and legacy spellings both.
+ * Every query parameter any dimension or match mode reads, current and legacy
+ * spellings both.
  *
  * A strict parser uses this to tell "a parameter I do not know" from "a
  * parameter I know and chose not to act on".
  */
-export const FILTER_DIMENSION_PARAMS: readonly string[] =
-  FILTER_DIMENSION_KEYS.flatMap((key) => [
+export const FILTER_DIMENSION_PARAMS: readonly string[] = [
+  FILTER_MATCH_PARAM,
+  ...FILTER_DIMENSION_KEYS.flatMap((key) => [
     FILTER_DIMENSIONS[key].url.param,
     ...(FILTER_DIMENSIONS[key].url.legacy ?? []),
-  ]);
+  ]),
+];
+
+/**
+ * Normalize a selection to its canonical representation:
+ * deduplicated multi-value lists, single-element arrays collapsed to scalars
+ * on `format`, `year`, and `visibility`, and default `match: "all"` omitted.
+ *
+ * @param selection - Selection from an API request or caller
+ * @returns Canonical selection
+ * @example
+ * normalizePostFilterSelection({ match: "all", format: ["quote"] });
+ * // { format: "quote" }
+ */
+export function normalizePostFilterSelection(
+  selection: PostFilterSelection,
+): PostFilterSelection {
+  const normalized: Record<string, unknown> = {};
+  if (selection.match === "any") {
+    normalized.match = "any";
+  }
+  for (const key of FILTER_DIMENSION_KEYS) {
+    const value = selection[key];
+    if (value === undefined) continue;
+    const { storage } = FILTER_DIMENSIONS[key];
+    const roundTripped = storage.fromColumn(storeDimension(key, value));
+    if (roundTripped !== null) {
+      normalized[key] = roundTripped;
+    }
+  }
+  return normalized as PostFilterSelection;
+}
 
 // =============================================================================
 // Storing a whole selection
 // =============================================================================
 
 /**
- * The column values a selection writes, every dimension named.
+ * The column values a selection writes, every dimension and `matchMode` named.
  *
  * Dimensions with no value are written as `null`, not omitted: removing a
  * condition has to clear its column, and an object that simply left it out
  * would leave the old condition in place.
  *
  * @param selection - The selection to store
- * @returns One entry per dimension, keyed by its storage column
+ * @returns Column values keyed by Drizzle property name
  * @example
  * selectionToColumns({ format: "note" });
- * // { collectionId: null, format: "note", hasTitle: null, ... }
+ * // { matchMode: "all", collectionId: null, format: "note", hasTitle: null, ... }
  */
 export function selectionToColumns(
   selection: PostFilterSelection,
 ): Record<string, string | number | boolean | null> {
-  const columns: Record<string, string | number | boolean | null> = {};
+  const columns: Record<string, string | number | boolean | null> = {
+    matchMode: selection.match === "any" ? "any" : "all",
+  };
   for (const key of FILTER_DIMENSION_KEYS) {
     const { storage } = FILTER_DIMENSIONS[key];
     const value = selection[key];
@@ -1106,6 +1326,9 @@ export function selectionFromRow(
   row: Record<string, unknown>,
 ): PostFilterSelection {
   const selection: Record<string, unknown> = {};
+  if (row.matchMode === "any") {
+    selection.match = "any";
+  }
   for (const key of FILTER_DIMENSION_KEYS) {
     const { storage } = FILTER_DIMENSIONS[key];
     const raw = row[storage.column];
@@ -1153,6 +1376,19 @@ export function parsePostFilterSelection(
 ): FilterSelectionParse {
   const selection: Record<string, unknown> = {};
   const issues: FilterParseIssue[] = [];
+
+  const rawMatch = read(FILTER_MATCH_PARAM)?.trim();
+  if (rawMatch !== undefined && rawMatch !== "") {
+    if (rawMatch === "any") {
+      selection.match = "any";
+    } else if (rawMatch !== "all") {
+      issues.push({
+        param: FILTER_MATCH_PARAM,
+        message: `Invalid match value. Allowed: ${FILTER_MATCH_MODES.join(", ")}`,
+      });
+    }
+  }
+
   for (const key of FILTER_DIMENSION_KEYS) {
     const dimension = FILTER_DIMENSIONS[key];
     const parsed = dimension.url.parse(read, ctx);
@@ -1231,6 +1467,9 @@ export function serializePostFilterSelection(
   ctx: DimensionContext,
   into: URLSearchParams = new URLSearchParams(),
 ): URLSearchParams {
+  if (selection.match === "any") {
+    into.set(FILTER_MATCH_PARAM, "any");
+  }
   for (const key of FILTER_DIMENSION_KEYS) {
     const value = selection[key];
     if (value === undefined) continue;
@@ -1291,8 +1530,24 @@ export function toPostFilters(
   selection: PostFilterSelection,
   ctx: PostFilterContext,
 ): Partial<PostFilters> {
+  const activeKeys = FILTER_DIMENSION_KEYS.filter(
+    (key) => selection[key] !== undefined,
+  );
+  if (selection.match === "any" && activeKeys.length >= 2) {
+    const branches = activeKeys
+      .map((key) => {
+        const value = selection[key];
+        return value !== undefined ? filterFor(key, value, ctx) : {};
+      })
+      .filter((slice) => Object.keys(slice).length > 0) as PostFilters[];
+    if (branches.length >= 2) {
+      return { anyOf: branches };
+    }
+    return branches[0] ?? {};
+  }
+
   let filters: Partial<PostFilters> = {};
-  for (const key of FILTER_DIMENSION_KEYS) {
+  for (const key of activeKeys) {
     const value = selection[key];
     if (value === undefined) continue;
     filters = { ...filters, ...filterFor(key, value, ctx) };

@@ -70,6 +70,16 @@ msgstr ""
 msgid "+ ALT"
 msgstr ""
 
+#. @context: Smart collection dialog collection filter — button to open the collection multi-select popover when the site has many collections
+#: src/ui/shared/smart-collection-labels.ts
+msgid "+ Collection"
+msgstr ""
+
+#. @context: Smart collection dialog year filter — button to enter another year
+#: src/ui/shared/smart-collection-labels.ts
+msgid "+ Year"
+msgstr ""
+
 #. @context: Search snippet prefix on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "A calmer accent makes"
@@ -190,11 +200,6 @@ msgstr ""
 msgid "Add column before"
 msgstr ""
 
-#. @context: Smart collection dialog button
-#: src/ui/shared/smart-collection-labels.ts
-msgid "Add condition"
-msgstr ""
-
 #. @context: Primary action to add a custom link on collections page
 #: src/ui/shared/collection-management-labels.ts
 msgid "Add Link"
@@ -215,9 +220,19 @@ msgstr ""
 msgid "Add to Navigation"
 msgstr ""
 
+#. @context: Smart collection dialog — label before the quick-add dimension pills
+#: src/ui/shared/smart-collection-labels.ts
+msgid "Add:"
+msgstr ""
+
 #. @context: Loading label while adding a Collection to site navigation
 #: src/ui/shared/collection-management-labels.ts
 msgid "Adding…"
+msgstr ""
+
+#. @context: Smart collection dialog — segmented option meaning posts must match every condition (AND)
+#: src/ui/shared/smart-collection-labels.ts
+msgid "All"
 msgstr ""
 
 #. @context: Built-in navigation label for the archive page. Reads as the widest of Featured / Latest / All rather than 'old posts' — the page is the complete index, and its URL stays /archive.
@@ -234,6 +249,11 @@ msgstr ""
 #. @context: Archive filter - all formats select option
 #: src/ui/pages/ArchivePage.tsx
 msgid "All formats"
+msgstr ""
+
+#. @context: Smart collection dialog media filter — pill meaning any media kind matches
+#: src/ui/shared/smart-collection-labels.ts
+msgid "All kinds"
 msgstr ""
 
 #. @context: Archive page heading and document title when no filter is active. Names the surface, not the current selection — the nav calls the same destination 'All'.
@@ -268,9 +288,19 @@ msgstr ""
 msgid "An image couldn't be saved to your library — its original link was kept."
 msgstr "有一張圖片無法轉存到你的媒體庫，已保留原連結。"
 
+#. @context: Smart collection dialog — inline divider badge between two condition rows when Match All is active
+#: src/ui/shared/smart-collection-labels.ts
+msgid "and"
+msgstr ""
+
 #. @context: Sample link post body suffix on the theme sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "and checking whether the accent is guiding attention or pulling too hard."
+msgstr ""
+
+#. @context: Smart collection dialog — segmented option meaning posts may match any condition (OR)
+#: src/ui/shared/smart-collection-labels.ts
+msgid "Any"
 msgstr ""
 
 #. @context: Compose publish settings help text for public visibility
@@ -325,6 +355,11 @@ msgstr ""
 #. @context: Theme mode option on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Auto"
+msgstr ""
+
+#. @context: Smart collection page — what it gathers when conditions are combined with OR. {conditions} is the list of conditions, already joined.
+#: src/ui/shared/smart-collection-labels.ts
+msgid "Automatically collects any of: {conditions}"
 msgstr ""
 
 #. @context: Smart collection page — what it gathers, when no condition narrows it
@@ -622,6 +657,11 @@ msgstr ""
 #. @context: Smart collection dialog while the count is loading
 #: src/ui/shared/smart-collection-labels.ts
 msgid "Counting…"
+msgstr ""
+
+#. @context: Smart collection dialog — tooltip on the disabled Collection dimension pill when the site has no manual collections
+#: src/ui/shared/smart-collection-labels.ts
+msgid "Create a collection first to filter by one."
 msgstr ""
 
 #. @context: Compose collection combobox empty state when no collections exist
@@ -1039,6 +1079,11 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
+#. @context: Smart collection dialog — search input placeholder inside the collection picker popover
+#: src/ui/shared/smart-collection-labels.ts
+msgid "Filter collections…"
+msgstr ""
+
 #. @context: Smart collection layout option — use the site's configured archive layout
 #: src/ui/shared/smart-collection-labels.ts
 msgid "Follow site default"
@@ -1409,6 +1454,11 @@ msgstr ""
 msgid "March 15"
 msgstr ""
 
+#. @context: Smart collection dialog — prefix before the All / Any segmented control ('Match [All | Any]')
+#: src/ui/shared/smart-collection-labels.ts
+msgid "Match"
+msgstr ""
+
 #. @context: Compose toolbar - media tooltip
 #. @context: Post filter dimension name - attached media
 #: src/lib/filter-dimensions.ts
@@ -1554,6 +1604,11 @@ msgstr ""
 msgid "No file selected. Choose a file to upload."
 msgstr ""
 
+#. @context: Smart collection dialog — shown when no collection matches the filter input
+#: src/ui/shared/smart-collection-labels.ts
+msgid "No matching collections."
+msgstr ""
+
 #. @context: Search empty results
 #: src/ui/pages/SearchPage.tsx
 msgid "No results. Try different keywords."
@@ -1672,6 +1727,11 @@ msgstr ""
 msgid "Open the original in a new tab"
 msgstr ""
 
+#. @context: Smart collection dialog — inline divider badge between two condition rows when Match Any is active
+#: src/ui/shared/smart-collection-labels.ts
+msgid "or"
+msgstr ""
+
 #. @context: Collection editing dialog field
 #: src/ui/shared/collection-management-labels.ts
 msgid "Order by"
@@ -1737,11 +1797,6 @@ msgstr ""
 #. @context: Compose publish button for unlisted visibility
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Post unlisted"
-msgstr ""
-
-#. @context: Smart collection dialog — conditions are combined with AND
-#: src/ui/shared/smart-collection-labels.ts
-msgid "Posts matching all of these"
 msgstr ""
 
 #. @context: Hover hint for the homepage compose shortcut
@@ -2309,6 +2364,11 @@ msgstr ""
 msgid "Surface"
 msgstr ""
 
+#. @context: Accessible label on the inline row connector button in the smart collection dialog
+#: src/ui/shared/smart-collection-labels.ts
+msgid "Switch between matching all and matching any"
+msgstr ""
+
 #. @context: Helper text for theme picker pills on the sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Switch the palette and mode without opening settings or changing the active site theme."
@@ -2817,7 +2877,9 @@ msgid "Wrong email or password. Check your credentials and try again."
 msgstr ""
 
 #. @context: Post filter dimension name - year of publication
+#. @context: Smart collection dialog year filter — placeholder in the custom year input
 #: src/lib/filter-dimensions.ts
+#: src/ui/shared/smart-collection-labels.ts
 msgid "Year"
 msgstr ""
 

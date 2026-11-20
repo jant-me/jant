@@ -2,7 +2,10 @@
  * Type definitions for the smart collection dialog.
  */
 
-import type { FILTER_DIMENSION_KEYS } from "../../lib/filter-dimensions.js";
+import type {
+  FILTER_DIMENSION_KEYS,
+  FilterMatchMode,
+} from "../../lib/filter-dimensions.js";
 
 /** One condition row: which dimension, and the value it holds. */
 export interface SmartConditionRow {
@@ -15,6 +18,12 @@ export interface SmartConditionRow {
    * that invented its own encoding would be a second vocabulary.
    */
   value: string;
+}
+
+/** Parsed condition rows plus their inter-row match mode (`all` | `any`). */
+export interface SmartConditionsModel {
+  match: FilterMatchMode;
+  rows: SmartConditionRow[];
 }
 
 /** Everything the dialog can be opened with. */
@@ -44,10 +53,22 @@ export interface SmartCollectionDialogLabels {
   linkMovesWarning: string;
   description: string;
   conditionsHeading: string;
-  matchAllHint: string;
+  matchPrefix: string;
+  matchAll: string;
+  matchAny: string;
+  connectorAnd: string;
+  connectorOr: string;
+  toggleMatchMode: string;
   noConditions: string;
-  addCondition: string;
+  quickAddPrefix: string;
   removeCondition: string;
+  mediaAllKinds: string;
+  addYear: string;
+  yearPlaceholder: string;
+  chooseCollection: string;
+  filterCollectionsPlaceholder: string;
+  noMatchingCollections: string;
+  noCollectionsAvailable: string;
   countSummary: string;
   counting: string;
   displayHeading: string;

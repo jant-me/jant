@@ -261,14 +261,24 @@ export function createThreadService(deps: {
       const reader = query.audience === "reader";
       const { selection } = query;
       const visibility = selection.visibility;
-      if (reader && visibility === "private") {
+      const visList =
+        visibility === undefined
+          ? []
+          : typeof visibility === "string"
+            ? [visibility]
+            : visibility;
+      if (reader && visList.includes("private")) {
         throw new ValidationError("Private posts aren't listed here.");
       }
-      if (reader && visibility === "unlisted") {
+      if (reader && visList.includes("unlisted")) {
         throw new ValidationError("Unlisted posts aren't listed here.");
       }
+      const soleFeatured =
+        selection.match !== "any" &&
+        visList.length === 1 &&
+        visList[0] === "featured";
       if (
-        visibility === "featured" &&
+        soleFeatured &&
         query.sort !== undefined &&
         query.sort !== "published"
       ) {
@@ -279,12 +289,16 @@ export function createThreadService(deps: {
         status: reader ? ("published" as const) : (query.status ?? "published"),
         listedForReader: reader,
         excludeLatestHidden:
-          reader && visibility === undefined && !query.includeHidden,
+          reader && visList.length === 0 && !query.includeHidden,
         lang: query.lang,
       };
 
       const collectionIds = selection.collection;
-      if (collectionIds && visibility !== "featured") {
+      if (
+        collectionIds &&
+        selection.match !== "any" &&
+        !visList.includes("featured")
+      ) {
         // Membership is the collection query's own; the other dimensions
         // narrow which roots it may return.
         const { collection: _named, ...rootSelection } = selection;
@@ -323,7 +337,7 @@ export function createThreadService(deps: {
             yearAxis: "published",
             timeZone: query.timeZone,
           }),
-          ...(visibility === "featured"
+          ...(soleFeatured
             ? toListOrder("published")
             : toListOrder(query.sort ?? "activity")),
         },

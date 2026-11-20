@@ -6,84 +6,96 @@
   `posts.list`), computed from the exported front matter so the page keeps
   up with the posts in this repository. Every condition reads the root:
 
-    format      `format`
+    match       `all` (default, AND) or `any` (OR) across active dimensions
+    format      one or a slice of `format` values
     title       `title`; for a quote, `source_name`, which is what Jant
                 stores in the title column
-    year        `date`, the publication time, in UTC
+    year        one or a slice of publication years (`date`, in UTC)
     media       the root's own `media` entries: `any`, `none`, or a list of
                 kinds, any one of which matches
     replies     whether the root has published replies
-    visibility  `public` and `latest_hidden` match `visibility`; `featured`
-                matches a root with `featured_at`
-    collection  a `collections` entry with that slug
+    visibility  one or a slice of `public`, `latest_hidden`, `featured`
+    collection  one or a slice of collection slugs
 
   Drafts and private roots are exported as Hugo drafts, and Unlisted roots
   with `build.list: never`, so none reaches here; they are checked again so a
   `--buildDrafts` preview agrees with Jant.
-
-  Takes a dict: `page`, the smart collection's section page, and `feed`,
-  true for its Atom feed.
-
-  Orders, each ending on the post ID so no two roots tie:
-    newest       Thread activity (`last_activity_at`, else `date`), newest first
-    oldest       publication, oldest first
-    rating_desc  rated before unrated, higher rating first, then as newest.
-                 On the page, fewer than two rated roots fall back to
-                 newest, as Jant's page does; the feed keeps the stored
-                 order, as Jant's feed does.
-
-  `src/__tests__/export-smart-collection.test.ts` builds a site with Hugo
-  and compares every condition and order against Jant's own list.
 */ -}}
 {{- $page := .page -}}
 {{- $feed := .feed -}}
 {{- $selection := $page.Params.selection | default dict -}}
+{{- $matchMode := $selection.match | default "all" -}}
 {{- $roots := where (where site.Pages "Type" "post") "Kind" "section" -}}
 {{- $members := slice -}}
 {{- range $roots -}}
   {{- $post := . -}}
   {{- $params := .Params -}}
-  {{- $matches := and (eq ($params.status | default "published") "published") (in (slice "public" "latest_hidden") ($params.visibility | default "public")) -}}
-  {{- if and $matches (isset $selection "format") -}}
-    {{- $matches = eq $params.format $selection.format -}}
-  {{- end -}}
-  {{- if and $matches (isset $selection "title") -}}
-    {{- $title := $params.title -}}
-    {{- if eq $params.format "quote" -}}{{- $title = $params.source_name -}}{{- end -}}
-    {{- $matches = eq (gt (len (string ($title | default ""))) 0) $selection.title -}}
-  {{- end -}}
-  {{- if and $matches (isset $selection "year") -}}
-    {{- $matches = eq $post.Date.UTC.Year (int $selection.year) -}}
-  {{- end -}}
-  {{- if and $matches (isset $selection "media") -}}
-    {{- $media := $params.media | default slice -}}
-    {{- $wanted := $selection.media -}}
-    {{- if reflect.IsSlice $wanted -}}
-      {{- $found := false -}}
-      {{- range $media -}}{{- if in $wanted .kind -}}{{- $found = true -}}{{- end -}}{{- end -}}
-      {{- $matches = $found -}}
-    {{- else if eq $wanted "any" -}}
-      {{- $matches = gt (len $media) 0 -}}
+  {{- $baseOk := and (eq ($params.status | default "published") "published") (in (slice "public" "latest_hidden") ($params.visibility | default "public")) -}}
+  {{- $matches := false -}}
+  {{- if $baseOk -}}
+    {{- $checks := slice -}}
+    {{- if isset $selection "format" -}}
+      {{- $wantedFormats := cond (reflect.IsSlice $selection.format) $selection.format (slice $selection.format) -}}
+      {{- $checks = $checks | append (in $wantedFormats $params.format) -}}
+    {{- end -}}
+    {{- if isset $selection "title" -}}
+      {{- $title := $params.title -}}
+      {{- if eq $params.format "quote" -}}{{- $title = $params.source_name -}}{{- end -}}
+      {{- $checks = $checks | append (eq (gt (len (string ($title | default ""))) 0) $selection.title) -}}
+    {{- end -}}
+    {{- if isset $selection "year" -}}
+      {{- $wantedYears := slice -}}
+      {{- if reflect.IsSlice $selection.year -}}
+        {{- range $selection.year -}}{{- $wantedYears = $wantedYears | append (int .) -}}{{- end -}}
+      {{- else -}}
+        {{- $wantedYears = slice (int $selection.year) -}}
+      {{- end -}}
+      {{- $checks = $checks | append (in $wantedYears $post.Date.UTC.Year) -}}
+    {{- end -}}
+    {{- if isset $selection "media" -}}
+      {{- $media := $params.media | default slice -}}
+      {{- $wanted := $selection.media -}}
+      {{- $mediaMatch := false -}}
+      {{- if reflect.IsSlice $wanted -}}
+        {{- range $media -}}{{- if in $wanted .kind -}}{{- $mediaMatch = true -}}{{- end -}}{{- end -}}
+      {{- else if eq $wanted "any" -}}
+        {{- $mediaMatch = gt (len $media) 0 -}}
+      {{- else -}}
+        {{- $mediaMatch = eq (len $media) 0 -}}
+      {{- end -}}
+      {{- $checks = $checks | append $mediaMatch -}}
+    {{- end -}}
+    {{- if isset $selection "replies" -}}
+      {{- $checks = $checks | append (eq (gt (len $post.Pages) 0) $selection.replies) -}}
+    {{- end -}}
+    {{- if isset $selection "visibility" -}}
+      {{- $wantedVis := cond (reflect.IsSlice $selection.visibility) $selection.visibility (slice $selection.visibility) -}}
+      {{- $visMatch := false -}}
+      {{- range $wantedVis -}}
+        {{- if eq . "featured" -}}
+          {{- if ne ($params.featured_at | default "") "" -}}{{- $visMatch = true -}}{{- end -}}
+        {{- else -}}
+          {{- if eq $params.visibility . -}}{{- $visMatch = true -}}{{- end -}}
+        {{- end -}}
+      {{- end -}}
+      {{- $checks = $checks | append $visMatch -}}
+    {{- end -}}
+    {{- if isset $selection "collection" -}}
+      {{- $wantedCols := cond (reflect.IsSlice $selection.collection) $selection.collection (slice $selection.collection) -}}
+      {{- $inCollection := false -}}
+      {{- range $params.collections -}}
+        {{- if in $wantedCols .slug -}}{{- $inCollection = true -}}{{- end -}}
+      {{- end -}}
+      {{- $checks = $checks | append $inCollection -}}
+    {{- end -}}
+
+    {{- if eq (len $checks) 0 -}}
+      {{- $matches = true -}}
+    {{- else if eq $matchMode "any" -}}
+      {{- $matches = in $checks true -}}
     {{- else -}}
-      {{- $matches = eq (len $media) 0 -}}
+      {{- $matches = not (in $checks false) -}}
     {{- end -}}
-  {{- end -}}
-  {{- if and $matches (isset $selection "replies") -}}
-    {{- $matches = eq (gt (len $post.Pages) 0) $selection.replies -}}
-  {{- end -}}
-  {{- if and $matches (isset $selection "visibility") -}}
-    {{- if eq $selection.visibility "featured" -}}
-      {{- $matches = ne ($params.featured_at | default "") "" -}}
-    {{- else -}}
-      {{- $matches = eq $params.visibility $selection.visibility -}}
-    {{- end -}}
-  {{- end -}}
-  {{- if and $matches (isset $selection "collection") -}}
-    {{- $inCollection := false -}}
-    {{- range $params.collections -}}
-      {{- if eq .slug $selection.collection -}}{{- $inCollection = true -}}{{- end -}}
-    {{- end -}}
-    {{- $matches = $inCollection -}}
   {{- end -}}
 
   {{- if $matches -}}

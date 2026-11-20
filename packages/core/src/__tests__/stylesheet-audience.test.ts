@@ -43,6 +43,7 @@ const AUTHOR_ONLY = [
   "dash",
   "skel",
   "collection-picker",
+  "smart-condition",
 ];
 
 /** TipTap class names that land in reader-rendered post HTML. */

@@ -29,7 +29,7 @@ const parseFrontMatter = parseFrontMatterShared;
  * writes `SITE_EXPORT_FORMAT_VERSION` from `src/services/export.ts`; a test
  * keeps the two equal.
  */
-export const SUPPORTED_SITE_EXPORT_VERSION = 3;
+export const SUPPORTED_SITE_EXPORT_VERSION = 4;
 
 /**
  * Refuse an export written in a format newer than this importer reads.
@@ -1277,17 +1277,30 @@ function buildSmartCollectionCreateRequest(bundle, collectionSlugToId) {
       : {};
 
   if (selection.collection !== undefined) {
-    const collectionId =
-      typeof selection.collection === "string"
-        ? collectionSlugToId.get(selection.collection)
-        : undefined;
-    if (!collectionId) {
+    const rawSlugs = Array.isArray(selection.collection)
+      ? selection.collection
+      : typeof selection.collection === "string"
+        ? [selection.collection]
+        : [];
+    const collectionIds = [];
+    for (const slug of rawSlugs) {
+      const collectionId =
+        typeof slug === "string" ? collectionSlugToId.get(slug) : undefined;
+      if (!collectionId) {
+        return {
+          payload: null,
+          warning: `skipped the smart collection /${bundle.slug}: the collection it filters by, "${String(slug)}", wasn't imported.`,
+        };
+      }
+      collectionIds.push(collectionId);
+    }
+    if (collectionIds.length === 0) {
       return {
         payload: null,
-        warning: `skipped the smart collection /${bundle.slug}: the collection it filters by, "${selection.collection}", wasn't imported.`,
+        warning: `skipped the smart collection /${bundle.slug}: the collection condition could not be read.`,
       };
     }
-    selection.collection = [collectionId];
+    selection.collection = collectionIds;
   }
 
   const title =

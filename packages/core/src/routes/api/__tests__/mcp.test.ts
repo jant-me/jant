@@ -139,9 +139,18 @@ describe("MCP API Routes", () => {
       ]),
     );
     expect(byName.get("jant_posts_update")?.required).toContain("id");
-    expect(
-      byName.get("jant_threads_list")?.properties?.visibility?.enum,
-    ).toContain("any");
+    const visibilityProp = byName.get("jant_threads_list")?.properties
+      ?.visibility as
+      { enum?: string[]; anyOf?: Array<{ enum?: string[] }> } | undefined;
+    const visibilityEnums =
+      visibilityProp?.enum ??
+      visibilityProp?.anyOf?.flatMap((branch) => branch.enum ?? []) ??
+      [];
+    expect(visibilityEnums).toContain("any");
+    expect(byName.get("jant_threads_list")?.properties?.match?.enum).toEqual([
+      "all",
+      "any",
+    ]);
   });
 
   it("initializes the MCP endpoint", async () => {

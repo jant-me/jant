@@ -21,7 +21,7 @@
  *   is the whole of that rule, and it refuses by name.
  */
 
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { type Database } from "../db/index.js";
 import {
   sqliteSchemaBundle,
@@ -112,7 +112,7 @@ export interface SmartCollectionService {
   preview(
     selection: PostFilterSelection,
     viewer: SmartCollectionViewer,
-  ): Promise<{ count: number; baseline: number }>;
+  ): Promise<{ count: number; baseline: number; years: number[] }>;
   /**
    * The `PostFilters` this smart collection's conditions imply, for one viewer.
    *
@@ -308,16 +308,14 @@ export function createSmartCollectionService(
   async function assertSelectionResolvable(
     selection: PostFilterSelection,
   ): Promise<void> {
-    const ids = selection.collection ?? [];
+    const ids = [...new Set(selection.collection ?? [])];
     if (ids.length === 0) return;
 
     const { collections } = databaseSchema;
     const rows = await db
       .select({ id: collections.id })
       .from(collections)
-      .where(
-        and(eq(collections.siteId, siteId), inArray(collections.id, [...ids])),
-      );
+      .where(and(eq(collections.siteId, siteId), inArray(collections.id, ids)));
     if (rows.length !== ids.length) {
       throw new NotFoundError("Collection");
     }
@@ -604,12 +602,19 @@ export function createSmartCollectionService(
       };
       // Both numbers in one round trip, and both through the same predicate
       // builder the saved page will use — a preview that counted differently
-      // than the page would be worse than no preview.
-      const [matched, all] = await posts.aggregateMany(
-        [toPostFilters(parsed, { timeZone: viewer.timeZone }), {}],
-        base,
-      );
-      return { count: matched?.count ?? 0, baseline: all?.count ?? 0 };
+      // than the page would be worse than no preview. Distinct publication
+      // years ride alongside so the dialog can offer the site's real years.
+      const [[matched, all], years] = await Promise.all([
+        posts.aggregateMany(
+          [toPostFilters(parsed, { timeZone: viewer.timeZone }), {}],
+          base,
+        ),
+        posts.getDistinctYears(
+          { ...base, sortBy: "published" },
+          viewer.timeZone,
+        ),
+      ]);
+      return { count: matched?.count ?? 0, baseline: all?.count ?? 0, years };
     },
 
     toPostFilters(smartCollection, viewer) {
@@ -618,23 +623,32 @@ export function createSmartCollectionService(
 
     async assertCollectionUnused(collectionId) {
       const rows = await db
-        .select({ title: smartCollections.title })
+        .select({
+          title: smartCollections.title,
+          collectionId: smartCollections.collectionId,
+        })
         .from(smartCollections)
         .where(
           and(
             eq(smartCollections.siteId, siteId),
-            eq(smartCollections.collectionId, collectionId),
+            isNotNull(smartCollections.collectionId),
           ),
         )
         .orderBy(asc(smartCollections.createdAt));
 
-      if (rows.length === 0) return;
+      const using = rows.filter((row) =>
+        row.collectionId
+          ?.split(",")
+          .map((id) => id.trim())
+          .includes(collectionId),
+      );
+      if (using.length === 0) return;
 
       // Named, not counted: "used by 2 smart collections" leaves the author
       // hunting for which ones.
-      const names = rows.map((row) => row.title).join(", ");
+      const names = using.map((row) => row.title).join(", ");
       throw new ValidationError(
-        rows.length === 1
+        using.length === 1
           ? `This collection is used by the smart collection ${names}. Change or delete that first.`
           : `This collection is used by these smart collections: ${names}. Change or delete them first.`,
       );

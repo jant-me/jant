@@ -21,6 +21,8 @@ import {
 import {
   FILTER_DIMENSION_KEYS,
   FILTER_DIMENSIONS,
+  FILTER_MATCH_MODES,
+  FILTER_MATCH_PARAM,
   type FilterDimensionKey,
 } from "../lib/filter-dimensions.js";
 import {
@@ -117,6 +119,7 @@ describe.each(LOCALES)("$path", ({ path, archive, order }) => {
   it("lists every archive parameter, and nothing else", () => {
     expect(sorted(archiveRows.keys())).toEqual(
       sorted([
+        FILTER_MATCH_PARAM,
         ...FILTER_DIMENSION_KEYS.map((key) => FILTER_DIMENSIONS[key].url.param),
         ...Object.keys(PAGE_PARAMS),
       ]),
@@ -124,6 +127,10 @@ describe.each(LOCALES)("$path", ({ path, archive, order }) => {
   });
 
   it("lists each archive parameter's values", () => {
+    expect(
+      sorted(archiveRows.get(FILTER_MATCH_PARAM) ?? []),
+      FILTER_MATCH_PARAM,
+    ).toEqual(sorted(FILTER_MATCH_MODES));
     for (const key of FILTER_DIMENSION_KEYS) {
       const param = FILTER_DIMENSIONS[key].url.param;
       expect(sorted(archiveRows.get(param) ?? []), param).toEqual(

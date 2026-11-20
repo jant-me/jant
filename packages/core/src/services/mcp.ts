@@ -15,7 +15,12 @@ import {
   StatusSchema,
   UpdatePostApiSchema,
 } from "../lib/schemas.js";
-import { THREAD_SORTS, type Bindings, type Post } from "../types.js";
+import {
+  FILTER_MATCH_MODES,
+  THREAD_SORTS,
+  type Bindings,
+  type Post,
+} from "../types.js";
 import type { AppConfig } from "../types/config.js";
 import { requireStorage, type StorageDriver } from "../lib/storage.js";
 import type { Services } from "./index.js";
@@ -198,12 +203,28 @@ const ListThreadsToolSchema = z.object({
   lang: ContentLanguageSchema.optional().describe("BCP 47 content language"),
   // The filter dimensions, spelled as the HTTP API and the archive spell
   // them. They reach the same registry parser a query string does.
-  format: FormatSchema.optional(),
+  match: z
+    .enum(FILTER_MATCH_MODES)
+    .optional()
+    .describe(
+      "all (default) requires every condition; any matches Threads satisfying any one",
+    ),
+  format: z
+    .union([FormatSchema, z.array(FormatSchema).min(1), z.string().min(1)])
+    .optional()
+    .describe("note, link, or quote — single value, array, or comma-separated"),
   collection: z
     .string()
     .optional()
     .describe("Collection slug, or several comma-separated"),
-  year: z.number().int().optional().describe("Publication year (UTC)"),
+  year: z
+    .union([
+      z.number().int(),
+      z.array(z.number().int()).min(1),
+      z.string().min(1),
+    ])
+    .optional()
+    .describe("Publication year, array of years, or comma-separated"),
   media: z
     .string()
     .optional()
@@ -212,7 +233,16 @@ const ListThreadsToolSchema = z.object({
     ),
   title: z.enum(["any", "none"]).optional(),
   replies: z.enum(["any", "none"]).optional(),
-  visibility: z.enum(THREAD_AUTHOR_VISIBILITIES).optional(),
+  visibility: z
+    .union([
+      z.enum(THREAD_AUTHOR_VISIBILITIES),
+      z.array(z.enum(THREAD_AUTHOR_VISIBILITIES)).min(1),
+      z.string().min(1),
+    ])
+    .optional()
+    .describe(
+      "public, featured, hidden, any, unlisted, or private — single value, array, or comma-separated",
+    ),
   content: PostContentSchema.optional().describe(
     "markdown returns bodyMarkdown in place of body, bodyHtml, and bodyText",
   ),
@@ -337,7 +367,8 @@ const mcpTools: McpToolDefinition[] = [
       const parsed = await parseThreadSelection(
         (key) => {
           const value = filterArgs[key];
-          return value === undefined ? undefined : String(value);
+          if (value === undefined) return undefined;
+          return Array.isArray(value) ? value.join(",") : String(value);
         },
         {
           audience: "author",

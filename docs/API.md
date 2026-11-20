@@ -1013,22 +1013,23 @@ Unfiltered, `/api/public/threads` lists what the homepage lists: Threads hidden 
 
 Query parameters:
 
-| Parameter    | Type                                                                   | Required | Default     | Notes                                                                                                                                         |
-| ------------ | ---------------------------------------------------------------------- | -------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sort`       | `activity` \| `published` \| `updated` \| `oldest` \| `rating`         | no       | `activity`  | See the orders below. A named collection changes the default                                                                                  |
-| `visibility` | `public` \| `featured` \| `hidden` \| `any` \| `unlisted` \| `private` | no       | see notes   | `hidden` is the URL spelling of `latest_hidden`, which is also read. `unlisted` and `private` on `/api/threads` only                          |
-| `format`     | `note` \| `link` \| `quote`                                            | no       | all         | Format of the root                                                                                                                            |
-| `collection` | string                                                                 | no       | none        | Collection slug, or several comma-separated. A Thread in any one of them matches                                                              |
-| `year`       | integer                                                                | no       | none        | Roots whose `publishedAt` falls in this calendar year in the site's time zone, whatever the order                                             |
-| `media`      | comma-separated `MediaKind` \| `any` \| `none`                         | no       | none        | Kinds (`image`, `video`, `audio`, `text`, `document`): roots with an attachment of one of them. `any` = with any attachment, `none` = without |
-| `title`      | `any` \| `none`                                                        | no       | none        | Roots with a title, or without                                                                                                                |
-| `replies`    | `any` \| `none`                                                        | no       | none        | Threads with published replies, or single posts                                                                                               |
-| `lang`       | BCP 47 tag                                                             | no       | all         | Restrict to one content language                                                                                                              |
-| `status`     | `draft` \| `published`                                                 | no       | `published` | `/api/threads` only                                                                                                                           |
-| `include`    | `fold`                                                                 | no       | none        | Add [the fold](#the-fold) to each Thread. Comma-separated; a value it doesn't offer is skipped                                                |
-| `cursor`     | string                                                                 | no       | none        | Pass the previous `nextCursor` back unchanged                                                                                                 |
-| `limit`      | integer                                                                | no       | `20`        | `1` to `100`                                                                                                                                  |
-| `content`    | `markdown`                                                             | no       | none        | Return `bodyMarkdown` instead of the rendered body fields                                                                                     |
+| Parameter    | Type                                                                   | Required | Default     | Notes                                                                                                                                             |
+| ------------ | ---------------------------------------------------------------------- | -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sort`       | `activity` \| `published` \| `updated` \| `oldest` \| `rating`         | no       | `activity`  | See the orders below. A named collection changes the default                                                                                      |
+| `match`      | `all` \| `any`                                                         | no       | `all`       | `all` requires every filter parameter; `any` matches Threads satisfying any one                                                                   |
+| `visibility` | `public` \| `featured` \| `hidden` \| `any` \| `unlisted` \| `private` | no       | see notes   | Single value or comma-separated (`any` stands alone). `hidden` is the URL spelling of `latest_hidden`. `unlisted` and `private` on `/api/threads` |
+| `format`     | `note` \| `link` \| `quote`                                            | no       | all         | Format of the root, or several comma-separated                                                                                                    |
+| `collection` | string                                                                 | no       | none        | Collection slug, or several comma-separated. A Thread in any one of them matches                                                                  |
+| `year`       | integer                                                                | no       | none        | Calendar year in the site's time zone, or several comma-separated                                                                                 |
+| `media`      | comma-separated `MediaKind` \| `any` \| `none`                         | no       | none        | Kinds (`image`, `video`, `audio`, `text`, `document`): roots with an attachment of one of them. `any` = with any attachment, `none` = without     |
+| `title`      | `any` \| `none`                                                        | no       | none        | Roots with a title, or without                                                                                                                    |
+| `replies`    | `any` \| `none`                                                        | no       | none        | Threads with published replies, or single posts                                                                                                   |
+| `lang`       | BCP 47 tag                                                             | no       | all         | Restrict to one content language                                                                                                                  |
+| `status`     | `draft` \| `published`                                                 | no       | `published` | `/api/threads` only                                                                                                                               |
+| `include`    | `fold`                                                                 | no       | none        | Add [the fold](#the-fold) to each Thread. Comma-separated; a value it doesn't offer is skipped                                                    |
+| `cursor`     | string                                                                 | no       | none        | Pass the previous `nextCursor` back unchanged                                                                                                     |
+| `limit`      | integer                                                                | no       | `20`        | `1` to `100`                                                                                                                                      |
+| `content`    | `markdown`                                                             | no       | none        | Return `bodyMarkdown` instead of the rendered body fields                                                                                         |
 
 Orders:
 
@@ -1906,28 +1907,31 @@ Smart collection responses include these fields:
 
 ### The `selection` object
 
-Each key is one condition, and a key may appear once. Conditions are combined
-with AND. Omitting a key means that dimension is not part of the conditions —
-there is no "any" value, because a key that is absent already says that.
+Each condition key may appear once. Within a condition that takes several values,
+a post matches when it fits any of them. Across conditions, `match` decides
+whether a post has to fit all of them (`"all"`, the default) or any one of them
+(`"any"`). Omitting a condition key leaves that dimension unconstrained.
 
 | Key          | Value                                                                     |
 | ------------ | ------------------------------------------------------------------------- |
-| `collection` | Array of exactly one `col_*` id                                           |
-| `format`     | `note` \| `link` \| `quote`                                               |
+| `match`      | `"all"` \| `"any"` — `"all"` (default, omitted in responses) or `"any"`   |
+| `collection` | Non-empty array of `col_*` ids                                            |
+| `format`     | `note` \| `link` \| `quote`, or a non-empty array of them                 |
 | `title`      | boolean — `true` has a title, `false` has none                            |
-| `year`       | integer, 1971 or later                                                    |
+| `year`       | integer (1971 or later), or a non-empty array of integers                 |
 | `media`      | `"any"` \| `"none"` \| array of `image` `video` `audio` `text` `document` |
 | `replies`    | boolean — `true` threads with replies, `false` single posts               |
-| `visibility` | `public` \| `featured` \| `latest_hidden`                                 |
+| `visibility` | `public` \| `featured` \| `latest_hidden`, or a non-empty array of them   |
+
+Responses normalize single-element arrays on `format`, `year`, and `visibility`
+back to scalars and omit `match` when it is `"all"`.
 
 A key this table doesn't list answers `400` rather than being ignored like an
 unknown field elsewhere: dropping a condition would publish a wider page than
 the one asked for.
 
-`visibility` never accepts `private`, and `collection` never accepts more than
-one id. The first is because a smart collection is a published page and can
-never name a set only its author can see; the second is because two ids would
-be an OR, which the conditions do not express.
+`visibility` never accepts `private` or `unlisted`: a smart collection is a
+published page and never names a set only its author can see.
 
 ### List smart collections
 
@@ -2008,12 +2012,14 @@ would mean inventing a second encoding for them.
 Response:
 
 ```json
-{ "count": 34, "baseline": 1240 }
+{ "count": 34, "baseline": 1240, "years": [2026, 2025, 2024] }
 ```
 
-`count` is how many threads match; `baseline` is how many there are in total.
-Both are counted for the caller, so a signed-in author may see larger numbers
-than the page shows an anonymous reader — the same rule as everywhere else.
+`count` is how many threads match; `baseline` is how many there are in total;
+`years` lists the calendar years (newest first, in the site's time zone) in
+which the site has published posts. Both counts answer for the caller, so a
+signed-in author may see larger numbers than the page shows an anonymous reader
+— the same rule as everywhere else.
 
 ### Check an address
 

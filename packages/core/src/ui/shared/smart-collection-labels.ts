@@ -57,6 +57,17 @@ export function describeSmartCollection(
     );
   }
 
+  if (selection.match === "any" && parts.length >= 2) {
+    return i18n._(
+      msg({
+        message: "Automatically collects any of: {conditions}",
+        comment:
+          "@context: Smart collection page — what it gathers when conditions are combined with OR. {conditions} is the list of conditions, already joined.",
+      }),
+      { conditions: parts.join(CONDITION_SEPARATOR) },
+    );
+  }
+
   return i18n._(
     msg({
       message: "Automatically collects: {conditions}",
@@ -227,11 +238,46 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
         comment: "@context: Smart collection dialog section heading",
       }),
     ),
-    matchAllHint: i18n._(
+    matchPrefix: i18n._(
       msg({
-        message: "Posts matching all of these",
+        message: "Match",
         comment:
-          "@context: Smart collection dialog — conditions are combined with AND",
+          "@context: Smart collection dialog — prefix before the All / Any segmented control ('Match [All | Any]')",
+      }),
+    ),
+    matchAll: i18n._(
+      msg({
+        message: "All",
+        comment:
+          "@context: Smart collection dialog — segmented option meaning posts must match every condition (AND)",
+      }),
+    ),
+    matchAny: i18n._(
+      msg({
+        message: "Any",
+        comment:
+          "@context: Smart collection dialog — segmented option meaning posts may match any condition (OR)",
+      }),
+    ),
+    connectorAnd: i18n._(
+      msg({
+        message: "and",
+        comment:
+          "@context: Smart collection dialog — inline divider badge between two condition rows when Match All is active",
+      }),
+    ),
+    connectorOr: i18n._(
+      msg({
+        message: "or",
+        comment:
+          "@context: Smart collection dialog — inline divider badge between two condition rows when Match Any is active",
+      }),
+    ),
+    toggleMatchMode: i18n._(
+      msg({
+        message: "Switch between matching all and matching any",
+        comment:
+          "@context: Accessible label on the inline row connector button in the smart collection dialog",
       }),
     ),
     noConditions: i18n._(
@@ -240,16 +286,66 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
         comment: "@context: Smart collection dialog with no conditions set",
       }),
     ),
-    addCondition: i18n._(
+    quickAddPrefix: i18n._(
       msg({
-        message: "Add condition",
-        comment: "@context: Smart collection dialog button",
+        message: "Add:",
+        comment:
+          "@context: Smart collection dialog — label before the quick-add dimension pills",
       }),
     ),
     removeCondition: i18n._(
       msg({
         message: "Remove condition",
         comment: "@context: Smart collection dialog condition row button",
+      }),
+    ),
+    mediaAllKinds: i18n._(
+      msg({
+        message: "All kinds",
+        comment:
+          "@context: Smart collection dialog media filter — pill meaning any media kind matches",
+      }),
+    ),
+    addYear: i18n._(
+      msg({
+        message: "+ Year",
+        comment:
+          "@context: Smart collection dialog year filter — button to enter another year",
+      }),
+    ),
+    yearPlaceholder: i18n._(
+      msg({
+        message: "Year",
+        comment:
+          "@context: Smart collection dialog year filter — placeholder in the custom year input",
+      }),
+    ),
+    chooseCollection: i18n._(
+      msg({
+        message: "+ Collection",
+        comment:
+          "@context: Smart collection dialog collection filter — button to open the collection multi-select popover when the site has many collections",
+      }),
+    ),
+    filterCollectionsPlaceholder: i18n._(
+      msg({
+        message: "Filter collections…",
+        comment:
+          "@context: Smart collection dialog — search input placeholder inside the collection picker popover",
+      }),
+    ),
+    noMatchingCollections: i18n._(
+      msg({
+        message: "No matching collections.",
+        comment:
+          "@context: Smart collection dialog — shown when no collection matches the filter input",
+      }),
+    ),
+    noCollectionsAvailable: i18n._(
+      msg({
+        message: "Create a collection first to filter by one.",
+        comment:
+          "@context: Smart collection dialog — tooltip on the disabled Collection dimension pill when the site has no manual collections",
       }),
     ),
     // Interpolated in the browser, where the numbers live. The placeholders

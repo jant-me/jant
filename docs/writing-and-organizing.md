@@ -114,17 +114,17 @@ To a reader it is a Collection: it lives at `/{slug}`, has a title, a descriptio
 
 Create one from **Collections → ⋯ → New Smart Collection**. The dialog counts matches as you type, so you can see what a condition does before saving it.
 
-The conditions are combined with AND — a post has to match all of them. Each condition can appear once:
+Each condition can appear once, and conditions that offer choices let you pick more than one — matching any of the values you picked inside that row. Across rows, **Match** chooses whether a post must fit **All** conditions (AND, the default) or **Any** condition (OR):
 
-| Condition    | Chooses                                                   |
-| ------------ | --------------------------------------------------------- |
-| `Collection` | Threads in one Collection                                 |
-| `Format`     | Notes, Links, or Quotes                                   |
-| `Title`      | Titled or untitled posts                                  |
-| `Year`       | Posts published in one calendar year                      |
-| `Media`      | Posts with any attachment, none, or attachments of a kind |
-| `Replies`    | Threads with replies, or single posts                     |
-| `Visibility` | Public, Featured, or Hidden from Latest                   |
+| Condition    | Chooses                                                         |
+| ------------ | --------------------------------------------------------------- |
+| `Collection` | Threads in one or more Collections                              |
+| `Format`     | One or more of Notes, Links, and Quotes                         |
+| `Title`      | Titled or untitled posts                                        |
+| `Year`       | Posts published in one or more calendar years                   |
+| `Media`      | Posts with any attachment, none, or attachments of chosen kinds |
+| `Replies`    | Threads with replies, or single posts                           |
+| `Visibility` | One or more of Public, Featured, and Hidden from Latest         |
 
 Saving with no conditions is allowed: that Smart Collection collects every post.
 
@@ -264,22 +264,24 @@ fetch it. See
 
 ### Archive filters
 
-`/archive` and `/archive/feed` take the same query parameters, and a post has
-to match all of them. The archive's filter controls write them, so a filtered
-page's address can be bookmarked or subscribed to as it is.
+`/archive` and `/archive/feed` take the same query parameters. By default a post
+has to match every filter parameter; `match=any` widens that to posts matching
+any one of them. The archive's filter controls write these parameters, so a
+filtered page's address can be bookmarked or subscribed to as it is.
 
-| Parameter    | Values                                                                                  | Selects                                                                                               |
-| ------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `collection` | Collection slugs, comma-separated                                                       | Threads in any of these Collections                                                                   |
-| `format`     | `note`, `link`, `quote`                                                                 | Posts in this format                                                                                  |
-| `title`      | `any`, `none`                                                                           | Posts with a title, or without one                                                                    |
-| `year`       | A year, such as 2024                                                                    | Posts published that year; with `sort=updated`, Threads last active that year                         |
-| `media`      | `any`, `none`, or kinds, comma-separated: `image`, `video`, `audio`, `text`, `document` | Posts with any attachment, none, or one of these kinds                                                |
-| `replies`    | `any`, `none`                                                                           | Threads with replies, or single posts                                                                 |
-| `visibility` | `public`, `featured`, `hidden`, `unlisted`, `private`                                   | Public, Featured, or `Hidden from Latest` posts; `unlisted` and `private` only while you're signed in |
-| `sort`       | `published`, `updated`                                                                  | Order and month headings by publication (the default), or by activity, quiet replies included         |
-| `layout`     | `list`, `grid`                                                                          | The page's layout; feeds ignore it                                                                    |
-| `page`       | A page number                                                                           | Which page; feeds ignore it                                                                           |
+| Parameter    | Values                                                                                  | Selects                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `match`      | `all`, `any`                                                                            | Require every condition (`all`, the default), or match any one condition (`any`)              |
+| `collection` | Collection slugs, comma-separated                                                       | Threads in any of these Collections                                                           |
+| `format`     | `note`, `link`, `quote` (one or comma-separated)                                        | Posts in any of these formats                                                                 |
+| `title`      | `any`, `none`                                                                           | Posts with a title, or without one                                                            |
+| `year`       | Calendar years, such as 2024 or 2024,2025                                               | Posts published in those years; with `sort=updated`, Threads last active in those years       |
+| `media`      | `any`, `none`, or kinds, comma-separated: `image`, `video`, `audio`, `text`, `document` | Posts with any attachment, none, or one of these kinds                                        |
+| `replies`    | `any`, `none`                                                                           | Threads with replies, or single posts                                                         |
+| `visibility` | `public`, `featured`, `hidden`, `unlisted`, `private` (one or comma-separated)          | Posts in any of these states; `unlisted` and `private` only while you're signed in            |
+| `sort`       | `published`, `updated`                                                                  | Order and month headings by publication (the default), or by activity, quiet replies included |
+| `layout`     | `list`, `grid`                                                                          | The page's layout; feeds ignore it                                                            |
+| `page`       | A page number                                                                           | Which page; feeds ignore it                                                                   |
 
 Links with older spellings keep working. The archive page redirects them to
 the current one, and feeds read them as they are:

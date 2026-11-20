@@ -91,18 +91,19 @@ smartCollectionsApiRoutes.post(
     const body = c.req.valid("json");
     const query = c.req.valid("query");
 
-    const { count, baseline } = await c.var.services.smartCollections.preview(
-      body.selection ?? {},
-      // The author, by session or by token; `isAuthenticated` only reports a session.
-      {
-        isAuthenticated: true,
-        lang: query.lang,
-        timeZone: c.var.appConfig.timeZone,
-      },
-    );
+    const { count, baseline, years } =
+      await c.var.services.smartCollections.preview(
+        body.selection ?? {},
+        // The author, by session or by token; `isAuthenticated` only reports a session.
+        {
+          isAuthenticated: true,
+          lang: query.lang,
+          timeZone: c.var.appConfig.timeZone,
+        },
+      );
 
     c.header("Cache-Control", "no-store");
-    return c.json({ count, baseline });
+    return c.json({ count, baseline, years });
   },
 );
 

@@ -178,6 +178,10 @@ export type CollectionSortOrder = SortOrder;
 export const SMART_COLLECTION_SORT_ORDERS = COLLECTION_SORT_ORDERS;
 export type SmartCollectionSortOrder = CollectionSortOrder;
 
+/** How conditions in a filter selection or smart collection combine (`all` = AND, `any` = OR). */
+export const FILTER_MATCH_MODES = ["all", "any"] as const;
+export type FilterMatchMode = (typeof FILTER_MATCH_MODES)[number];
+
 /**
  * How the Threads API orders a list of Threads — each value one the site
  * already shows somewhere, named for the axis it reads:

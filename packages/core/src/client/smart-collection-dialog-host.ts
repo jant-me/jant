@@ -21,7 +21,6 @@ const LABELS_ATTRIBUTE = "data-smart-collection-dialog-labels";
 
 let labels: SmartCollectionDialogLabels | null = null;
 let element: JantSmartCollectionDialog | null = null;
-let collections: Promise<SiteCollection[]> | null = null;
 
 interface SiteCollection {
   id: string;
@@ -58,9 +57,11 @@ function readLabels(): SmartCollectionDialogLabels | null {
 async function ensureCollectionVocabulary(
   target: SmartCollectionDialogLabels,
 ): Promise<void> {
-  collections ??= fetchCollections();
-  const loaded = await collections;
+  const loaded = await fetchCollections();
   setCollectionVocabulary(loaded);
+  for (const key of Object.keys(target.values)) {
+    if (key.startsWith("collection.")) delete target.values[key];
+  }
   for (const collection of loaded) {
     target.values[`collection.${collection.slug}`] = collection.title;
   }

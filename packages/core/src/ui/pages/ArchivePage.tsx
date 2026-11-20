@@ -680,31 +680,46 @@ const FilterBar: FC<{
 
   // --- Format options (Notes split into All / Titled / Untitled) -----------
 
-  const formatActiveLabel = selection.format
-    ? selection.title === true
-      ? i18n._(
-          msg({
-            message: "Titled",
-            comment: "@context: Archive filter - notes that have a title",
-          }),
-        )
-      : selection.title === false
-        ? i18n._(
-            msg({
-              message: "Untitled",
-              comment: "@context: Archive filter - notes without a title",
-            }),
-          )
-        : getFormatLabelPlural(selection.format)
-    : undefined;
+  const selectedFormats =
+    selection.format === undefined
+      ? []
+      : typeof selection.format === "string"
+        ? [selection.format]
+        : selection.format;
 
-  const formatActiveIcon = selection.format
-    ? selection.title === true
-      ? "type"
-      : selection.title === false
-        ? "text-align-start"
-        : FORMAT_ICONS[selection.format]
-    : undefined;
+  const singleFormat =
+    selectedFormats.length === 1 ? selectedFormats[0] : undefined;
+  const formatActiveLabel =
+    selectedFormats.length > 1
+      ? selectedFormats.map(getFormatLabelPlural).join(", ")
+      : singleFormat
+        ? selection.title === true && singleFormat === "note"
+          ? i18n._(
+              msg({
+                message: "Titled",
+                comment: "@context: Archive filter - notes that have a title",
+              }),
+            )
+          : selection.title === false && singleFormat === "note"
+            ? i18n._(
+                msg({
+                  message: "Untitled",
+                  comment: "@context: Archive filter - notes without a title",
+                }),
+              )
+            : getFormatLabelPlural(singleFormat)
+        : undefined;
+
+  const formatActiveIcon =
+    selectedFormats.length > 1
+      ? FILTER_ICONS.format
+      : singleFormat
+        ? selection.title === true && singleFormat === "note"
+          ? "type"
+          : selection.title === false && singleFormat === "note"
+            ? "text-align-start"
+            : FORMAT_ICONS[singleFormat]
+        : undefined;
 
   const formatOptions: ChipSelectOption[] = [
     {
@@ -921,7 +936,13 @@ const FilterBar: FC<{
               ctx,
               basePath,
             )}
-            activeLabel={selection.year ? String(selection.year) : undefined}
+            activeLabel={
+              typeof selection.year === "number"
+                ? String(selection.year)
+                : selection.year
+                  ? selection.year.join(", ")
+                  : undefined
+            }
           />
         )}
         {availableCollections.length > 0 && (
@@ -988,14 +1009,20 @@ const FilterBar: FC<{
           currentValue={currentUrl}
           clearUrl={allVisibilityUrl}
           activeLabel={
-            selection.visibility
+            typeof selection.visibility === "string"
               ? getVisibilityLabel(selection.visibility)
-              : undefined
+              : selection.visibility
+                ? selection.visibility.map(getVisibilityLabel).join(", ")
+                : undefined
           }
           activeIcon={
-            selection.visibility && selection.visibility !== "featured"
-              ? VISIBILITY_ICONS[selection.visibility]
-              : undefined
+            typeof selection.visibility === "string"
+              ? selection.visibility !== "featured"
+                ? VISIBILITY_ICONS[selection.visibility]
+                : undefined
+              : selection.visibility
+                ? FILTER_ICONS.visibility
+                : undefined
           }
           activeIconHtml={
             selection.visibility === "featured"

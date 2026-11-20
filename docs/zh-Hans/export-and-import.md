@@ -150,7 +150,7 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 - 每条回复的 `weight` 是它在 Thread 里的位置，导入按这个顺序创建回复。同一秒发布的帖子也保持原来的先后。
 - `created` 和 `updated` 记录帖子的写作时间和最后编辑时间，与 `date` 不同时才写。搬站之后，feed 和 sitemap 报的仍是原来的时间。
 - 视频和音频保留 `duration_seconds`。
-- 智能合集的 `selection` 记录它的条件，合集条件写的是合集的 slug。导入在合集之后重建智能合集。条件里的合集没有一起导入时，这个智能合集会跳过并给出警告：少了这个条件，它会收进原本不属于它的帖子。
+- 智能合集的 `selection` 记录它的条件（设为 `any` 时包含 `match`），合集条件写的是一个或多个合集的 slug。导入在合集之后重建智能合集。条件里引用的合集没有一起导入时，这个智能合集会跳过并给出警告：缺少其中某个合集会让收录结果与原先不一致。
 
 ### 文件字段一览
 
@@ -217,7 +217,7 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 | `aliases`        | 合集的自定义 URL，每个以斜杠开头            |
 | `description`    | 说明                                        |
 | `sort_order`     | `newest`、`oldest` 或 `rating_desc`         |
-| `selection`      | 智能合集的条件，合集按 slug 指定            |
+| `selection`      | 智能合集的条件，合集按单个或一组 slug 指定  |
 | `display_layout` | 智能合集的布局 `list` 或 `grid`，设置了才写 |
 | `entry_count`    | 仅主题                                      |
 | `outputs`        | 仅主题：页面渲染的 Hugo 输出                |
