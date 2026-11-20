@@ -1946,11 +1946,15 @@ msgid "Read it in {language}"
 msgstr "Read it in {language}"
 
 #. @context: Collapse an expanded untitled note back to its preview in the feed
+#. @context: Collapse an expanded untitled note back to its preview in the feed
+#: src/ui/feed/LinkCard.tsx
 #: src/ui/feed/NoteCard.tsx
 msgid "Read less"
 msgstr "Read less"
 
 #. @context: Expand the rest of a truncated untitled note in place in the feed
+#. @context: Expand the rest of a truncated untitled note in place in the feed
+#: src/ui/feed/LinkCard.tsx
 #: src/ui/feed/NoteCard.tsx
 msgid "Read more"
 msgstr "Read more"

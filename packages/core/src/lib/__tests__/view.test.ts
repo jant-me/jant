@@ -441,6 +441,82 @@ describe("toPostView", () => {
     );
   });
 
+  it("treats link commentary like an untitled note even when the link has a title", () => {
+    const mediumTexts = Array.from({ length: 7 }, (_, i) =>
+      `${i}`.padEnd(100, "x"),
+    );
+    const mediumBody = JSON.stringify({
+      type: "doc",
+      content: mediumTexts.map((text) => ({
+        type: "paragraph",
+        content: [{ type: "text", text }],
+      })),
+    });
+    const mediumView = toPostView(
+      makePostWithMedia({
+        format: "link",
+        title: "External Page Title",
+        url: "https://example.com",
+        body: mediumBody,
+        bodyHtml: mediumTexts.map((t) => `<p>${t}</p>`).join(""),
+      }),
+      EMPTY_CTX,
+    );
+    expect(mediumView.summaryHtml).toBeUndefined();
+    expect(mediumView.summaryHasMore).toBeUndefined();
+
+    const textA = "A".repeat(1000);
+    const textB = "B".repeat(1000);
+    const longBody = JSON.stringify({
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: textA }] },
+        { type: "paragraph", content: [{ type: "text", text: textB }] },
+      ],
+    });
+    const p1 = `<p>${textA}</p>`;
+    const p2 = `<p>${textB}</p>`;
+    const longView = toPostView(
+      makePostWithMedia({
+        format: "link",
+        title: "External Page Title",
+        url: "https://example.com",
+        body: longBody,
+        bodyHtml: p1 + p2,
+      }),
+      EMPTY_CTX,
+    );
+    expect(longView.summaryHtml).toBeUndefined();
+    expect(longView.summaryHasMore).toBe(true);
+    expect(longView.bodyHtml).toBe(`${p1}<span data-note-break></span>${p2}`);
+  });
+
+  it("never truncates quote commentary", () => {
+    const textA = "A".repeat(1000);
+    const textB = "B".repeat(1000);
+    const body = JSON.stringify({
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: textA }] },
+        { type: "paragraph", content: [{ type: "text", text: textB }] },
+      ],
+    });
+    const bodyHtml = `<p>${textA}</p><p>${textB}</p>`;
+    const view = toPostView(
+      makePostWithMedia({
+        format: "quote",
+        title: "Marcus Aurelius",
+        quoteText: "The obstacle is the way.",
+        body,
+        bodyHtml,
+      }),
+      EMPTY_CTX,
+    );
+    expect(view.summaryHtml).toBeUndefined();
+    expect(view.summaryHasMore).toBeUndefined();
+    expect(view.bodyHtml).toBe(bodyHtml);
+  });
+
   describe("inline image in a titled post's excerpt", () => {
     const leadImageBody = JSON.stringify({
       type: "doc",

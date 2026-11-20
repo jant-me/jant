@@ -1470,6 +1470,40 @@ describe("feed entry metadata", () => {
     expect(xml).not.toContain("<jant:truncated/>");
   });
 
+  it("cuts link commentary at note limits rather than article limits", () => {
+    const mediumLink = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          format: "link",
+          title: "External Reference",
+          url: "https://external.com/article",
+          body: makeBody([
+            "Alpha ".repeat(70).trim(),
+            "Omega ".repeat(50).trim(),
+          ]),
+          bodyHtml: "<p>Alpha</p><p>Omega</p>",
+        }),
+      ),
+    );
+    expect(mediumLink).not.toContain("<jant:truncated/>");
+
+    const longLink = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          format: "link",
+          title: "External Reference",
+          url: "https://external.com/article",
+          body: makeBody([
+            "Alpha ".repeat(200).trim(),
+            "Omega ".repeat(200).trim(),
+          ]),
+          bodyHtml: "<p>Alpha</p><p>Omega</p>",
+        }),
+      ),
+    );
+    expect(longLink).toContain("<jant:truncated/>");
+  });
+
   it("marks an entry whose newest reply was cut", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
