@@ -150,7 +150,7 @@ The Jant `/subscribe` page doesn't exist on the exported site. The **Subscribe**
 - Each reply's `weight` is its position in the Thread, and import creates replies in that order. Posts that share a publish second keep their order too.
 - `created` and `updated` hold when a post was written and last edited, written where they differ from `date`. After a move, feeds and the sitemap report the original times.
 - Video and audio keep `duration_seconds`.
-- A Smart Collection's `selection` holds its conditions, with the Collection condition naming a slug. Import recreates Smart Collections after Collections. One whose Collection didn't come across is skipped with a warning: without that condition it would gather posts it never held.
+- A Smart Collection's `selection` holds its conditions (including `match` when set to `any`), with the Collection condition naming one slug or a list of slugs. Import recreates Smart Collections after Collections. One that names a Collection that didn't come across is skipped with a warning: without that Collection it would gather a different set of posts than it held.
 
 ### File reference
 
@@ -210,17 +210,17 @@ Each `media` entry:
 
 Collection pages: `content/<slug>/_index.md` with `type: collection` or `type: smart_collection`.
 
-| Field            | Notes                                                         |
-| ---------------- | ------------------------------------------------------------- |
-| `title`, `slug`  | Title and address                                             |
-| `type`           | `collection` or `smart_collection`                            |
-| `aliases`        | Collections: their custom URLs, each with a leading slash     |
-| `description`    | Description                                                   |
-| `sort_order`     | `newest`, `oldest`, or `rating_desc`                          |
-| `selection`      | Smart collections: the conditions, a collection named by slug |
-| `display_layout` | Smart collections: `list` or `grid`, when set                 |
-| `entry_count`    | Theme only                                                    |
-| `outputs`        | Theme only: the Hugo outputs the page renders                 |
+| Field            | Notes                                                        |
+| ---------------- | ------------------------------------------------------------ |
+| `title`, `slug`  | Title and address                                            |
+| `type`           | `collection` or `smart_collection`                           |
+| `aliases`        | Collections: their custom URLs, each with a leading slash    |
+| `description`    | Description                                                  |
+| `sort_order`     | `newest`, `oldest`, or `rating_desc`                         |
+| `selection`      | Smart collections: the conditions, collections named by slug |
+| `display_layout` | Smart collections: `list` or `grid`, when set                |
+| `entry_count`    | Theme only                                                   |
+| `outputs`        | Theme only: the Hugo outputs the page renders                |
 
 The other section pages (`content/_index.md`, `archive/`, `featured/`, `collections/`) belong to the theme.
 

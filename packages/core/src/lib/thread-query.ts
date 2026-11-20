@@ -110,21 +110,28 @@ export async function parseThreadSelection(
     loadCollections: () => Promise<Collection[]>;
   },
 ): Promise<ThreadSelectionParse> {
-  const visibility = read("visibility");
-  if (visibility !== undefined) {
+  const visibility = read("visibility")?.trim();
+  if (visibility !== undefined && visibility !== "") {
     const allowed = allowedVisibilities(options.audience);
     if (visibility === "all") {
       throw new ValidationError(
         "visibility=all isn't accepted here. Leave visibility out for what the homepage lists, or pass visibility=any for everything.",
       );
     }
-    if (
-      !allowed.includes(visibility) &&
-      !(LEGACY_VISIBILITIES as readonly string[]).includes(visibility)
-    ) {
-      throw new ValidationError(
-        `Invalid visibility value. Allowed: ${allowed.join(", ")}`,
-      );
+    if (visibility !== "any") {
+      const parts = visibility
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      const validPart = (part: string) =>
+        part !== "any" &&
+        (allowed.includes(part) ||
+          (LEGACY_VISIBILITIES as readonly string[]).includes(part));
+      if (parts.length === 0 || !parts.every(validPart)) {
+        throw new ValidationError(
+          `Invalid visibility value. Allowed: ${allowed.join(", ")}`,
+        );
+      }
     }
   }
 

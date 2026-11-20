@@ -24,10 +24,9 @@ import {
   COLLECTION_DIRECTORY_ENTRY_TYPES,
   COLLECTION_SORT_ORDERS,
   CONTENT_DISPOSITIONS,
-  EARLIEST_FILTERABLE_YEAR,
+  FILTER_MATCH_MODES,
   FORMATS,
   GITHUB_APP_ACCOUNT_TYPES,
-  LATEST_FILTERABLE_YEAR,
   NAV_ITEM_PLACEMENTS,
   NAV_ITEM_TYPES,
   PATH_KINDS,
@@ -52,6 +51,16 @@ import {
  */
 function sqlTextEnum(values: readonly string[]) {
   return sql.raw(values.map((value) => `'${value}'`).join(", "));
+}
+
+/** Every non-empty comma-joined subset of `values` in declaration order. */
+function nonEmptyJoinedSubsets(values: readonly string[]): string[] {
+  const result: string[] = [];
+  const total = 1 << values.length;
+  for (let mask = 1; mask < total; mask += 1) {
+    result.push(values.filter((_, idx) => (mask & (1 << idx)) !== 0).join(","));
+  }
+  return result;
 }
 
 const tsvector = customType<{ data: string }>({
@@ -520,8 +529,11 @@ export const smartCollections = pgTable(
     description: text("description"),
 
     // --- Conditions (see lib/filter-dimensions.ts) --------------------------
-    format: text("format", { enum: FORMATS }),
-    year: integer("year"),
+    matchMode: text("match_mode", { enum: FILTER_MATCH_MODES })
+      .notNull()
+      .default("all"),
+    format: text("format"),
+    year: text("year"),
     // No foreign key, alone among this schema's id columns. See the SQLite
     // schema for why the refusal is held in the service instead.
     collectionId: text("collection_id"),
@@ -529,7 +541,7 @@ export const smartCollections = pgTable(
     media: text("media"),
     hasTitle: boolean("has_title"),
     hasReplies: boolean("has_replies"),
-    visibility: text("visibility", { enum: PUBLIC_ARCHIVE_VISIBILITIES }),
+    visibility: text("visibility"),
 
     // --- Presentation (not conditions) --------------------------------------
     sort: text("sort", { enum: SMART_COLLECTION_SORT_ORDERS })
@@ -543,12 +555,16 @@ export const smartCollections = pgTable(
   },
   (table) => [
     check(
+      "chk_smart_collection_match_mode",
+      sql`${table.matchMode} IN (${sqlTextEnum(FILTER_MATCH_MODES)})`,
+    ),
+    check(
       "chk_smart_collection_format",
-      sql`${table.format} IS NULL OR ${table.format} IN (${sqlTextEnum(FORMATS)})`,
+      sql`${table.format} IS NULL OR ${table.format} IN (${sqlTextEnum(nonEmptyJoinedSubsets(FORMATS))})`,
     ),
     check(
       "chk_smart_collection_visibility",
-      sql`${table.visibility} IS NULL OR ${table.visibility} IN (${sqlTextEnum(PUBLIC_ARCHIVE_VISIBILITIES)})`,
+      sql`${table.visibility} IS NULL OR ${table.visibility} IN (${sqlTextEnum(nonEmptyJoinedSubsets(PUBLIC_ARCHIVE_VISIBILITIES))})`,
     ),
     check(
       "chk_smart_collection_sort",
@@ -560,7 +576,7 @@ export const smartCollections = pgTable(
     ),
     check(
       "chk_smart_collection_year",
-      sql`${table.year} IS NULL OR ${table.year} BETWEEN ${sql.raw(String(EARLIEST_FILTERABLE_YEAR))} AND ${sql.raw(String(LATEST_FILTERABLE_YEAR))}`,
+      sql`${table.year} IS NULL OR btrim(${table.year}) <> ''`,
     ),
     index("idx_smart_collection_site_created_at").on(
       table.siteId,

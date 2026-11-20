@@ -39,6 +39,7 @@ import {
   rootActivityColumns,
 } from "../db/thread-activity.js";
 import {
+  buildEffectiveVisibilityExpr,
   buildReaderVisibilityConditions,
   type ReaderVisibilityOptions,
 } from "../db/post-visibility.js";
@@ -79,6 +80,7 @@ import {
   VISIBILITIES,
 } from "../types.js";
 import type {
+  ArchiveVisibility,
   CollectionSortOrder,
   Format,
   Status,
@@ -152,10 +154,20 @@ export interface PostAttachmentDeps extends PostDeleteDeps {
   maxFileSizeMB: number;
 }
 
+export interface PostTimeRange {
+  after: number;
+  before: number;
+  axis: "published" | "sort";
+}
+
 export interface PostFilters {
   format?: Format;
+  /** Multiple formats OR'd together (`format IN (...)`). */
+  formats?: Format[];
   status?: Status;
   visibility?: Visibility;
+  /** Multiple archive visibilities OR'd together (`featured` flag + stored visibilities). */
+  archiveVisibilities?: ArchiveVisibility[];
   pinned?: boolean;
   featured?: boolean;
   collectionId?: string;
@@ -185,6 +197,8 @@ export interface PostFilters {
   axisAfter?: number;
   /** Unix timestamp (exclusive) — upper bound on the `sortBy` column */
   axisBefore?: number;
+  /** Disjoint `[after, before)` windows OR'd together (for non-contiguous multi-year filters). */
+  timeRanges?: PostTimeRange[];
   /** Media kinds to filter by (OR logic: post has media of ANY selected kind). */
   mediaKinds?: MediaKind[];
   /**
@@ -208,6 +222,12 @@ export interface PostFilters {
    * Only meaningful together with `excludeReplies` (replies never match).
    */
   hasReplies?: boolean;
+  /**
+   * Disjunctive branches (`match=any`): a post matches when AT LEAST ONE branch
+   * matches, in addition to the outer structural floor (`status`,
+   * `listedForReader`, `excludeReplies`, `lang`, etc.).
+   */
+  anyOf?: PostFilters[];
   /** Explicit result sort order */
   sortOrder?: SortOrder;
   /**
@@ -1558,65 +1578,88 @@ export function createPostService(
     }
   }
 
-  /** Build WHERE conditions from filters (shared by list and count) */
-  function buildFilterConditions(filters: PostFilters) {
-    const conditions = [
-      eq(posts.siteId, siteId),
-      ...buildReaderVisibilityConditions(posts, siteId, filters),
-    ];
+  /** Build dimension/slice predicates (reused across flat AND and `anyOf` OR branches). */
+  function buildSliceConditions(
+    slice: PostFilters,
+    outerFilters: PostFilters,
+  ): SQL[] {
+    const conditions: SQL[] = [];
+    const effectiveVisibility = buildEffectiveVisibilityExpr(posts, siteId);
 
-    if (filters.pinned !== undefined) {
+    if (slice.visibility !== undefined) {
+      conditions.push(sql`${effectiveVisibility} = ${slice.visibility}`);
+    }
+    if (slice.archiveVisibilities && slice.archiveVisibilities.length > 0) {
+      const visParts = slice.archiveVisibilities.map((v) =>
+        v === "featured"
+          ? sql`${posts.featuredAt} IS NOT NULL`
+          : sql`${effectiveVisibility} = ${v}`,
+      );
+      const combined = visParts.length === 1 ? visParts[0] : or(...visParts);
+      if (combined) conditions.push(combined);
+    }
+    if (slice.pinned !== undefined) {
       conditions.push(
-        filters.pinned
+        slice.pinned
           ? sql`${posts.pinnedAt} IS NOT NULL`
           : isNull(posts.pinnedAt),
       );
     }
-    if (filters.featured !== undefined) {
+    if (slice.featured !== undefined) {
       conditions.push(
-        filters.featured
+        slice.featured
           ? sql`${posts.featuredAt} IS NOT NULL`
           : isNull(posts.featuredAt),
       );
     }
-    if (filters.format) {
-      conditions.push(eq(posts.format, filters.format));
+    if (slice.format) {
+      conditions.push(eq(posts.format, slice.format));
     }
-    if (filters.collectionIds !== undefined) {
+    if (slice.formats && slice.formats.length > 0) {
+      conditions.push(inArray(posts.format, slice.formats));
+    }
+    if (slice.collectionIds !== undefined) {
       conditions.push(
-        buildThreadCollectionSubqueryCondition(filters.collectionIds),
+        buildThreadCollectionSubqueryCondition(slice.collectionIds),
       );
-    } else if (filters.collectionId !== undefined) {
+    } else if (slice.collectionId !== undefined) {
       conditions.push(
-        buildThreadCollectionSubqueryCondition([filters.collectionId]),
+        buildThreadCollectionSubqueryCondition([slice.collectionId]),
       );
     }
-    if (filters.threadId) {
-      conditions.push(eq(posts.threadId, filters.threadId));
+    if (slice.threadId) {
+      conditions.push(eq(posts.threadId, slice.threadId));
     }
-    if (filters.ids !== undefined) {
-      conditions.push(inArray(posts.id, filters.ids));
+    if (slice.ids !== undefined) {
+      conditions.push(inArray(posts.id, slice.ids));
     }
-    if (filters.excludeReplies) {
-      conditions.push(isNull(posts.replyToId));
+    if (slice.publishedAfter !== undefined) {
+      conditions.push(sql`${posts.publishedAt} >= ${slice.publishedAfter}`);
     }
-    if (filters.publishedAfter !== undefined) {
-      conditions.push(sql`${posts.publishedAt} >= ${filters.publishedAfter}`);
+    if (slice.publishedBefore !== undefined) {
+      conditions.push(sql`${posts.publishedAt} < ${slice.publishedBefore}`);
     }
-    if (filters.publishedBefore !== undefined) {
-      conditions.push(sql`${posts.publishedAt} < ${filters.publishedBefore}`);
-    }
-    if (filters.axisAfter !== undefined || filters.axisBefore !== undefined) {
-      const axis = timeAxisColumn(filters);
-      if (filters.axisAfter !== undefined) {
-        conditions.push(sql`${axis} >= ${filters.axisAfter}`);
+    if (slice.axisAfter !== undefined || slice.axisBefore !== undefined) {
+      const axis = timeAxisColumn(outerFilters);
+      if (slice.axisAfter !== undefined) {
+        conditions.push(sql`${axis} >= ${slice.axisAfter}`);
       }
-      if (filters.axisBefore !== undefined) {
-        conditions.push(sql`${axis} < ${filters.axisBefore}`);
+      if (slice.axisBefore !== undefined) {
+        conditions.push(sql`${axis} < ${slice.axisBefore}`);
       }
     }
-    if (filters.mediaKinds && filters.mediaKinds.length > 0) {
-      const placeholders = filters.mediaKinds.map((k) => sql`${k}`);
+    if (slice.timeRanges && slice.timeRanges.length > 0) {
+      const sortAxis = timeAxisColumn(outerFilters);
+      const rangeClauses = slice.timeRanges.map((range) => {
+        const col = range.axis === "sort" ? sortAxis : posts.publishedAt;
+        return sql`(${col} >= ${range.after} AND ${col} < ${range.before})`;
+      });
+      const combined =
+        rangeClauses.length === 1 ? rangeClauses[0] : or(...rangeClauses);
+      if (combined) conditions.push(combined);
+    }
+    if (slice.mediaKinds && slice.mediaKinds.length > 0) {
+      const placeholders = slice.mediaKinds.map((k) => sql`${k}`);
       conditions.push(
         sql`${posts.id} IN (
           SELECT post_id
@@ -1626,17 +1669,17 @@ export function createPostService(
         )`,
       );
     }
-    if (filters.hasMedia !== undefined) {
+    if (slice.hasMedia !== undefined) {
       const mediaExists = sql`EXISTS (
         SELECT 1
         FROM media
         WHERE site_id = ${siteId}
           AND post_id = ${posts.id}
       )`;
-      conditions.push(filters.hasMedia ? mediaExists : sql`NOT ${mediaExists}`);
+      conditions.push(slice.hasMedia ? mediaExists : sql`NOT ${mediaExists}`);
     }
-    if (filters.hasTitle !== undefined) {
-      if (filters.hasTitle) {
+    if (slice.hasTitle !== undefined) {
+      if (slice.hasTitle) {
         conditions.push(
           sql`${posts.title} IS NOT NULL AND ${posts.title} != ''`,
         );
@@ -1644,12 +1687,12 @@ export function createPostService(
         conditions.push(sql`(${posts.title} IS NULL OR ${posts.title} = '')`);
       }
     }
-    if (filters.hasRating !== undefined) {
+    if (slice.hasRating !== undefined) {
       conditions.push(
-        filters.hasRating ? isNotNull(posts.rating) : isNull(posts.rating),
+        slice.hasRating ? isNotNull(posts.rating) : isNull(posts.rating),
       );
     }
-    if (filters.hasReplies !== undefined) {
+    if (slice.hasReplies !== undefined) {
       // Same notion of "reply" as getReplyCounts: published posts in the
       // thread with reply_to_id set.
       const repliesExist = sql`EXISTS (
@@ -1661,9 +1704,47 @@ export function createPostService(
           AND reply.status = 'published'
       )`;
       conditions.push(
-        filters.hasReplies ? repliesExist : sql`NOT ${repliesExist}`,
+        slice.hasReplies ? repliesExist : sql`NOT ${repliesExist}`,
       );
     }
+    if (slice.anyOf && slice.anyOf.length > 0) {
+      const branchClauses = slice.anyOf
+        .map((branch) => {
+          const branchParts = buildSliceConditions(branch, outerFilters);
+          if (branchParts.length === 0) return undefined;
+          return branchParts.length === 1
+            ? branchParts[0]
+            : and(...branchParts);
+        })
+        .filter((clause): clause is SQL => clause !== undefined);
+      if (branchClauses.length === 1 && branchClauses[0]) {
+        conditions.push(branchClauses[0]);
+      } else if (branchClauses.length > 1) {
+        const disjunct = or(...branchClauses);
+        if (disjunct) conditions.push(disjunct);
+      }
+    }
+
+    return conditions;
+  }
+
+  /** Build WHERE conditions from filters (shared by list and count) */
+  function buildFilterConditions(filters: PostFilters) {
+    const conditions: SQL[] = [
+      eq(posts.siteId, siteId),
+      ...buildReaderVisibilityConditions(posts, siteId, {
+        status: filters.status,
+        listedForReader: filters.listedForReader,
+        excludeLatestHidden: filters.excludeLatestHidden,
+        lang: filters.lang,
+      }),
+    ];
+
+    if (filters.excludeReplies) {
+      conditions.push(isNull(posts.replyToId));
+    }
+
+    conditions.push(...buildSliceConditions(filters, filters));
 
     return conditions;
   }

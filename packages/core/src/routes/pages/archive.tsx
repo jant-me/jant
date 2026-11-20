@@ -210,8 +210,9 @@ async function parseArchiveParams(
 function archiveQueryRequiresAuth(params: ParsedArchiveParams): boolean {
   const visibility = params.selection.visibility;
   if (visibility === undefined) return false;
-  return !(PUBLIC_ARCHIVE_VISIBILITIES as readonly string[]).includes(
-    visibility,
+  const values = typeof visibility === "string" ? [visibility] : visibility;
+  return values.some(
+    (v) => !(PUBLIC_ARCHIVE_VISIBILITIES as readonly string[]).includes(v),
   );
 }
 

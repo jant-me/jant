@@ -5007,109 +5007,6 @@
     color: var(--muted-foreground);
   }
 
-  .smart-condition-rows {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-  }
-
-  .smart-condition-row {
-    display: grid;
-    grid-template-columns: 6rem minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 0.4rem 0.75rem;
-    padding: 0.4rem 0.4rem 0.4rem 0.7rem;
-  }
-
-  .smart-condition-row + .smart-condition-row {
-    border-top: 1px solid var(--border);
-  }
-
-  .smart-condition-label {
-    display: flex;
-    align-items: center;
-    min-height: var(--smart-condition-line);
-    font-family: var(--font-ui);
-    font-size: var(--type-ui-hint);
-    color: var(--site-text-secondary);
-  }
-
-  .smart-condition-control {
-    min-width: 0;
-  }
-
-  .smart-condition-select {
-    max-width: 100%;
-  }
-
-  /* Scoped past BaseCoat's `.input[type=number]`, which is full width. */
-  .smart-condition-control .smart-condition-year {
-    width: 7rem;
-  }
-
-  /* Taller than a `size-8` icon button so it centres on the control beside it. */
-  .smart-condition-remove {
-    height: var(--smart-condition-line);
-    color: var(--site-text-secondary);
-    cursor: pointer;
-  }
-
-  .smart-condition-remove:hover,
-  .smart-condition-remove:focus-visible {
-    color: var(--destructive);
-  }
-
-  .smart-condition-media {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.45rem;
-  }
-
-  .smart-condition-media-kinds {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem 0.9rem;
-    padding-bottom: 0.2rem;
-  }
-
-  .smart-condition-kind {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-family: var(--font-ui);
-    font-size: var(--type-ui-hint);
-    cursor: pointer;
-  }
-
-  .smart-condition-kind input {
-    cursor: pointer;
-  }
-
-  .smart-condition-add {
-    position: relative;
-  }
-
-  /* Full width, under the rows: it reads as the next row, which is what it is. */
-  .smart-condition-add-trigger {
-    width: 100%;
-  }
-
-  .smart-condition-add-trigger[disabled] {
-    cursor: not-allowed;
-  }
-
-  /* The shared menu, anchored to this trigger's left edge and capped so a long
-     list cannot outgrow the scrolling body it opens inside. */
-  .smart-condition-menu {
-    right: auto;
-    left: 0;
-    max-height: 15rem;
-    overflow-y: auto;
-  }
-
   .smart-collection-display {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5126,15 +5023,6 @@
      and the next person to change the root would have moved one and not the
      other. Stated in the ledger's own unit. */
   @media (max-width: 480px) {
-    .smart-condition-row {
-      grid-template-columns: minmax(0, 1fr) auto;
-    }
-
-    .smart-condition-label {
-      grid-column: 1 / -1;
-      min-height: 0;
-    }
-
     .smart-collection-display {
       grid-template-columns: minmax(0, 1fr);
     }

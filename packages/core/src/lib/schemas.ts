@@ -44,6 +44,8 @@ import { createTypeIdSchema, ID_PREFIX } from "./ids.js";
 import {
   FILTER_DIMENSION_KEYS,
   FILTER_DIMENSIONS,
+  FILTER_MATCH_MODES,
+  normalizePostFilterSelection,
   type PostFilterSelection,
 } from "./filter-dimensions.js";
 import { normalizeSlug } from "./slug-format.js";
@@ -860,8 +862,9 @@ export const UpdateCollectionSchema = CreateCollectionSchema.partial();
  * a rejected condition still has to say which one it was.
  */
 export const PostFilterSelectionSchema = z
-  .object(
-    Object.fromEntries(
+  .object({
+    match: z.enum(FILTER_MATCH_MODES).optional(),
+    ...Object.fromEntries(
       FILTER_DIMENSION_KEYS.map((key) => [
         key,
         z
@@ -871,8 +874,11 @@ export const PostFilterSelectionSchema = z
           .optional(),
       ]),
     ),
-  )
-  .strict() as unknown as z.ZodType<PostFilterSelection>;
+  })
+  .strict()
+  .transform((val) =>
+    normalizePostFilterSelection(val as PostFilterSelection),
+  ) as unknown as z.ZodType<PostFilterSelection>;
 
 /**
  * API request body schema for creating a smart collection.

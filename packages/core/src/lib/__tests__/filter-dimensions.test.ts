@@ -295,6 +295,45 @@ describe("toPostFilters", () => {
   it("contributes nothing for an empty selection", () => {
     expect(toPostFilters({}, UTC)).toEqual({});
   });
+
+  it("coalesces contiguous years into one range and keeps disjoint years as timeRanges", () => {
+    expect(toPostFilters({ year: [2024, 2025] }, UTC)).toEqual({
+      publishedAfter: Date.UTC(2024, 0, 1) / 1000,
+      publishedBefore: Date.UTC(2026, 0, 1) / 1000,
+    });
+    expect(toPostFilters({ year: [2025, 2023] }, UTC)).toEqual({
+      timeRanges: [
+        {
+          axis: "published",
+          after: Date.UTC(2023, 0, 1) / 1000,
+          before: Date.UTC(2024, 0, 1) / 1000,
+        },
+        {
+          axis: "published",
+          after: Date.UTC(2025, 0, 1) / 1000,
+          before: Date.UTC(2026, 0, 1) / 1000,
+        },
+      ],
+    });
+  });
+
+  it("emits multi-value format and visibility filters and anyOf slices when match is any", () => {
+    expect(
+      toPostFilters(
+        { format: ["link", "quote"], visibility: ["public", "featured"] },
+        UTC,
+      ),
+    ).toEqual({
+      formats: ["link", "quote"],
+      archiveVisibilities: ["public", "featured"],
+    });
+
+    expect(
+      toPostFilters({ match: "any", format: "quote", media: ["image"] }, UTC),
+    ).toEqual({
+      anyOf: [{ format: "quote" }, { mediaKinds: ["image"] }],
+    });
+  });
 });
 
 describe("the registry itself", () => {
@@ -311,6 +350,7 @@ describe("storing a selection", () => {
     const columns = selectionToColumns({ format: "note", title: false });
 
     expect(columns).toEqual({
+      matchMode: "all",
       collectionId: null,
       format: "note",
       hasTitle: false,
@@ -330,6 +370,18 @@ describe("storing a selection", () => {
       media: ["image", "video"],
       replies: false,
       visibility: "latest_hidden",
+    };
+
+    expect(selectionFromRow(selectionToColumns(selection))).toEqual(selection);
+  });
+
+  it("round trips multi-value dimensions and match=any through storage", () => {
+    const selection: PostFilterSelection = {
+      match: "any",
+      collection: ["col_tech", "col_books"],
+      format: ["link", "quote"],
+      year: [2023, 2025],
+      visibility: ["public", "featured"],
     };
 
     expect(selectionFromRow(selectionToColumns(selection))).toEqual(selection);

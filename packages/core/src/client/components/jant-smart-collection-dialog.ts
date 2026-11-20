@@ -3,27 +3,26 @@
  *
  * Creating and editing a smart collection are the same surface. There is no
  * editor page and no `/{path}/edit` route: a smart collection is a handful of
- * fields plus a list of conditions, and the live count is what makes it
- * possible to write conditions at all — without it this is a blind form that
- * can be saved matching nothing.
+ * fields plus a set of conditions, and the live count is what makes it
+ * possible to write conditions with confidence.
  *
  * Delete is not here. Every menu that opens this dialog offers it one item
  * away from Edit, and a destructive button sharing a row with Save is a
  * misclick waiting to happen.
  *
- * The condition rows are deliberately *not* field-operator-value the way
- * Apple Notes and iTunes do it. That shape is built for an open condition
- * space, and here it would promise two things the model cannot deliver: a
- * second `Format is …` row (which would be an OR, and format is one column),
- * and a `Match [all|any]` switch (everything is AND). This keeps the shape and
- * drops the promises — one row per dimension, only the dimensions actually set,
- * and a menu that offers only the ones still unused.
+ * Conditions use a two-layer boolean model:
+ * - Within a dimension row, multiple selected pills are OR'd.
+ * - Across dimension rows, the always-visible `Match [All | Any]` segmented
+ *   switch (and synced inline `and` / `or` row dividers) picks AND or OR.
+ * Unused dimensions sit in a flat quick-add bar below the active rows so every
+ * supported filter is visible at a glance and added in one click.
  *
- * Light DOM only — BaseCoat and Tailwind classes apply directly.
+ * Light DOM only — BaseCoat and the author stylesheet apply directly.
  */
 
 import { LitElement, html, nothing } from "lit";
 import { getCollectionPagePath } from "../../lib/collection-paths.js";
+import type { FilterMatchMode } from "../../lib/filter-dimensions.js";
 import { getSlugValidationIssue, truncateSlug } from "../../lib/slug-format.js";
 import { MAX_COLLECTION_SLUG_LENGTH } from "../../types/constants.js";
 import { slugify } from "../lazy-slugify.js";
@@ -36,16 +35,18 @@ import type {
 } from "./smart-collection-dialog-types.js";
 import {
   DIMENSION_CONTROLS,
+  QUICK_ADD_DIMENSION_ORDER,
   emptySelection,
-  selectionToRows,
+  listCollectionOptions,
   rowsToSelection,
+  selectionToModel,
   type DimensionKey,
 } from "./smart-collection-conditions.js";
 
-/** How long to wait after a keystroke before asking the server to count. */
+/** How long to wait after an edit before asking the server to count. */
 const PREVIEW_DEBOUNCE_MS = 250;
 
-/** Lucide `plus`, inline: the dialog is one component and owns its two icons. */
+/** Lucide `plus`, inline. */
 const PLUS_ICON = html`<svg
   viewBox="0 0 24 24"
   fill="none"
@@ -79,7 +80,7 @@ const ALERT_ICON = html`<svg
   <line x1="12" x2="12.01" y1="16" y2="16" />
 </svg>`;
 
-/** Lucide `x`. A glyph, not a `&times;` character, so it scales with the icon. */
+/** Lucide `x`. */
 const X_ICON = html`<svg
   viewBox="0 0 24 24"
   fill="none"
@@ -106,11 +107,15 @@ export class JantSmartCollectionDialog extends LitElement {
     _slugState: { state: true },
     _slugOpen: { state: true },
     _description: { state: true },
+    _match: { state: true },
     _rows: { state: true },
+    _availableYears: { state: true },
+    _yearInputOpen: { state: true },
+    _collectionMenuOpen: { state: true },
+    _collectionFilter: { state: true },
     _sort: { state: true },
     _layout: { state: true },
     _preview: { state: true },
-    _addMenuOpen: { state: true },
     _saving: { state: true },
     _error: { state: true },
   };
@@ -126,11 +131,15 @@ export class JantSmartCollectionDialog extends LitElement {
   declare _slugState: "unknown" | "checking" | "available" | "taken";
   declare _slugOpen: boolean;
   declare _description: string;
+  declare _match: FilterMatchMode;
   declare _rows: SmartConditionRow[];
+  declare _availableYears: number[];
+  declare _yearInputOpen: boolean;
+  declare _collectionMenuOpen: boolean;
+  declare _collectionFilter: string;
   declare _sort: string;
   declare _layout: string;
   declare _preview: { count: number; baseline: number } | null;
-  declare _addMenuOpen: boolean;
   declare _saving: boolean;
   declare _error: string;
 
@@ -160,11 +169,15 @@ export class JantSmartCollectionDialog extends LitElement {
     this._slugState = "unknown";
     this._slugOpen = false;
     this._description = "";
+    this._match = "all";
     this._rows = [];
+    this._availableYears = [];
+    this._yearInputOpen = false;
+    this._collectionMenuOpen = false;
+    this._collectionFilter = "";
     this._sort = "newest";
     this._layout = "";
     this._preview = null;
-    this._addMenuOpen = false;
     this._saving = false;
     this._error = "";
   }
@@ -175,7 +188,7 @@ export class JantSmartCollectionDialog extends LitElement {
    * @param options.smartCollectionId - Edit this one; omit to create
    * @param options.prefill - Starting values, for the "turn this into a smart
    *   collection" flows. Never saved without the author seeing them first.
-   * @returns Whether anything was created, changed, or deleted
+   * @returns Whether anything was created or changed
    */
   async open(options: {
     smartCollectionId?: string;
@@ -189,7 +202,9 @@ export class JantSmartCollectionDialog extends LitElement {
     } else if (options.prefill) {
       this._title = options.prefill.title ?? "";
       this._description = options.prefill.description ?? "";
-      this._rows = selectionToRows(options.prefill.selection ?? {});
+      const model = selectionToModel(options.prefill.selection ?? {});
+      this._match = model.match;
+      this._rows = model.rows;
       this._sort = options.prefill.sortOrder ?? "newest";
       this._layout = options.prefill.layout ?? "";
       if (this._title) await this.#suggestSlug();
@@ -214,11 +229,14 @@ export class JantSmartCollectionDialog extends LitElement {
     this._slugState = "unknown";
     this._slugOpen = false;
     this._description = "";
+    this._match = "all";
     this._rows = [];
+    this._yearInputOpen = false;
+    this._collectionMenuOpen = false;
+    this._collectionFilter = "";
     this._sort = "newest";
     this._layout = "";
     this._preview = null;
-    this._addMenuOpen = false;
     this._saving = false;
     this._error = "";
     this.#originalSlug = "";
@@ -239,7 +257,9 @@ export class JantSmartCollectionDialog extends LitElement {
       this.#originalSlug = loaded.slug ?? "";
       this._slugEdited = true;
       this._description = loaded.description ?? "";
-      this._rows = selectionToRows(loaded.selection ?? {});
+      const model = selectionToModel(loaded.selection ?? {});
+      this._match = model.match;
+      this._rows = model.rows;
       this._sort = loaded.sortOrder ?? "newest";
       this._layout = loaded.layout ?? "";
       return true;
@@ -253,8 +273,6 @@ export class JantSmartCollectionDialog extends LitElement {
     const dialog = this.querySelector<HTMLDialogElement>(".collection-dialog");
     if (!dialog) return;
     if (!dialog.open) dialog.showModal();
-    // Initial focus lands on the first thing the author types into, not on the
-    // dialog shell.
     this.querySelector<HTMLInputElement>("[data-field='title']")?.focus();
   }
 
@@ -262,7 +280,8 @@ export class JantSmartCollectionDialog extends LitElement {
     const dialog = this.querySelector<HTMLDialogElement>(".collection-dialog");
     if (dialog?.open) dialog.close();
     this._open = false;
-    this._addMenuOpen = false;
+    this._yearInputOpen = false;
+    this._collectionMenuOpen = false;
     if (this.#previewTimer) clearTimeout(this.#previewTimer);
     if (this.#slugTimer) clearTimeout(this.#slugTimer);
     const resolve = this.#resolve;
@@ -272,73 +291,39 @@ export class JantSmartCollectionDialog extends LitElement {
 
   // --- Conditions ----------------------------------------------------------
 
-  /** Dimensions not yet used. A dimension appears at most once, always. */
   #availableDimensions(): DimensionKey[] {
     const used = new Set(this._rows.map((row) => row.key));
-    return (Object.keys(DIMENSION_CONTROLS) as DimensionKey[]).filter(
-      (key) => !used.has(key),
-    );
+    return QUICK_ADD_DIMENSION_ORDER.filter((key) => !used.has(key));
   }
 
-  #addRow(key: DimensionKey) {
-    this._addMenuOpen = false;
-    this._rows = [
-      ...this._rows,
-      { key, value: DIMENSION_CONTROLS[key].defaultValue },
-    ];
+  #setMatch(match: FilterMatchMode) {
+    if (this._match === match) return;
+    this._match = match;
     this.#schedulePreview();
   }
 
-  // --- The add-condition menu ----------------------------------------------
-
-  #toggleAddMenu() {
-    this._addMenuOpen = !this._addMenuOpen;
-    if (!this._addMenuOpen) return;
-    void this.updateComplete.then(() => {
-      // The menu opens inside a scrolling body; a menu the author cannot see
-      // is the same as no menu.
-      this.#addMenu()?.scrollIntoView?.({ block: "nearest" });
-      this.#menuItems()[0]?.focus();
+  #addRow(key: DimensionKey) {
+    if (
+      key === "collection" &&
+      listCollectionOptions(this.labels).length === 0
+    ) {
+      return;
+    }
+    this._collectionMenuOpen = false;
+    this._yearInputOpen = false;
+    const defaultValue = DIMENSION_CONTROLS[key].defaultValue({
+      availableYears: this._availableYears,
     });
-  }
-
-  /** Close the menu, and hand focus back to what opened it. */
-  #closeAddMenu(returnFocus: boolean) {
-    if (!this._addMenuOpen) return;
-    this._addMenuOpen = false;
-    if (!returnFocus) return;
-    void this.updateComplete.then(() => {
-      this.querySelector<HTMLButtonElement>("[data-add-trigger]")?.focus();
-    });
-  }
-
-  #addMenu(): HTMLElement | null {
-    return this.querySelector<HTMLElement>("[data-add-menu]");
-  }
-
-  #menuItems(): HTMLButtonElement[] {
-    return [
-      ...this.querySelectorAll<HTMLButtonElement>(
-        "[data-add-menu] [role='menuitem']",
-      ),
-    ];
-  }
-
-  /** Arrow-key movement through the menu, wrapping at both ends. */
-  #moveMenuFocus(delta: 1 | -1) {
-    const items = this.#menuItems();
-    if (items.length === 0) return;
-    const current = items.indexOf(document.activeElement as HTMLButtonElement);
-    const next =
-      current < 0
-        ? delta > 0
-          ? 0
-          : items.length - 1
-        : (current + delta + items.length) % items.length;
-    items[next]?.focus();
+    this._rows = [...this._rows, { key, value: defaultValue }];
+    this.#schedulePreview();
   }
 
   #removeRow(key: DimensionKey) {
+    if (key === "year") this._yearInputOpen = false;
+    if (key === "collection") {
+      this._collectionMenuOpen = false;
+      this._collectionFilter = "";
+    }
     this._rows = this._rows.filter((row) => row.key !== key);
     this.#schedulePreview();
   }
@@ -348,6 +333,36 @@ export class JantSmartCollectionDialog extends LitElement {
       row.key === key ? { ...row, value } : row,
     );
     this.#schedulePreview();
+  }
+
+  #setYearInputOpen(open: boolean) {
+    this._yearInputOpen = open;
+    if (!open) return;
+    void this.updateComplete.then(() => {
+      this.querySelector<HTMLInputElement>("[data-year-input]")?.focus();
+    });
+  }
+
+  #setCollectionMenuOpen(open: boolean, returnFocus = false) {
+    if (this._collectionMenuOpen === open) return;
+    this._collectionMenuOpen = open;
+    if (open) {
+      this._collectionFilter = "";
+      void this.updateComplete.then(() => {
+        this.querySelector<HTMLElement>(
+          "[data-collection-popover]",
+        )?.scrollIntoView?.({ block: "nearest" });
+        this.querySelector<HTMLInputElement>(
+          "[data-collection-search]",
+        )?.focus();
+      });
+    } else if (returnFocus) {
+      void this.updateComplete.then(() => {
+        this.querySelector<HTMLButtonElement>(
+          "[data-collection-trigger]",
+        )?.focus();
+      });
+    }
   }
 
   // --- Live count ----------------------------------------------------------
@@ -366,13 +381,21 @@ export class JantSmartCollectionDialog extends LitElement {
       const res = await fetch(publicPath("/api/smart-collections/preview"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selection: rowsToSelection(this._rows) }),
+        body: JSON.stringify({
+          selection: rowsToSelection(this._rows, this._match),
+        }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as { count: number; baseline: number };
-      // A slower earlier request must not overwrite a newer answer.
+      const json = (await res.json()) as {
+        count: number;
+        baseline: number;
+        years?: number[];
+      };
       if (seq !== this.#requestSeq) return;
-      this._preview = json;
+      this._preview = { count: json.count, baseline: json.baseline };
+      if (Array.isArray(json.years) && json.years.length > 0) {
+        this._availableYears = json.years;
+      }
     } catch {
       if (seq !== this.#requestSeq) return;
       this._preview = null;
@@ -395,8 +418,6 @@ export class JantSmartCollectionDialog extends LitElement {
       this._slugState = "unknown";
       return;
     }
-    // Local first so the field never lags behind typing; the server only
-    // resolves collisions.
     this.#suggestedSlug = truncateSlug(
       await slugify(title),
       MAX_COLLECTION_SLUG_LENGTH,
@@ -426,8 +447,6 @@ export class JantSmartCollectionDialog extends LitElement {
       this._slugState = "unknown";
       return;
     }
-    // A link with bad characters is not "taken", and saying so sends the author
-    // hunting for a collision that does not exist.
     if (this.#slugFormatIssue() !== null) {
       this._slugState = "taken";
       return;
@@ -456,7 +475,6 @@ export class JantSmartCollectionDialog extends LitElement {
     });
   }
 
-  /** Why this link is refused, or null when it is fine. */
   #slugProblem(): string | null {
     const issue = this.#slugFormatIssue();
     if (issue === "invalid") return this.labels.linkInvalid;
@@ -466,7 +484,6 @@ export class JantSmartCollectionDialog extends LitElement {
     return null;
   }
 
-  /** The whole URL, because that is the thing being decided. */
   #linkPreview(): string {
     const path = publicPath(getCollectionPagePath(this._slug));
     const origin =
@@ -493,13 +510,6 @@ export class JantSmartCollectionDialog extends LitElement {
     this.#scheduleSlugCheck();
   }
 
-  /**
-   * The link, folded away until the author wants it.
-   *
-   * The same shape the quick-create collection dialog uses, because it is the
-   * same decision: the title already answers it, and the whole URL says more
-   * than a bare slug does.
-   */
   #renderLink() {
     if (!this._slug && !this._slugOpen) return nothing;
 
@@ -597,13 +607,6 @@ export class JantSmartCollectionDialog extends LitElement {
 
   // --- Save ------------------------------------------------------------------
 
-  /**
-   * Why this cannot be saved yet, or null when it can.
-   *
-   * One answer for the Save button, the Enter key, and the error line: a button
-   * greyed out for a reason the author is never told is the usual way this
-   * goes wrong, so the reason is always the message they would have got.
-   */
   #blockingIssue(): string | null {
     if (!this._title.trim() || !this._slug) {
       return this.labels.titleAndLinkRequired;
@@ -627,7 +630,7 @@ export class JantSmartCollectionDialog extends LitElement {
       slug: this._slug,
       title,
       description: this._description.trim() || null,
-      selection: rowsToSelection(this._rows),
+      selection: rowsToSelection(this._rows, this._match),
       sortOrder: this._sort,
       layout: this._layout || null,
     };
@@ -663,44 +666,38 @@ export class JantSmartCollectionDialog extends LitElement {
 
   // --- Keyboard ------------------------------------------------------------
 
-  /**
-   * Escape and Enter, handled on the component rather than only on the
-   * `<dialog>`.
-   *
-   * A native `cancel` event is not reliable here: an inner element that
-   * intercepts `keydown` swallows Escape before the dialog ever sees it. The
-   * component-level handler is what actually holds.
-   */
   #onKeydown = (event: KeyboardEvent) => {
     if (!this._open) return;
 
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      if (this._addMenuOpen) {
-        this.#closeAddMenu(true);
+      if (this._collectionMenuOpen) {
+        this.#setCollectionMenuOpen(false, true);
+        return;
+      }
+      if (this._yearInputOpen) {
+        this._yearInputOpen = false;
+        void this.updateComplete.then(() => {
+          this.querySelector<HTMLButtonElement>("[data-year-add]")?.focus();
+        });
         return;
       }
       this.#close(false);
       return;
     }
 
-    if (
-      this._addMenuOpen &&
-      (event.key === "ArrowDown" || event.key === "ArrowUp")
-    ) {
-      event.preventDefault();
-      this.#moveMenuFocus(event.key === "ArrowDown" ? 1 : -1);
-      return;
-    }
-
     if (event.key === "Enter") {
       const target = event.target as HTMLElement | null;
-      // Enter inside a textarea is a newline, not a submit.
       if (target?.tagName === "TEXTAREA") return;
-      // Enter on a menu item picks that condition, and saving nothing yet is
-      // the whole reason the menu was open.
-      if (target?.getAttribute("role") === "menuitem") return;
+      if (target?.hasAttribute("data-year-input")) return;
+      if (target?.hasAttribute("data-collection-search")) return;
+      if (
+        target?.tagName === "BUTTON" &&
+        !target.hasAttribute("data-save-btn")
+      ) {
+        return;
+      }
       event.preventDefault();
       void this.#save();
     }
@@ -720,23 +717,61 @@ export class JantSmartCollectionDialog extends LitElement {
 
   // --- Render --------------------------------------------------------------
 
-  #renderConditionRow(row: SmartConditionRow) {
+  #renderConnector() {
+    const connectorWord =
+      this._match === "any"
+        ? this.labels.connectorOr
+        : this.labels.connectorAnd;
+
+    return html`
+      <div class="smart-condition-connector">
+        <span class="smart-condition-connector-line" aria-hidden="true"></span>
+        <button
+          type="button"
+          class="smart-condition-connector-btn"
+          data-condition-connector
+          aria-label=${this.labels.toggleMatchMode}
+          title=${this.labels.toggleMatchMode}
+          @click=${() => this.#setMatch(this._match === "all" ? "any" : "all")}
+        >
+          ${connectorWord}
+        </button>
+        <span class="smart-condition-connector-line" aria-hidden="true"></span>
+      </div>
+    `;
+  }
+
+  #renderConditionRow(row: SmartConditionRow, index: number) {
     const control = DIMENSION_CONTROLS[row.key];
     const labelText = this.labels.dimensions[row.key] ?? row.key;
 
     return html`
+      ${index > 0 ? this.#renderConnector() : nothing}
       <div class="smart-condition-row" data-condition=${row.key}>
         <span class="smart-condition-label">${labelText}</span>
         <div class="smart-condition-control">
           ${control.render(
             row.value,
-            (value: string) => this.#setRowValue(row.key, value),
-            this.labels,
+            (value) => this.#setRowValue(row.key, value),
+            {
+              labels: this.labels,
+              availableYears: this._availableYears,
+              yearInputOpen: this._yearInputOpen,
+              onToggleYearInput: (open) => this.#setYearInputOpen(open),
+              collectionMenuOpen: this._collectionMenuOpen,
+              collectionFilter: this._collectionFilter,
+              onToggleCollectionMenu: (open) =>
+                this.#setCollectionMenuOpen(open),
+              onCollectionFilterInput: (query) => {
+                this._collectionFilter = query;
+              },
+            },
           )}
         </div>
         <button
           type="button"
           class="btn-sm-icon-ghost smart-condition-remove"
+          data-condition-remove=${row.key}
           aria-label=${this.labels.removeCondition}
           title=${this.labels.removeCondition}
           @click=${() => this.#removeRow(row.key)}
@@ -750,15 +785,46 @@ export class JantSmartCollectionDialog extends LitElement {
   #renderConditions() {
     const available = this.#availableDimensions();
     const hasRows = this._rows.length > 0;
+    const hasCollections = listCollectionOptions(this.labels).length > 0;
 
     return html`
       <section class="smart-collection-section">
-        <div class="smart-collection-section-head">
-          <h3 class="smart-collection-section-title">
-            ${this.labels.conditionsHeading}
-          </h3>
-          <!-- The count belongs to the whole section, not to the last row:
-               it answers "what did that just do" from a fixed place. -->
+        <div class="smart-condition-toolbar">
+          <div class="smart-condition-toolbar-left">
+            <h3 class="smart-collection-section-title">
+              ${this.labels.conditionsHeading}
+            </h3>
+            <div
+              class="smart-condition-match"
+              role="group"
+              aria-label=${this.labels.matchPrefix}
+            >
+              <span class="smart-condition-match-prefix">
+                ${this.labels.matchPrefix}
+              </span>
+              <div class="smart-condition-seg">
+                <button
+                  type="button"
+                  class="smart-condition-seg-btn"
+                  data-match-mode="all"
+                  aria-pressed=${String(this._match === "all")}
+                  @click=${() => this.#setMatch("all")}
+                >
+                  ${this.labels.matchAll}
+                </button>
+                <button
+                  type="button"
+                  class="smart-condition-seg-btn"
+                  data-match-mode="any"
+                  aria-pressed=${String(this._match === "any")}
+                  @click=${() => this.#setMatch("any")}
+                >
+                  ${this.labels.matchAny}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <p class="smart-collection-count" aria-live="polite">
             ${
               this._preview
@@ -770,61 +836,54 @@ export class JantSmartCollectionDialog extends LitElement {
           </p>
         </div>
 
-        <p class="smart-collection-section-hint">
-          ${hasRows ? this.labels.matchAllHint : this.labels.noConditions}
-        </p>
-
         ${
           hasRows
             ? html`
                 <div class="smart-condition-rows">
-                  ${this._rows.map((row) => this.#renderConditionRow(row))}
+                  ${this._rows.map((row, idx) =>
+                    this.#renderConditionRow(row, idx),
+                  )}
+                </div>
+              `
+            : html`
+                <div class="smart-condition-empty">
+                  <p class="smart-collection-section-hint">
+                    ${this.labels.noConditions}
+                  </p>
+                </div>
+              `
+        }
+        ${
+          available.length > 0
+            ? html`
+                <div class="smart-condition-quick-add">
+                  <span class="smart-condition-quick-add-label">
+                    ${this.labels.quickAddPrefix}
+                  </span>
+                  ${available.map((key) => {
+                    const disabled = key === "collection" && !hasCollections;
+                    return html`
+                      <button
+                        type="button"
+                        class="smart-condition-pill-dashed"
+                        data-add-condition=${key}
+                        ?disabled=${disabled}
+                        title=${
+                          disabled
+                            ? this.labels.noCollectionsAvailable
+                            : nothing
+                        }
+                        @click=${() => this.#addRow(key)}
+                      >
+                        ${PLUS_ICON}
+                        <span>${this.labels.dimensions[key] ?? key}</span>
+                      </button>
+                    `;
+                  })}
                 </div>
               `
             : nothing
         }
-
-        <div class="smart-condition-add">
-          <button
-            type="button"
-            class="btn-sm-outline smart-condition-add-trigger"
-            data-add-trigger
-            ?disabled=${available.length === 0}
-            aria-haspopup="menu"
-            aria-expanded=${String(this._addMenuOpen)}
-            @click=${(event: Event) => {
-              event.stopPropagation();
-              this.#toggleAddMenu();
-            }}
-          >
-            ${PLUS_ICON}${this.labels.addCondition}
-          </button>
-          ${
-            this._addMenuOpen
-              ? html`
-                  <div
-                    class="collections-page-menu smart-condition-menu"
-                    data-add-menu
-                    role="menu"
-                    @click=${(event: Event) => event.stopPropagation()}
-                  >
-                    ${available.map(
-                      (key) => html`
-                        <button
-                          type="button"
-                          class="collections-page-menu-item"
-                          role="menuitem"
-                          @click=${() => this.#addRow(key)}
-                        >
-                          ${this.labels.dimensions[key] ?? key}
-                        </button>
-                      `,
-                    )}
-                  </div>
-                `
-              : nothing
-          }
-        </div>
       </section>
     `;
   }
@@ -845,7 +904,7 @@ export class JantSmartCollectionDialog extends LitElement {
         }}
         @click=${(event: Event) => {
           if (event.target === event.currentTarget) this.#close(false);
-          this.#closeAddMenu(false);
+          this.#setCollectionMenuOpen(false);
         }}
       >
         <div
@@ -855,17 +914,13 @@ export class JantSmartCollectionDialog extends LitElement {
           aria-labelledby="collection-dialog-title"
           @click=${(event: Event) => {
             event.stopPropagation();
-            // The trigger and the menu stop their own clicks, so anything that
-            // reaches here is a click elsewhere in the dialog — which dismisses.
-            this.#closeAddMenu(false);
+            this.#setCollectionMenuOpen(false);
           }}
         >
           <header class="collection-dialog-header">
             <h2 id="collection-dialog-title" class="collection-dialog-title">
               ${heading}
             </h2>
-            <!-- Said once, where it is needed: by the time anyone edits one
-                 they know what it is. -->
             ${
               this._mode === "create"
                 ? html`<p class="collection-dialog-note">
@@ -996,6 +1051,7 @@ export class JantSmartCollectionDialog extends LitElement {
             <button
               type="button"
               class="btn"
+              data-save-btn
               ?disabled=${this._saving || this.#blockingIssue() !== null}
               @click=${() => void this.#save()}
             >

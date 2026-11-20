@@ -281,6 +281,13 @@
       "when": 1794912193156,
       "tag": "0039_mixed_sister_grimm",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1795162986143,
+      "tag": "0040_aspiring_captain_america",
+      "breakpoints": true
     }
   ]
 }

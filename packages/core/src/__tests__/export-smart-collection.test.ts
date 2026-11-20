@@ -39,7 +39,11 @@ const at = (iso: string) => Math.floor(Date.parse(iso) / 1000);
 /** Every condition value and every order, each on its own smart collection. */
 const SMART_COLLECTIONS: {
   slug: string;
-  selection: SmartCollection["selection"] | "ideas";
+  selection:
+    | SmartCollection["selection"]
+    | "ideas"
+    | "ideas-or-projects"
+    | "any-ideas-or-video";
   sort?: SmartCollection["sort"];
 }[] = [
   { slug: "sc-all-newest", selection: {} },
@@ -49,10 +53,12 @@ const SMART_COLLECTIONS: {
   // One rated link of two: too few to rank, so the page falls back to newest.
   { slug: "sc-links", selection: { format: "link" }, sort: "rating_desc" },
   { slug: "sc-quotes", selection: { format: "quote" } },
+  { slug: "sc-links-or-quotes", selection: { format: ["link", "quote"] } },
   { slug: "sc-titled", selection: { title: true } },
   { slug: "sc-untitled", selection: { title: false } },
   { slug: "sc-2024", selection: { year: 2024 } },
   { slug: "sc-2025", selection: { year: 2025 } },
+  { slug: "sc-2023-or-2025", selection: { year: [2025, 2023] } },
   { slug: "sc-media", selection: { media: "any" } },
   { slug: "sc-no-media", selection: { media: "none" } },
   { slug: "sc-images", selection: { media: ["image"] } },
@@ -62,7 +68,17 @@ const SMART_COLLECTIONS: {
   { slug: "sc-public", selection: { visibility: "public" } },
   { slug: "sc-hidden", selection: { visibility: "latest_hidden" } },
   { slug: "sc-featured", selection: { visibility: "featured" } },
+  {
+    slug: "sc-featured-or-hidden",
+    selection: { visibility: ["featured", "latest_hidden"] },
+  },
   { slug: "sc-ideas", selection: "ideas" },
+  { slug: "sc-ideas-or-projects", selection: "ideas-or-projects" },
+  { slug: "sc-any-ideas-or-video", selection: "any-ideas-or-video" },
+  {
+    slug: "sc-any-quote-or-2024",
+    selection: { match: "any", format: "quote", year: 2024 },
+  },
   {
     slug: "sc-thoughts",
     selection: { format: "note", title: false },
@@ -100,6 +116,10 @@ describe.skipIf(!hugoAvailable)("smart collections on an exported site", () => {
     const media = createMediaService(db, siteId);
 
     const ideas = await collections.create({ slug: "ideas", title: "Ideas" });
+    const projects = await collections.create({
+      slug: "projects",
+      title: "Projects",
+    });
 
     async function post(
       slug: string,
@@ -131,6 +151,7 @@ describe.skipIf(!hugoAvailable)("smart collections on an exported site", () => {
       format: "note",
       publishedAt: at("2024-03-01T00:00:00Z"),
       rating: 5,
+      collectionIds: [projects.id],
     });
     const titled = await post(
       "b-titled-note",
@@ -218,7 +239,15 @@ describe.skipIf(!hugoAvailable)("smart collections on an exported site", () => {
         selection:
           definition.selection === "ideas"
             ? { collection: [ideas.id] }
-            : definition.selection,
+            : definition.selection === "ideas-or-projects"
+              ? { collection: [ideas.id, projects.id] }
+              : definition.selection === "any-ideas-or-video"
+                ? {
+                    match: "any",
+                    collection: [ideas.id],
+                    media: ["video"],
+                  }
+                : definition.selection,
         sort: definition.sort,
       });
       // What the page shows: the stored order, unless it ranks by rating

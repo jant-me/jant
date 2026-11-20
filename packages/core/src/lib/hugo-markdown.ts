@@ -43,13 +43,14 @@ export interface HugoCollectionRef {
  * smart collection from it.
  */
 export interface HugoSmartCollectionSelection {
-  collection?: string;
-  format?: string;
+  match?: "all" | "any";
+  collection?: string | string[];
+  format?: string | string[];
   title?: boolean;
-  year?: number;
+  year?: number | number[];
   media?: "any" | "none" | string[];
   replies?: boolean;
-  visibility?: string;
+  visibility?: string | string[];
 }
 
 /**

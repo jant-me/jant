@@ -369,34 +369,42 @@ describe("smart collection placement constraints", () => {
       expect(row.collection_id).toBe(collectionA);
     });
 
-    it("refuses a year no timestamp could carry", () => {
-      // `Date.UTC` returns NaN past year 275760, and a NaN bound is a
-      // comparison every row fails with nothing to report.
-      for (const year of [1970, 10000]) {
-        expect(() =>
-          sqlite
-            .prepare(
-              `INSERT INTO smart_collection (id, site_id, title, year, sort, created_at, updated_at)
-               VALUES (?, ?, 'Bad year', ?, 'newest', ?, ?)`,
-            )
-            .run(
-              `smc_year${year}000000000000000000`.slice(0, 30),
-              SITE,
-              year,
-              NOW,
-              NOW,
-            ),
-        ).toThrow();
-      }
+    it("accepts multi-value format, visibility, year, and match_mode, and refuses invalid ones", () => {
+      expect(() =>
+        sqlite
+          .prepare(
+            `INSERT INTO smart_collection (id, site_id, title, match_mode, format, visibility, year, sort, created_at, updated_at)
+             VALUES (?, ?, 'Combo', 'any', 'link,quote', 'featured,latest_hidden', '2024,2025', 'newest', ?, ?)`,
+          )
+          .run(`smc_combo000000000000000000000`, SITE, NOW, NOW),
+      ).not.toThrow();
+
+      expect(() =>
+        sqlite
+          .prepare(
+            `INSERT INTO smart_collection (id, site_id, title, match_mode, sort, created_at, updated_at)
+             VALUES (?, ?, 'Bad match', 'xor', 'newest', ?, ?)`,
+          )
+          .run(`smc_badmatch000000000000000000`, SITE, NOW, NOW),
+      ).toThrow();
+
+      expect(() =>
+        sqlite
+          .prepare(
+            `INSERT INTO smart_collection (id, site_id, title, visibility, sort, created_at, updated_at)
+             VALUES (?, ?, 'Bad vis list', 'public,private', 'newest', ?, ?)`,
+          )
+          .run(`smc_badvis00000000000000000000`, SITE, NOW, NOW),
+      ).toThrow();
 
       expect(() =>
         sqlite
           .prepare(
             `INSERT INTO smart_collection (id, site_id, title, year, sort, created_at, updated_at)
-             VALUES (?, ?, 'Edge years', 9999, 'newest', ?, ?)`,
+             VALUES (?, ?, 'Blank year', '   ', 'newest', ?, ?)`,
           )
-          .run(`smc_year9999000000000000000000`.slice(0, 30), SITE, NOW, NOW),
-      ).not.toThrow();
+          .run(`smc_blankyr0000000000000000000`, SITE, NOW, NOW),
+      ).toThrow();
     });
   });
 });

@@ -119,7 +119,7 @@ import {
  * importing the export and silently dropping what it doesn't know.
  * `export-format-version.test.ts` freezes the fields each version reads.
  */
-export const SITE_EXPORT_FORMAT_VERSION = 3;
+export const SITE_EXPORT_FORMAT_VERSION = 4;
 
 /** A file of the exported Hugo site whose text or bytes the export holds. */
 export interface ExportContentFile {
@@ -1471,15 +1471,30 @@ function toExportedSelection(
   selection: SmartCollection["selection"],
   collectionSlugs: ReadonlyMap<string, string>,
 ): HugoSmartCollectionSelection | null {
-  const { collection, media, ...rest } = selection;
+  const { collection, format, year, media, visibility, ...rest } = selection;
   const exported: HugoSmartCollectionSelection = { ...rest };
   if (collection !== undefined) {
-    const slug = collection[0] ? collectionSlugs.get(collection[0]) : undefined;
-    if (!slug) return null;
-    exported.collection = slug;
+    const slugs: string[] = [];
+    for (const id of collection) {
+      const slug = collectionSlugs.get(id);
+      if (!slug) return null;
+      slugs.push(slug);
+    }
+    if (slugs.length === 0) return null;
+    exported.collection = slugs.length === 1 ? slugs[0] : slugs;
+  }
+  if (format !== undefined) {
+    exported.format = typeof format === "string" ? format : [...format];
+  }
+  if (year !== undefined) {
+    exported.year = typeof year === "number" ? year : [...year];
   }
   if (media !== undefined) {
     exported.media = typeof media === "string" ? media : [...media];
+  }
+  if (visibility !== undefined) {
+    exported.visibility =
+      typeof visibility === "string" ? visibility : [...visibility];
   }
   return exported;
 }

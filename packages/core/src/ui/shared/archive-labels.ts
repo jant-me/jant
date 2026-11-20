@@ -62,12 +62,14 @@ export function describeArchiveFilters(
   i18n: Translator,
   ctx: DimensionContext = {},
 ): string[] {
-  // Title presence absorbs the format it refines, mirroring the filter chip —
-  // `Untitled` says everything `Notes, without title` would. The registry lists
-  // `format` immediately before `title`, so dropping one leaves the other in
-  // exactly the right place.
+  // Title presence absorbs the single `note` format it refines, mirroring the
+  // filter chip — `Untitled` says everything `Notes, without title` would.
+  // When `match` is `any` or another format is chosen, both dimensions stand
+  // on their own.
   const composed =
-    selection.title !== undefined
+    selection.title !== undefined &&
+    selection.format === "note" &&
+    selection.match !== "any"
       ? { ...selection, format: undefined }
       : selection;
   return describeFilterSelection(composed, i18n, ctx);

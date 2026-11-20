@@ -94,6 +94,47 @@ describe("SmartCollectionService", () => {
       expect(reread?.selection).toEqual(created.selection);
     });
 
+    it("stores match=any and multi-value dimensions, normalizing singletons", async () => {
+      const books = await collections.create({ slug: "books", title: "Books" });
+      const ideas = await collections.create({ slug: "ideas", title: "Ideas" });
+
+      const created = await smartCollections.create({
+        slug: "reading-feed",
+        title: "Reading Feed",
+        selection: {
+          match: "any",
+          collection: [books.id, ideas.id],
+          format: ["link", "quote"],
+          year: [2025, 2023],
+          visibility: ["public", "featured"],
+        },
+      });
+
+      expect(created.selection).toEqual({
+        match: "any",
+        collection: [books.id, ideas.id],
+        format: ["link", "quote"],
+        year: [2023, 2025],
+        visibility: ["public", "featured"],
+      });
+
+      const singleton = await smartCollections.create({
+        slug: "single-quote",
+        title: "Single Quote",
+        selection: {
+          match: "all",
+          format: ["quote"],
+          year: [2024],
+          visibility: ["featured"],
+        },
+      });
+      expect(singleton.selection).toEqual({
+        format: "quote",
+        year: 2024,
+        visibility: "featured",
+      });
+    });
+
     it("accepts no conditions at all, which means every post", async () => {
       const created = await smartCollections.create({
         slug: "everything",
@@ -646,6 +687,83 @@ describe("SmartCollectionService", () => {
       expect(
         smartCollections.toPostFilters(created, author).listedForReader,
       ).toBe(false);
+    });
+
+    it("unions dimensions under match=any without leaking drafts, replies, or private posts", async () => {
+      const books = await collections.create({ slug: "books", title: "Books" });
+      const bookNote = await posts.create({
+        format: "note",
+        bodyMarkdown: "book note",
+        status: "published",
+        publishedAt: Date.UTC(2024, 2, 1) / 1000,
+        collectionIds: [books.id],
+      });
+      await posts.create({
+        format: "note",
+        bodyMarkdown: "reply inside thread",
+        replyToId: bookNote.id,
+        status: "published",
+        publishedAt: Date.UTC(2025, 0, 2) / 1000,
+      });
+      await posts.create({
+        format: "quote",
+        quoteText: "public quote outside books",
+        status: "published",
+        publishedAt: Date.UTC(2025, 4, 1) / 1000,
+      });
+      await posts.create({
+        format: "quote",
+        quoteText: "private quote",
+        status: "published",
+        visibility: "private",
+        publishedAt: Date.UTC(2025, 4, 2) / 1000,
+      });
+      await posts.create({
+        format: "quote",
+        quoteText: "draft quote",
+        status: "draft",
+      });
+      await posts.create({
+        format: "link",
+        title: "Unrelated link",
+        url: "https://example.com",
+        bodyMarkdown: "unrelated link",
+        status: "published",
+        publishedAt: Date.UTC(2023, 5, 1) / 1000,
+      });
+
+      const created = await smartCollections.create({
+        slug: "books-or-quotes",
+        title: "Books or Quotes",
+        selection: {
+          match: "any",
+          collection: [books.id],
+          format: "quote",
+        },
+      });
+
+      expect(
+        await posts.count(smartCollections.toPostFilters(created, anonymous)),
+      ).toBe(2);
+      expect(
+        await posts.count(smartCollections.toPostFilters(created, author)),
+      ).toBe(3);
+
+      const preview = await smartCollections.preview(created.selection, author);
+      expect(preview).toEqual({
+        count: 3,
+        baseline: 4,
+        years: [2025, 2024, 2023],
+      });
+
+      // Deleting a collection referenced inside a multi-collection condition is still refused.
+      const ideas = await collections.create({ slug: "ideas", title: "Ideas" });
+      await smartCollections.update(created.id, {
+        selection: { collection: [books.id, ideas.id] },
+      });
+      await expect(collections.delete(ideas.id)).rejects.toThrow(
+        /Books or Quotes/,
+      );
     });
   });
 });

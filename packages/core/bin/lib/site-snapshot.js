@@ -1103,6 +1103,40 @@ export function upgradeV1SnapshotSql(sql) {
 }
 
 /**
+ * Quote bare integer `year` values in `smart_collection` inserts written
+ * before `smart_collection.year` became `text` (migration 0040 / pg 0038).
+ * Postgres rejects an unquoted integer literal into a `text` column.
+ */
+function upgradeSmartCollectionYearSql(sql) {
+  if (!/INSERT\s+INTO\s+"?smart_collection"?/i.test(sql)) {
+    return sql;
+  }
+
+  const statements = splitSqlStatements(sql);
+  let changed = false;
+  const rewritten = statements.map((statement) => {
+    const match = statement.match(
+      /^(\s*INSERT\s+INTO\s+"?smart_collection"?\s*\(([^)]+)\)\s*VALUES\s*\()([\s\S]+)(\)\s*)$/i,
+    );
+    if (!match) return statement;
+    const colNames = match[2]
+      .split(",")
+      .map((col) => col.trim().replace(/^"|"$/g, ""));
+    const yearIdx = colNames.indexOf("year");
+    if (yearIdx < 0) return statement;
+    const values = parseSqlValueList(match[3]);
+    if (values.length !== colNames.length) return statement;
+    const rawYear = values[yearIdx]?.trim() ?? "";
+    if (!/^-?\d+$/.test(rawYear)) return statement;
+    values[yearIdx] = `'${rawYear}'`;
+    changed = true;
+    return `${match[1]}${values.join(", ")}${match[4]}`;
+  });
+
+  return changed ? `${rewritten.join(";\n")};\n` : sql;
+}
+
+/**
  * Apply format-version compatibility rewrites to snapshot SQL.
  *
  * @param {string} sql site-scoped snapshot SQL
@@ -1112,7 +1146,8 @@ export function upgradeV1SnapshotSql(sql) {
  * upgradeSnapshotSql(dbSql, meta.version)
  */
 export function upgradeSnapshotSql(sql, snapshotVersion) {
-  return snapshotVersion === 1 ? upgradeV1SnapshotSql(sql) : sql;
+  const afterV1 = snapshotVersion === 1 ? upgradeV1SnapshotSql(sql) : sql;
+  return upgradeSmartCollectionYearSql(afterV1);
 }
 
 /**

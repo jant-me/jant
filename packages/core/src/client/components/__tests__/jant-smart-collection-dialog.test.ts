@@ -52,10 +52,22 @@ const labels: SmartCollectionDialogLabels = {
   linkMovesWarning: "Changing the link breaks the old one immediately.",
   description: "Description",
   conditionsHeading: "Conditions",
-  matchAllHint: "Posts matching all of these",
+  matchPrefix: "Match",
+  matchAll: "All",
+  matchAny: "Any",
+  connectorAnd: "and",
+  connectorOr: "or",
+  toggleMatchMode: "Switch between matching all conditions and any condition",
   noConditions: "No conditions yet. Add one to choose what lands here.",
-  addCondition: "Add condition",
+  quickAddPrefix: "Add:",
   removeCondition: "Remove condition",
+  mediaAllKinds: "All kinds",
+  addYear: "+ Year",
+  yearPlaceholder: "YYYY",
+  chooseCollection: "Choose collection",
+  filterCollectionsPlaceholder: "Filter collections…",
+  noMatchingCollections: "No collections match that filter.",
+  noCollectionsAvailable: "Create a collection first to filter by collection.",
   countSummary: "{count} of {total} threads",
   counting: "Counting…",
   displayHeading: "Display",
@@ -120,7 +132,11 @@ beforeEach(() => {
   setCollectionVocabulary([{ id: "col_books", slug: "books", title: "Books" }]);
 
   responses = {
-    "/api/smart-collections/preview": { count: 3, baseline: 42 },
+    "/api/smart-collections/preview": {
+      count: 3,
+      baseline: 42,
+      years: [2026, 2025, 2024],
+    },
     "/api/smart-collections/slug": { slug: "quotes", available: true },
   };
   requests = [];
@@ -162,117 +178,170 @@ describe("JantSmartCollectionDialog", () => {
     expect(element.textContent).toContain(
       "No conditions yet. Add one to choose what lands here.",
     );
+    // Match [ All | Any ] stays visible even with 0 rows so OR capability is immediately discoverable.
+    expect(
+      element
+        .querySelector("[data-match-mode='all']")
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      element
+        .querySelector("[data-match-mode='any']")
+        ?.getAttribute("aria-pressed"),
+    ).toBe("false");
     expect(element.querySelectorAll("[data-condition]")).toHaveLength(0);
   });
 
-  it("offers each dimension once, and stops offering one that is in use", async () => {
+  it("offers unused dimensions as quick-add pills, and stops offering one that is in use", async () => {
     const element = mountDialog();
     void element.open({ prefill: { selection: { format: "quote" } } });
     await settle(element);
 
     expect(element.querySelectorAll("[data-condition]")).toHaveLength(1);
 
-    const addButton = [...element.querySelectorAll("button")].find(
-      (button) => button.textContent?.trim() === "Add condition",
-    );
-    addButton?.click();
-    await element.updateComplete;
-
-    const offered = [...element.querySelectorAll("[role='menuitem']")].map(
-      (item) => item.textContent?.trim(),
-    );
+    const offered = [
+      ...element.querySelectorAll<HTMLButtonElement>("[data-add-condition]"),
+    ].map((button) => button.getAttribute("data-add-condition"));
 
     // Seven dimensions, one already used.
     expect(offered).toHaveLength(6);
-    expect(offered).not.toContain("Format");
-    expect(offered).toContain("Year");
+    expect(offered).not.toContain("format");
+    expect(offered).toContain("year");
+
+    element
+      .querySelector<HTMLButtonElement>("[data-add-condition='year']")
+      ?.click();
+    await settle(element);
+    expect(element.querySelectorAll("[data-condition]")).toHaveLength(2);
   });
 
-  it("dismisses the condition menu on a click elsewhere in the dialog", async () => {
+  it("keeps the header Match switch and inline row connector in sync", async () => {
     const element = mountDialog();
-    void element.open({});
+    void element.open({
+      prefill: {
+        title: "Reading",
+        selection: { format: ["link", "quote"], year: 2025 },
+      },
+    });
     await settle(element);
 
-    const trigger =
-      element.querySelector<HTMLButtonElement>("[data-add-trigger]");
-    trigger?.click();
-    await element.updateComplete;
-    expect(element.querySelector("[data-add-menu]")).not.toBeNull();
+    const connector = () =>
+      element.querySelector<HTMLButtonElement>("[data-condition-connector]");
+    expect(connector()?.textContent?.trim()).toBe("and");
 
-    // Not the backdrop — the panel stops that click, so a menu that only
-    // listened to the backdrop would stay open over the fields it covers.
+    connector()?.click();
+    await settle(element);
+
+    expect(connector()?.textContent?.trim()).toBe("or");
+    expect(
+      element
+        .querySelector("[data-match-mode='any']")
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
+
+    const preview = [...requests]
+      .reverse()
+      .find((request) => request.url.includes("/preview"));
+    expect(preview?.body).toEqual({
+      selection: { match: "any", format: ["link", "quote"], year: 2025 },
+    });
+  });
+
+  it("toggles multi-select pills within a row while keeping at least one value selected", async () => {
+    const element = mountDialog();
+    void element.open({
+      prefill: { title: "Quotes", selection: { format: "quote" } },
+    });
+    await settle(element);
+
+    const pill = (opt: string) =>
+      element.querySelector<HTMLButtonElement>(
+        `[data-condition='format'] [data-option='${opt}']`,
+      );
+
+    // Clicking the sole active pill keeps it selected rather than leaving a broken empty row.
+    pill("quote")?.click();
+    await element.updateComplete;
+    expect(pill("quote")?.getAttribute("aria-pressed")).toBe("true");
+
+    // Selecting a second format adds it with intra-dimension OR.
+    pill("note")?.click();
+    await settle(element);
+    expect(pill("note")?.getAttribute("aria-pressed")).toBe("true");
+    expect(pill("quote")?.getAttribute("aria-pressed")).toBe("true");
+
+    const preview = [...requests]
+      .reverse()
+      .find((request) => request.url.includes("/preview"));
+    expect(preview?.body).toEqual({
+      selection: { format: ["note", "quote"] },
+    });
+  });
+
+  it("dismisses the searchable collection popover on outside click and Escape without closing the dialog", async () => {
+    setCollectionVocabulary(
+      Array.from({ length: 8 }, (_, idx) => ({
+        id: `col_${idx + 1}`,
+        slug: `col-${idx + 1}`,
+        title: `Collection ${idx + 1}`,
+      })),
+    );
+
+    const element = mountDialog();
+    const closed = element.open({
+      prefill: { selection: { collection: ["col_1"] } },
+    });
+    await settle(element);
+
+    const trigger = () =>
+      element.querySelector<HTMLButtonElement>("[data-collection-trigger]");
+    trigger()?.click();
+    await element.updateComplete;
+    expect(element.querySelector("[data-collection-popover]")).not.toBeNull();
+
+    // Outside click inside the dialog body dismisses the popover.
     element.querySelector<HTMLElement>(".collection-dialog-body")?.click();
     await element.updateComplete;
+    expect(element.querySelector("[data-collection-popover]")).toBeNull();
 
-    expect(element.querySelector("[data-add-menu]")).toBeNull();
-  });
-
-  it("closes the condition menu on Escape, and leaves the dialog open", async () => {
-    const element = mountDialog();
-    const closed = element.open({});
-    await settle(element);
-
-    element.querySelector<HTMLButtonElement>("[data-add-trigger]")?.click();
+    // Escape closes the popover first, leaving the dialog open.
+    trigger()?.click();
     await element.updateComplete;
+    expect(element.querySelector("[data-collection-popover]")).not.toBeNull();
 
     element.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
     );
     await element.updateComplete;
-
-    expect(element.querySelector("[data-add-menu]")).toBeNull();
+    expect(element.querySelector("[data-collection-popover]")).toBeNull();
     expect(element.querySelector("dialog")?.open).toBe(true);
 
-    // A second Escape, now that the menu is gone, closes the dialog itself.
+    // Second Escape closes the dialog itself.
     element.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
     );
     await expect(closed).resolves.toBe(false);
   });
 
-  it("walks the condition menu with the arrow keys", async () => {
+  it("commits a custom year on Enter without submitting the dialog", async () => {
     const element = mountDialog();
-    void element.open({});
+    void element.open({
+      prefill: { title: "Archive", selection: { year: 2025 } },
+    });
     await settle(element);
 
-    element.querySelector<HTMLButtonElement>("[data-add-trigger]")?.click();
-    await element.updateComplete;
-    await Promise.resolve();
-
-    const items = [
-      ...element.querySelectorAll<HTMLButtonElement>(
-        "[data-add-menu] [role='menuitem']",
-      ),
-    ];
-    items[0]?.focus();
-
-    element.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
-    );
-    expect(document.activeElement).toBe(items[1]);
-
-    // Up from the first item wraps to the last rather than falling out.
-    items[0]?.focus();
-    element.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
-    );
-    expect(document.activeElement).toBe(items[items.length - 1]);
-  });
-
-  it("picks a condition on Enter instead of saving", async () => {
-    const element = mountDialog();
-    void element.open({ prefill: { title: "Quotes" } });
-    await settle(element);
-
-    element.querySelector<HTMLButtonElement>("[data-add-trigger]")?.click();
+    element.querySelector<HTMLButtonElement>("[data-year-add]")?.click();
     await element.updateComplete;
 
-    const item = element.querySelector<HTMLButtonElement>(
-      "[data-add-menu] [role='menuitem']",
-    );
-    item?.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-    );
+    const yearInput =
+      element.querySelector<HTMLInputElement>("[data-year-input]");
+    expect(yearInput).not.toBeNull();
+    if (yearInput) {
+      yearInput.value = "1999";
+      yearInput.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    }
     await settle(element);
 
     expect(
@@ -281,6 +350,11 @@ describe("JantSmartCollectionDialog", () => {
           request.method === "POST" && !request.url.includes("/preview"),
       ),
     ).toBe(false);
+    expect(
+      element
+        .querySelector("[data-condition='year'] [data-option='1999']")
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
   });
 
   it("saves the conditions it was given, in the shared vocabulary", async () => {
@@ -319,9 +393,9 @@ describe("JantSmartCollectionDialog", () => {
     await settle(element);
     expect(element.querySelectorAll("[data-condition]")).toHaveLength(2);
 
-    const remove = element
-      .querySelector("[data-condition='year']")
-      ?.querySelector("button");
+    const remove = element.querySelector<HTMLButtonElement>(
+      "[data-condition-remove='year']",
+    );
     remove?.click();
     await settle(element);
 
@@ -363,8 +437,10 @@ describe("JantSmartCollectionDialog", () => {
     await settle(element);
 
     const options = [
-      ...element.querySelectorAll("[data-condition='visibility'] option"),
-    ].map((option) => (option as globalThis.HTMLOptionElement).value);
+      ...element.querySelectorAll<HTMLButtonElement>(
+        "[data-condition='visibility'] [data-option]",
+      ),
+    ].map((button) => button.getAttribute("data-option"));
 
     expect(options).toEqual(["public", "featured", "hidden"]);
     expect(options).not.toContain("private");
