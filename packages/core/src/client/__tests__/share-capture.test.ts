@@ -362,6 +362,24 @@ describe("capture", () => {
     });
   });
 
+  it("highlights the code in both the preview and the card sent to snapdom", async () => {
+    stubPainting([]);
+    const prepared = await prepareShareCard(
+      '<div data-share-card><div data-share-card-body><pre><code class="language-js">const answer = 42;</code></pre></div></div>',
+    );
+    expect(prepared.html).toContain('<span class="hljs-keyword">const</span>');
+
+    await prepared.capture();
+
+    const paintedCard = vi.mocked(snapdom).mock.lastCall?.[0] as HTMLElement;
+    expect(paintedCard.querySelector(".hljs-keyword")?.textContent).toBe(
+      "const",
+    );
+    expect(paintedCard.querySelector("code")?.textContent).toBe(
+      "const answer = 42;",
+    );
+  });
+
   it("paints with shadows off, then puts the paper's shadow back", async () => {
     // No fonts to wait for, and no `ready` for the capture to patch.
     Object.defineProperty(document, "fonts", {

@@ -55,7 +55,7 @@ import {
 } from "../../services/mcp.js";
 import { declaredRequest } from "../../middleware/validate.js";
 import type { AppConfig } from "../../types/config.js";
-import { CONFIG_FIELDS, THEME_MODES } from "../../types/config.js";
+import { CODE_THEMES, CONFIG_FIELDS, THEME_MODES } from "../../types/config.js";
 import type { Post } from "../../types.js";
 import { BUILTIN_COLOR_THEMES } from "../../ui/color-themes.js";
 import { BUILTIN_FONT_THEMES } from "../../ui/font-themes.js";
@@ -638,6 +638,8 @@ function acceptedValues(name: string): string[] {
       return fontThemeIds;
     case "THEME_MODE":
       return [...THEME_MODES];
+    case "CODE_THEME":
+      return [...CODE_THEMES];
   }
   if (Object.hasOwn(ENV_RULES, name)) {
     const rule = ENV_RULES[name as keyof typeof ENV_RULES];

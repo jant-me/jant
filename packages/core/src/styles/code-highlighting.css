@@ -1,0 +1,80 @@
+/** Token colors for published code and the settings preview. */
+@layer components {
+  .hljs {
+    color-scheme: light dark;
+  }
+
+  :root[data-theme-mode="light"] .hljs {
+    color-scheme: light;
+  }
+
+  :root[data-theme-mode="dark"] .hljs {
+    color-scheme: dark;
+  }
+
+  [data-code-theme="github"] {
+    --code-comment: light-dark(#57606a, #8b949e);
+    --code-keyword: light-dark(#a40e26, #ff7b72);
+    --code-string: light-dark(#0a3069, #a5d6ff);
+    --code-number: light-dark(#0550ae, #79c0ff);
+    --code-name: light-dark(#6639ba, #d2a8ff);
+    --code-variable: light-dark(#953800, #ffa657);
+    --code-insertion: light-dark(#116329, #7ee787);
+  }
+
+  [data-code-theme="solarized"] {
+    --code-comment: light-dark(#53676e, #96a9ad);
+    --code-keyword: light-dark(#526000, #b4c62a);
+    --code-string: light-dark(#006b65, #62d3c0);
+    --code-number: light-dark(#9b4100, #f4a55c);
+    --code-name: light-dark(#175d92, #70bbf0);
+    --code-variable: light-dark(#953266, #ec91bb);
+    --code-insertion: light-dark(#526000, #b4c62a);
+  }
+
+  [data-code-theme="monochrome"] {
+    --code-comment: light-dark(#695777, #a99ab4);
+    --code-keyword: light-dark(#571b86, #ebc4ff);
+    --code-string: light-dark(#7846a1, #b58ce3);
+    --code-number: light-dark(#633e81, #c6a0e6);
+    --code-name: light-dark(#452669, #d5a5ff);
+    --code-variable: light-dark(#66378c, #c8a0f3);
+    --code-insertion: light-dark(#592f7c, #dbb0ff);
+  }
+
+  .hljs :is(.hljs-comment, .hljs-quote) {
+    color: var(--code-comment);
+    font-style: italic;
+  }
+
+  .hljs :is(.hljs-keyword, .hljs-selector-tag, .hljs-deletion) {
+    color: var(--code-keyword);
+  }
+
+  .hljs :is(.hljs-string, .hljs-regexp, .hljs-doctag) {
+    color: var(--code-string);
+  }
+
+  .hljs :is(.hljs-number, .hljs-literal, .hljs-symbol, .hljs-attr) {
+    color: var(--code-number);
+  }
+
+  .hljs :is(.hljs-title, .hljs-name, .hljs-section, .hljs-type) {
+    color: var(--code-name);
+  }
+
+  .hljs
+    :is(
+      .hljs-variable,
+      .hljs-attribute,
+      .hljs-built_in,
+      .hljs-meta,
+      .hljs-selector-class
+    ) {
+    color: var(--code-variable);
+  }
+
+  .hljs .hljs-addition {
+    color: var(--code-insertion);
+  }
+}

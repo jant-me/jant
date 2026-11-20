@@ -1,3 +1,4 @@
 /* Tailwind CSS v4 + Jant Core */
 @import "tailwindcss";
 @import "./preset.css";
+@import "./styles/code-highlighting.css";

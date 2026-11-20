@@ -2411,10 +2411,11 @@ Each has its own screen under Settings rather than a Config Editor row. `PUT /ap
 | `THEME`              | Color theme ID; `""` follows `DEFAULT_THEME`     | `"paper"`                |
 | `FONT_THEME`         | Font theme ID; `""` follows `DEFAULT_FONT_THEME` | `"literary"`             |
 | `THEME_MODE`         | `auto`, `light`, or `dark`                       | `"dark"`                 |
+| `CODE_THEME`         | `github` (default), `solarized`, or `monochrome` | `"solarized"`            |
 | `CUSTOM_CSS`         | Custom CSS, trimmed; locked on the demo site     | `"body { color: red; }"` |
 | `SHOW_HEADER_AVATAR` | Avatar in the site header, `"true"` or `"false"` | `"true"`                 |
 
-A theme or font theme ID that Jant doesn't have answers `400`.
+An unknown theme ID returns `400`.
 
 ### Get editable settings
 
@@ -2448,6 +2449,7 @@ Response:
     "THEME": "tufte",
     "FONT_THEME": "classic",
     "THEME_MODE": "auto",
+    "CODE_THEME": "github",
     "CUSTOM_CSS": "",
     "SHOW_HEADER_AVATAR": "false",
     "MULTILINGUAL_ENABLED": "false",
