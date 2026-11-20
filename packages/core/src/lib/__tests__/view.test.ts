@@ -491,6 +491,49 @@ describe("toPostView", () => {
     expect(longView.bodyHtml).toBe(`${p1}<span data-note-break></span>${p2}`);
   });
 
+  it("splices data-note-break inside a single long bulletList on a link or untitled note", () => {
+    const textA = "A".repeat(1000);
+    const textB = "B".repeat(1000);
+    const body = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [
+            {
+              type: "listItem",
+              content: [
+                { type: "paragraph", content: [{ type: "text", text: textA }] },
+              ],
+            },
+            {
+              type: "listItem",
+              content: [
+                { type: "paragraph", content: [{ type: "text", text: textB }] },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const bodyHtml = renderTiptapJson(body, { namespace: UUID_1 });
+    const view = toPostView(
+      makePostWithMedia({
+        format: "link",
+        title: "tab 星期四",
+        url: "https://tabthursday.com",
+        body,
+        bodyHtml,
+      }),
+      EMPTY_CTX,
+    );
+    expect(view.summaryHtml).toBeUndefined();
+    expect(view.summaryHasMore).toBe(true);
+    expect(view.bodyHtml).toBe(
+      `<ul><li><p>${textA}</p></li><span data-note-break></span><li><p>${textB}</p></li></ul>`,
+    );
+  });
+
   it("never truncates quote commentary", () => {
     const textA = "A".repeat(1000);
     const textB = "B".repeat(1000);

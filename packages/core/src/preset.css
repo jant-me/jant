@@ -294,7 +294,10 @@ html {
      bottom margin is the whole gap. Left in place, a paragraph's 1.4rem wins
      the margin collapse against any smaller heading margin, and the heading
      floats 1.4rem from both neighbours whatever its margins say. */
-  :where(h1, h2, h3, h4, h5, h6) + :where(*) {
+  :where(h1, h2, h3, h4, h5, h6) + :where(*),
+  :where(h1, h2, h3, h4, h5, h6)
+    + :where([data-note-break], #continue)
+    + :where(*) {
     margin-top: 0;
   }
 
@@ -339,7 +342,9 @@ html {
     margin-bottom: 0;
   }
 
-  :where(li > p:has(+ :is(ul, ol))) {
+  :where(
+    li > p:has(+ :is(ul, ol), + :is([data-note-break], #continue) + :is(ul, ol))
+  ) {
     margin-bottom: 0;
   }
 
@@ -475,6 +480,7 @@ html {
   }
 
   blockquote p + p,
+  blockquote p + :where([data-note-break], #continue) + p,
   blockquote ul,
   blockquote ol,
   blockquote pre {

@@ -171,25 +171,25 @@ export function toMediaView(media: Media, ctx: MediaContext): MediaView {
 function spliceAtSummaryBoundary(
   bodyJson: string,
   bodyHtml: string,
-  breakAtIndex: number,
+  boundary: number | readonly number[],
   markerHtml: string,
   namespace: string,
 ): string | null {
   try {
     const doc = JSON.parse(bodyJson) as { type?: string; content?: unknown[] };
+    const path = typeof boundary === "number" ? [boundary] : boundary;
     if (
       doc.type !== "doc" ||
       !Array.isArray(doc.content) ||
-      breakAtIndex <= 0 ||
-      breakAtIndex > doc.content.length
+      path.length === 0 ||
+      (path.length === 1 && path[0]! <= 0) ||
+      path[0]! > doc.content.length
     ) {
       return null;
     }
-    const split = renderTiptapDocumentAroundBoundary(
-      doc as JSONContent,
-      breakAtIndex,
-      { namespace },
-    );
+    const split = renderTiptapDocumentAroundBoundary(doc as JSONContent, path, {
+      namespace,
+    });
     if (!split || split.beforeHtml + split.afterHtml !== bodyHtml) return null;
     return split.beforeHtml + markerHtml + split.afterHtml;
   } catch {
@@ -317,7 +317,7 @@ export function toPostView(
         const spliced = spliceAtSummaryBoundary(
           post.body,
           post.bodyHtml,
-          result.breakAtIndex,
+          result.breakPath ?? result.breakAtIndex,
           '<span id="continue"></span>',
           id,
         );
@@ -327,7 +327,7 @@ export function toPostView(
       const spliced = spliceAtSummaryBoundary(
         post.body,
         post.bodyHtml,
-        result.breakAtIndex,
+        result.breakPath ?? result.breakAtIndex,
         "<span data-note-break></span>",
         id,
       );

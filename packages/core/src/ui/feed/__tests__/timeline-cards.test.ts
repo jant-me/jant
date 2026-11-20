@@ -552,7 +552,7 @@ describe("timeline cards", () => {
       /ol ol ol\s*\{[^}]*list-style-type:\s*lower-roman;/,
     );
     expect(presetCss).toMatch(
-      /:where\(li > p:has\(\+ :is\(ul, ol\)\)\)\s*\{[^}]*margin-bottom:\s*0;/,
+      /:where\(\s*li\s*>\s*p:has\(\s*\+\s*:is\(ul, ol\),\s*\+\s*:is\(\[data-note-break\], #continue\)\s*\+\s*:is\(ul, ol\)\s*\)\s*\)\s*\{[^}]*margin-bottom:\s*0;/,
     );
     expect(exportCss).toMatch(
       /li > p:has\(\+ :is\(ul, ol\)\)\s*\{[^}]*margin-bottom:\s*0;/,

@@ -6,6 +6,7 @@
  */
 
 import type { JSONContent } from "@tiptap/core";
+import { normalizeFootnoteArtifacts } from "./footnotes.js";
 import {
   renderTiptapDocument,
   type TiptapRenderOptions,
@@ -38,20 +39,135 @@ export const NOTE_SUMMARY_MAX_CHARS = 1500;
 export const NOTE_SUMMARY_MIN_HIDDEN_CHARS = 200;
 
 /**
- * Block node types that carry user-visible content for summary extraction.
- * Structural nodes (horizontalRule, moreBreak) are excluded. Images are not
- * content blocks either: they never count toward a summary's limits, and only
- * an HTML summary that asks for them keeps any (see `SummaryImageOptions`).
+ * Compound block containers whose children are walked individually so a single
+ * long list or multi-paragraph quote can be cut at an inner block boundary
+ * instead of behaving as one indivisible unit.
  */
-const SUMMARY_BLOCK_TYPES = new Set([
-  "paragraph",
-  "heading",
+const SUMMARY_CONTAINER_TYPES = new Set([
   "bulletList",
   "orderedList",
+  "listItem",
   "blockquote",
+]);
+
+/**
+ * Leaf block node types that carry user-visible content for summary extraction.
+ * Structural nodes (horizontalRule, moreBreak) are excluded. Images are not
+ * content blocks either: they never count toward a summary's limits, and only
+ * an HTML summary that asks for them keeps any (see `SummaryOptions`).
+ */
+const SUMMARY_LEAF_TYPES = new Set([
+  "paragraph",
+  "heading",
   "codeBlock",
   "table",
 ]);
+
+interface SummaryLeaf {
+  path: number[];
+  node: TiptapNode;
+  text: string;
+  width: number;
+  isHeading: boolean;
+}
+
+function collectSummaryWalk(nodes: TiptapNode[]): {
+  leaves: SummaryLeaf[];
+  moreBreakPath: number[] | null;
+} {
+  const leaves: SummaryLeaf[] = [];
+  let moreBreakPath: number[] | null = null;
+
+  const visit = (list: TiptapNode[], prefix: number[]): void => {
+    for (let i = 0; i < list.length; i++) {
+      const node = list[i];
+      if (!node) continue;
+      const path = [...prefix, i];
+      if (node.type === "moreBreak") {
+        if (!moreBreakPath) moreBreakPath = path;
+        return;
+      }
+      if (SUMMARY_LEAF_TYPES.has(node.type)) {
+        const text = extractPlainText(node).trim();
+        leaves.push({
+          path,
+          node,
+          text,
+          width: textWidth(text),
+          isHeading: node.type === "heading",
+        });
+        continue;
+      }
+      if (SUMMARY_CONTAINER_TYPES.has(node.type) && node.content) {
+        visit(node.content, path);
+        if (moreBreakPath) return;
+      }
+    }
+  };
+
+  visit(nodes, []);
+  return { leaves, moreBreakPath };
+}
+
+function hasPathPrefix(
+  path: readonly number[],
+  prefix: readonly number[],
+): boolean {
+  if (path.length < prefix.length) return false;
+  for (let i = 0; i < prefix.length; i++) {
+    if (path[i] !== prefix[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * Lift a cut path out of any ancestor container that holds no selected content
+ * before the cut, so neither segment ends up with an empty `<ul>`, `<ol>`,
+ * `<li>`, or `<blockquote>`.
+ */
+function liftBreakPath(
+  rawPath: readonly number[],
+  selectedPaths: readonly (readonly number[])[],
+): number[] {
+  const path = [...rawPath];
+  while (path.length > 1) {
+    const parentPrefix = path.slice(0, -1);
+    const parentHasSelected = selectedPaths.some((sel) =>
+      hasPathPrefix(sel, parentPrefix),
+    );
+    if (parentHasSelected) break;
+    path.pop();
+  }
+  return path;
+}
+
+function pruneNodeToSelected(
+  node: TiptapNode,
+  path: readonly number[],
+  selectedKeys: ReadonlySet<string>,
+  selectedPaths: readonly (readonly number[])[],
+): TiptapNode | null {
+  const key = path.join(".");
+  if (selectedKeys.has(key)) return node;
+  if (!SUMMARY_CONTAINER_TYPES.has(node.type) || !node.content) return null;
+  const hasDescendant = selectedPaths.some(
+    (sel) => sel.length > path.length && hasPathPrefix(sel, path),
+  );
+  if (!hasDescendant) return null;
+  const content: TiptapNode[] = [];
+  for (let i = 0; i < node.content.length; i++) {
+    const child = node.content[i];
+    if (!child) continue;
+    const kept = pruneNodeToSelected(
+      child,
+      [...path, i],
+      selectedKeys,
+      selectedPaths,
+    );
+    if (kept) content.push(kept);
+  }
+  return content.length > 0 ? { ...node, content } : null;
+}
 
 /**
  * How much room a run of text takes on the page, in Latin characters.
@@ -216,39 +332,30 @@ export function extractSummary(
 
   if (doc.type !== "doc" || !doc.content) return null;
 
-  const nodes = doc.content;
-
-  // Check for moreBreak — collect text from all content nodes before it
-  const moreBreakIdx = nodes.findIndex((n) => n.type === "moreBreak");
-  if (moreBreakIdx !== -1) {
-    const blocks: string[] = [];
-    for (let i = 0; i < moreBreakIdx; i++) {
-      const node = nodes[i];
-      if (!node || !SUMMARY_BLOCK_TYPES.has(node.type)) continue;
-      const text = extractPlainText(node).trim();
-      if (text) blocks.push(text);
-    }
+  const { leaves, moreBreakPath } = collectSummaryWalk(doc.content);
+  if (moreBreakPath) {
+    const blocks = leaves
+      .map((leaf) => leaf.text)
+      .filter((text) => text.length > 0);
     return blocks.length > 0 ? blocks.join("\n\n") : null;
   }
 
-  // No moreBreak — accumulate content blocks up to limits
   const blocks: string[] = [];
   let totalChars = 0;
 
-  for (const node of nodes) {
-    if (!SUMMARY_BLOCK_TYPES.has(node.type)) continue;
-
-    const text = extractPlainText(node).trim();
-    if (!text) continue;
+  for (const leaf of leaves) {
+    if (!leaf.text) continue;
 
     if (
-      (blocks.length >= maxBlocks || totalChars + text.length > maxChars) &&
+      (blocks.length >= maxBlocks ||
+        totalChars + leaf.text.length > maxChars) &&
       blocks.length > 0
-    )
+    ) {
       break;
+    }
 
-    blocks.push(text);
-    totalChars += text.length;
+    blocks.push(leaf.text);
+    totalChars += leaf.text.length;
   }
 
   return blocks.length > 0 ? blocks.join("\n\n") : null;
@@ -320,6 +427,18 @@ export interface SummaryOptions {
  * // { html: "<figure><img src=\"…\"></figure><p>Intro</p>", hasMore: true, breakAtIndex: 2 }
  * ```
  */
+export interface HtmlSummaryResult {
+  html: string;
+  hasMore: boolean;
+  breakAtIndex: number;
+  /**
+   * Present when the cut lands inside a compound block (`bulletList`,
+   * `orderedList`, `listItem`, or `blockquote`) rather than between top-level
+   * `doc.content` nodes.
+   */
+  breakPath?: number[];
+}
+
 export function extractSummaryHtml(
   bodyJson: string,
   maxBlocks: number = 5,
@@ -327,101 +446,99 @@ export function extractSummaryHtml(
   minHiddenChars: number = 0,
   renderOptions: TiptapRenderOptions = {},
   options: SummaryOptions = {},
-): { html: string; hasMore: boolean; breakAtIndex: number } | null {
-  let doc: TiptapNode;
+): HtmlSummaryResult | null {
+  let parsed: TiptapNode;
   try {
-    doc = JSON.parse(bodyJson) as TiptapNode;
+    parsed = JSON.parse(bodyJson) as TiptapNode;
   } catch {
     return null;
   }
 
-  if (doc.type !== "doc" || !doc.content) return null;
+  if (parsed.type !== "doc" || !parsed.content) return null;
 
-  const nodes = doc.content;
+  const doc = normalizeFootnoteArtifacts(parsed as JSONContent) as TiptapNode;
+  const nodes = doc.content ?? [];
   const includeImages = options.includeImages === true;
   const stopAtHeading = options.stopAtHeading === true;
-  const render = (indices: number[]): string => {
+  const renderSelected = (
+    selectedPaths: readonly (readonly number[])[],
+  ): string => {
+    const selectedKeys = new Set(selectedPaths.map((p) => p.join(".")));
+    const keptTop: TiptapNode[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (!node) continue;
+      const kept = pruneNodeToSelected(node, [i], selectedKeys, selectedPaths);
+      if (kept) keptTop.push(kept);
+    }
     const subDoc: JSONContent = {
       type: "doc",
       content: [
-        ...indices
-          .sort((a, b) => a - b)
-          .map((i) => nodes[i])
-          .filter((node): node is TiptapNode => node !== undefined),
+        ...keptTop,
         ...nodes.filter((node) => node.type === "footnoteDefinition"),
       ] as JSONContent[],
     };
     return renderTiptapDocument(subDoc, renderOptions);
   };
 
-  // Check for moreBreak — take all content nodes before it
-  const moreBreakIdx = nodes.findIndex((n) => n.type === "moreBreak");
-  if (moreBreakIdx !== -1) {
-    const selected: number[] = [];
-    for (let i = 0; i < moreBreakIdx; i++) {
-      const type = nodes[i]?.type ?? "";
-      if (
-        SUMMARY_BLOCK_TYPES.has(type) ||
-        (includeImages && type === "image")
-      ) {
-        selected.push(i);
+  const { leaves, moreBreakPath } = collectSummaryWalk(nodes);
+
+  // Check for moreBreak — take all content leaves (and, if requested, top-level
+  // images) ahead of it.
+  if (moreBreakPath) {
+    const selectedPaths: number[][] = leaves.map((leaf) => leaf.path);
+    const moreTopIdx = moreBreakPath[0] ?? 0;
+    if (includeImages) {
+      for (let i = 0; i < moreTopIdx; i++) {
+        if (nodes[i]?.type === "image") {
+          selectedPaths.push([i]);
+        }
       }
     }
-    if (selected.length === 0) return null;
+    if (selectedPaths.length === 0) return null;
+    const breakPath = liftBreakPath(moreBreakPath, selectedPaths);
     return {
-      html: render(selected),
+      html: renderSelected(selectedPaths),
       hasMore: true,
-      // Anchor goes in place of the moreBreak marker, so the marker itself
-      // is NOT part of the pre-anchor body. It remains in the post-anchor
-      // body as an inert HTML comment.
-      breakAtIndex: moreBreakIdx,
+      breakAtIndex: breakPath[0] ?? 0,
+      ...(breakPath.length > 1 ? { breakPath } : {}),
     };
   }
 
-  // No moreBreak — accumulate blocks up to limits.
-  // Pre-extract plain text per content node so the tolerance check below can
-  // measure the hidden tail without a second extraction pass.
-  const contentText = new Map<number, string>();
   let totalContentChars = 0;
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    if (!node || !SUMMARY_BLOCK_TYPES.has(node.type)) continue;
-    const text = extractPlainText(node).trim();
-    contentText.set(i, text);
-    totalContentChars += textWidth(text);
+  for (const leaf of leaves) {
+    totalContentChars += leaf.width;
   }
 
-  const selected: number[] = [];
+  const selectedLeafIndices: number[] = [];
   let totalChars = 0;
-  let lastSelectedIdx = -1;
   let hasTextBlock = false;
   let cutAtHeading = false;
-  // Index of the first content block left out, or the end of the document
-  // when every block made it in.
-  let cutIdx = nodes.length;
+  let firstExcludedLeafIdx = leaves.length;
 
-  for (const [i, text] of contentText) {
-    const isHeading = nodes[i]?.type === "heading";
-    const width = textWidth(text);
-    if (selected.length > 0) {
-      if (stopAtHeading && isHeading && hasTextBlock) {
-        cutIdx = i;
+  for (let idx = 0; idx < leaves.length; idx++) {
+    const leaf = leaves[idx]!;
+    if (selectedLeafIndices.length > 0) {
+      if (stopAtHeading && leaf.isHeading && hasTextBlock) {
+        firstExcludedLeafIdx = idx;
         cutAtHeading = true;
         break;
       }
-      if (selected.length >= maxBlocks || totalChars + width > maxChars) {
-        cutIdx = i;
+      if (
+        selectedLeafIndices.length >= maxBlocks ||
+        totalChars + leaf.width > maxChars
+      ) {
+        firstExcludedLeafIdx = idx;
         break;
       }
     }
 
-    selected.push(i);
-    totalChars += width;
-    lastSelectedIdx = i;
-    if (!isHeading) hasTextBlock = true;
+    selectedLeafIndices.push(idx);
+    totalChars += leaf.width;
+    if (!leaf.isHeading) hasTextBlock = true;
   }
 
-  let hasMore = selected.length < contentText.size;
+  let hasMore = selectedLeafIndices.length < leaves.length;
 
   // Tolerance: don't truncate just to hide a tiny tail. When a block/char limit
   // triggered the cut and the hidden content is shorter than `minHiddenChars`,
@@ -433,32 +550,63 @@ export function extractSummaryHtml(
     minHiddenChars > 0 &&
     totalContentChars - totalChars < minHiddenChars
   ) {
-    for (const i of contentText.keys()) {
-      if (i <= lastSelectedIdx) continue;
-      selected.push(i);
-      lastSelectedIdx = i;
+    for (let idx = firstExcludedLeafIdx; idx < leaves.length; idx++) {
+      selectedLeafIndices.push(idx);
     }
-    cutIdx = nodes.length;
+    firstExcludedLeafIdx = leaves.length;
     hasMore = false;
   }
 
-  let breakAtIndex = lastSelectedIdx + 1;
+  // Don't leave an authored blank line (`<p></p>`) dangling right above the
+  // fold; pull the cut ahead of trailing empty paragraphs so the blank line
+  // reveals together with the section it introduces.
+  while (
+    hasMore &&
+    selectedLeafIndices.length > 1 &&
+    leaves[selectedLeafIndices[selectedLeafIndices.length - 1]!]!.width === 0 &&
+    !leaves[selectedLeafIndices[selectedLeafIndices.length - 1]!]!.node.content
+      ?.length
+  ) {
+    firstExcludedLeafIdx = selectedLeafIndices.pop()!;
+  }
+
+  const selectedPaths: number[][] = selectedLeafIndices.map(
+    (idx) => leaves[idx]!.path,
+  );
+  const lastTopIdx =
+    selectedPaths.length > 0
+      ? (selectedPaths[selectedPaths.length - 1]![0] ?? -1)
+      : -1;
+  let breakPath =
+    firstExcludedLeafIdx < leaves.length
+      ? liftBreakPath(leaves[firstExcludedLeafIdx]!.path, selectedPaths)
+      : [lastTopIdx + 1];
+  const cutTopIdx =
+    firstExcludedLeafIdx < leaves.length ? (breakPath[0] ?? 0) : nodes.length;
+
   if (includeImages) {
     const imageIdx = nodes.findIndex(
-      (node, i) => i < cutIdx && node.type === "image",
+      (node, i) => i < cutTopIdx && node.type === "image",
     );
     if (imageIdx !== -1) {
-      selected.push(imageIdx);
-      breakAtIndex = Math.max(breakAtIndex, imageIdx + 1);
+      selectedPaths.push([imageIdx]);
+      if (breakPath.length === 1 && imageIdx + 1 > (breakPath[0] ?? 0)) {
+        breakPath = [imageIdx + 1];
+      }
     }
     if (nodes.some((node, i) => node.type === "image" && i !== imageIdx)) {
       hasMore = true;
     }
   }
 
-  if (selected.length === 0) return null;
+  if (selectedPaths.length === 0) return null;
 
-  return { html: render(selected), hasMore, breakAtIndex };
+  return {
+    html: renderSelected(selectedPaths),
+    hasMore,
+    breakAtIndex: breakPath[0] ?? 0,
+    ...(breakPath.length > 1 ? { breakPath } : {}),
+  };
 }
 
 /**
