@@ -119,7 +119,7 @@ import {
  * importing the export and silently dropping what it doesn't know.
  * `export-format-version.test.ts` freezes the fields each version reads.
  */
-export const SITE_EXPORT_FORMAT_VERSION = 4;
+export const SITE_EXPORT_FORMAT_VERSION = 5;
 
 /** A file of the exported Hugo site whose text or bytes the export holds. */
 export interface ExportContentFile {
@@ -1260,6 +1260,7 @@ async function buildThreadBundle(
     featured_post_ids: featuredPostIds.length > 0 ? featuredPostIds : undefined,
     featured_sort_at:
       featuredSortAt !== null ? toISOString(featuredSortAt) : undefined,
+    show_toc: root.showToc || undefined,
     pinned_at: root.pinnedAt !== null ? toISOString(root.pinnedAt) : undefined,
     root_aliases: rootAliases.length > 0 ? rootAliases : undefined,
     collections:
@@ -1345,6 +1346,7 @@ async function buildThreadBundle(
       quote_text: reply.quoteText ?? undefined,
       rating: reply.rating ?? undefined,
       quiet_reply: reply.quietReply ? true : undefined,
+      show_toc: reply.showToc || undefined,
       featured_at:
         reply.featuredAt !== null ? toISOString(reply.featuredAt) : undefined,
       pinned_at:

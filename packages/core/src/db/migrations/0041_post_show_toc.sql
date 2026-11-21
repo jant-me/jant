@@ -1,0 +1,1 @@
+ALTER TABLE `post` ADD `show_toc` integer DEFAULT false NOT NULL;

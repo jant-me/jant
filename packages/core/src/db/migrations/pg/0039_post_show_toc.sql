@@ -1,0 +1,1 @@
+ALTER TABLE "post" ADD COLUMN "show_toc" boolean DEFAULT false NOT NULL;

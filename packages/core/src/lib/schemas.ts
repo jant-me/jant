@@ -359,6 +359,7 @@ const PostFieldsSchema = z.object({
   // send the moments themselves, in Unix seconds like every timestamp.
   pinned: z.boolean().optional(),
   featured: z.boolean().optional(),
+  showToc: z.boolean().optional(),
   pinnedAt: z.union([z.number().int().positive(), z.null()]).optional(),
   featuredAt: z.union([z.number().int().positive(), z.null()]).optional(),
   url: z

@@ -594,6 +594,11 @@ msgstr ""
 msgid "Confirm Password"
 msgstr ""
 
+#. @context: Table of contents in a post
+#: src/ui/pages/PostToc.tsx
+msgid "Contents"
+msgstr "目錄"
+
 #. @context: Feed link from a truncated article excerpt to its full page
 #: src/ui/feed/NoteCard.tsx
 msgid "Continue →"
@@ -2202,6 +2207,11 @@ msgstr ""
 #: src/ui/pages/PostPage.tsx
 msgid "Show more"
 msgstr ""
+
+#. @context: Post settings switch for section navigation
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Show table of contents"
+msgstr "顯示目錄"
 
 #. @context: Accessible name of the button that brings back the folded-away post being translated
 #: src/ui/compose/ComposeDialog.tsx

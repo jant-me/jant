@@ -68,6 +68,7 @@ export interface CreatePost {
    * Preferred for lossless import; wins over `featured` when both are set.
    */
   featuredAt?: number | null;
+  showToc?: boolean;
   /**
    * Explicit pinned timestamp (Unix seconds). `null` = not pinned.
    * Preferred for lossless import; wins over `pinned` when both are set.
@@ -132,6 +133,7 @@ export interface UpdatePost {
   featured?: boolean;
   /** Explicit featured timestamp. `undefined` leaves the field unchanged. */
   featuredAt?: number | null;
+  showToc?: boolean;
   /** Explicit pinned timestamp. `undefined` leaves the field unchanged. */
   pinnedAt?: number | null;
   slug?: string;

@@ -81,6 +81,7 @@ interface ThreadItem {
   slug?: string;
   /** Last availability answer for this post's slug. */
   slugTaken?: boolean;
+  showToc?: boolean;
   /**
    * The saved draft post this row was loaded from, if any. Its slug already
    * belongs to that post, so the availability check leaves it out.
@@ -120,6 +121,7 @@ interface ComposePostResponse {
   format: ComposeFormat;
   slug?: string | null;
   visibility?: ComposeVisibility | null;
+  showToc?: boolean;
   replyToId?: string | null;
   collectionIds?: string[];
   attachments?: ApiAttachment[];
@@ -196,6 +198,7 @@ interface ComposeStateSnapshot extends ComposeEditorSnapshot {
   publishedAtInput: string;
   publishedAtTimeMinutes: number | null;
   visibility: ComposeVisibility;
+  showToc: boolean;
   /** The author's explicit language choice, not what detection reads. */
   language: string | null;
   /**
@@ -209,6 +212,7 @@ interface ComposeStateSnapshot extends ComposeEditorSnapshot {
       slug: string;
       publishedAtInput: string;
       publishedAtTimeMinutes: number | null;
+      showToc: boolean;
     }
   >;
 }
@@ -721,6 +725,7 @@ export class JantComposeDialog extends LitElement {
     _slug: { state: true },
     _publishedAtInput: { state: true },
     _visibility: { state: true },
+    _showToc: { state: true },
     _showPublishPanel: { state: true },
     _postMetaIndex: { state: true },
     _publishPanelFullscreen: { state: true },
@@ -779,6 +784,7 @@ export class JantComposeDialog extends LitElement {
   declare _slug: string;
   declare _publishedAtInput: string;
   declare _visibility: ComposeVisibility;
+  declare _showToc: boolean;
   declare _showPublishPanel: boolean;
   /** Index of the post whose date/permalink panel is open; null when closed. */
   declare _postMetaIndex: number | null;
@@ -918,6 +924,7 @@ export class JantComposeDialog extends LitElement {
     this._initialPublishedAtInput = "";
     this._initialSlug = "";
     this._visibility = JantComposeDialog._lastNewPostVisibility;
+    this._showToc = false;
     this._sourceCollectionId = null;
     this._showPublishPanel = false;
     this._publishPanelFullscreen = false;
@@ -1015,7 +1022,8 @@ export class JantComposeDialog extends LitElement {
       changed.has("_collectionIds") ||
       changed.has("_slug") ||
       changed.has("_publishedAtInput") ||
-      changed.has("_visibility")
+      changed.has("_visibility") ||
+      changed.has("_showToc")
     ) {
       // Schedule draft auto-save (new-post and edit modes, not draft-load).
       // `_format` is intentionally excluded: a bare format switch is exploratory
@@ -1074,6 +1082,7 @@ export class JantComposeDialog extends LitElement {
     this._initialPublishedAtInput = "";
     this._initialSlug = "";
     this._visibility = JantComposeDialog._lastNewPostVisibility;
+    this._showToc = false;
     this._sourceCollectionId = null;
     this._showPublishPanel = false;
     this._suggestedSlug = "";
@@ -1163,6 +1172,7 @@ export class JantComposeDialog extends LitElement {
       this._initialPublishedAtInput = this._publishedAtInput;
       this._initialSlug = this._slug.trim();
       this._visibility = post.visibility ?? "public";
+      this._showToc = post.showToc === true;
       this._visibilityLocked = Boolean(post.replyToId);
       // A published post's language is a settled fact, so it comes back as the
       // author's own choice rather than as something to re-read: editing a
@@ -1534,6 +1544,7 @@ export class JantComposeDialog extends LitElement {
       publishedAtInput: this._publishedAtInput,
       publishedAtTimeMinutes: this._publishedAtTimeMinutes,
       visibility: this._visibility,
+      showToc: this._showToc,
       language: this._language,
       ...JantComposeDialog._snapshotEditor(editor),
       threadPosts: this._threadItems.flatMap((item, index) => {
@@ -1545,6 +1556,7 @@ export class JantComposeDialog extends LitElement {
             slug: item.slug ?? "",
             publishedAtInput: item.publishedAtInput ?? "",
             publishedAtTimeMinutes: item.publishedAtTimeMinutes ?? null,
+            showToc: this._getPostShowToc(index),
             ...JantComposeDialog._snapshotEditor(itemEditor),
           },
         ];
@@ -1767,6 +1779,7 @@ export class JantComposeDialog extends LitElement {
           : this._visibility
         : undefined,
       rating: editorData.rating,
+      showToc: this._getPostShowToc(index),
       collectionIds: isRoot && !this._replyToId ? [...this._collectionIds] : [],
       attachments: orderedAttachments,
       replyToId: isRoot ? (this._replyToId ?? undefined) : undefined,
@@ -3173,6 +3186,7 @@ export class JantComposeDialog extends LitElement {
     this._initialPublishedAtInput = this._publishedAtInput;
     this._initialSlug = this._slug.trim();
     this._visibility = post.visibility ?? "public";
+    this._showToc = post.showToc === true;
     this._visibilityLocked = Boolean(post.replyToId);
 
     if (!post.replyToId && post.collectionIds?.length) {
@@ -3221,6 +3235,7 @@ export class JantComposeDialog extends LitElement {
               rating: (p.rating as number) ?? null,
               attachments: (p.attachments as ApiAttachment[] | undefined) ?? [],
               visibility: (p.visibility as ComposeVisibility) ?? null,
+              showToc: p.showToc === true,
             }));
 
           if (threadDrafts.length > 0) {
@@ -3248,6 +3263,7 @@ export class JantComposeDialog extends LitElement {
                 format: p.format,
                 slug: p.slug ?? "",
                 sourcePostId: p.id,
+                showToc: p.showToc,
               })),
             ];
             this._focusedThreadIndex = 0;
@@ -3460,6 +3476,7 @@ export class JantComposeDialog extends LitElement {
             publishedAtInput: item.publishedAtInput,
             publishedAtTimeMinutes: item.publishedAtTimeMinutes,
             slug: item.slug,
+            showToc: item.showToc,
             title: data.title,
             bodyJson: editor.getNormalizedBodyJson(),
             url: data.url,
@@ -3494,6 +3511,7 @@ export class JantComposeDialog extends LitElement {
         publishedAtInput: this._publishedAtInput,
         publishedAtTimeMinutes: this._publishedAtTimeMinutes,
         visibility: this._visibility,
+        showToc: this._showToc,
         rating: 0,
         showTitle: false,
         showRating: false,
@@ -3550,6 +3568,7 @@ export class JantComposeDialog extends LitElement {
       publishedAtInput: this._publishedAtInput,
       publishedAtTimeMinutes: this._publishedAtTimeMinutes,
       visibility: this._visibility,
+      showToc: this._showToc,
       rating: data.rating,
       // The toggle as it stands, not "does a title exist" — restoring a draft
       // should put the editor back the way it was left, including an open but
@@ -3745,6 +3764,7 @@ export class JantComposeDialog extends LitElement {
     this._publishedAtInput = draft.publishedAtInput ?? "";
     this._publishedAtTimeMinutes = draft.publishedAtTimeMinutes ?? null;
     this._visibility = draft.visibility ?? "public";
+    this._showToc = draft.showToc ?? this._showToc;
     this._language = draft.language ?? null;
     if (draft.translationOfId) {
       await this._loadTranslationSource(draft.translationOfId);
@@ -3766,6 +3786,7 @@ export class JantComposeDialog extends LitElement {
         publishedAtInput: item.publishedAtInput,
         publishedAtTimeMinutes: item.publishedAtTimeMinutes,
         slug: item.slug,
+        showToc: item.showToc,
       }));
       this._focusedThreadIndex = 0;
 
@@ -3972,6 +3993,7 @@ export class JantComposeDialog extends LitElement {
     this._publishedAtInput = draft.publishedAtInput ?? "";
     this._publishedAtTimeMinutes = draft.publishedAtTimeMinutes ?? null;
     this._visibility = draft.visibility ?? "public";
+    this._showToc = draft.showToc ?? this._showToc;
     // The draft speaks for the language too, and its answer may be that the
     // author put this post back on automatic — so it replaces the one seeded
     // from the post rather than filling in for a missing one.
@@ -6047,10 +6069,14 @@ export class JantComposeDialog extends LitElement {
     return slug ? `/${slug}` : this.labels.publishSlugSummaryAuto;
   }
 
-  /* ── Per-post publish date ───────────────────────────────────────────
-     Only the root carries a permalink control: a reply's slug is a random id
-     assigned at publish time, and overriding it is not a thing people do. The
-     date is — backfilling an old thread is the whole reason this exists. */
+  // The first post keeps its settings on the dialog, including in thread mode.
+  // Later posts each keep their own settings on their thread item.
+
+  private _getPostShowToc(index: number): boolean {
+    return index === 0
+      ? this._showToc
+      : (this._threadItems[index]?.showToc ?? false);
+  }
 
   private _getPostSlug(index: number): string {
     if (index === 0) return this._slug;
@@ -6235,6 +6261,29 @@ export class JantComposeDialog extends LitElement {
               >
                 ${this._renderPublishDateSection(index)}
                 ${this._renderPublishSlugSection(index)}
+                <label class="compose-sheet-row compose-sheet-row-switch">
+                  <span class="compose-sheet-title"
+                    >${this.labels.showToc}</span
+                  >
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    class="input"
+                    .checked=${this._getPostShowToc(index)}
+                    @change=${(event: Event) => {
+                      const showToc = (event.target as HTMLInputElement)
+                        .checked;
+                      if (index === 0) {
+                        this._showToc = showToc;
+                      } else {
+                        this._threadItems = this._threadItems.map((item, i) =>
+                          i === index ? { ...item, showToc } : item,
+                        );
+                        this._scheduleDraftSave();
+                      }
+                    }}
+                  />
+                </label>
                 <div class="compose-post-meta-footer">
                   <button
                     type="button"
@@ -6937,13 +6986,12 @@ export class JantComposeDialog extends LitElement {
     if (this._threadItems.length <= 1) return;
     const newItems = this._threadItems.filter((_, i) => i !== index);
 
-    // The root's permalink and date live on the dialog rather than on its
-    // thread item, so removing the root has to move the next post's own
-    // values up — otherwise the removed post's permalink and date stay behind
-    // on the post that replaces it, and that post's own are dropped.
+    // Move the promoted post's date, permalink, and contents setting
+    // onto the dialog, where the first post keeps its settings.
     if (index === 0) {
       const promoted = newItems[0];
       this._slug = promoted.slug ?? "";
+      this._showToc = promoted.showToc ?? false;
       this._slugTaken = promoted.slugTaken ?? false;
       this._publishedAtInput = promoted.publishedAtInput ?? "";
       this._publishedAtTimeMinutes = promoted.publishedAtTimeMinutes ?? null;

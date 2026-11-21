@@ -176,6 +176,7 @@ Post files: `content/<slug>/_index.md` for a Thread's root, and `content/<root>/
 | `quote_text`                | both  | Quotes: the quoted text                                                                                       |
 | `rating`                    | both  | `1` to `5`                                                                                                    |
 | `featured_at`, `pinned_at`  | both  | RFC 3339 in UTC                                                                                               |
+| `show_toc`                  | both  | Present as `true` when the post has a table of contents enabled                                               |
 | `media`                     | both  | Attachments in order; see the next table                                                                      |
 | `aliases`                   | root  | Hugo alias pages: the root's custom URLs and every reply's slug                                               |
 | `root_aliases`              | root  | The root's custom URLs, which import recreates                                                                |

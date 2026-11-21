@@ -121,6 +121,7 @@ describe("export → import round-trip", () => {
       title: "Walk notes",
       featuredAt: 1773100000,
       pinnedAt: 1773200000,
+      showToc: true,
       threadId: "post-root",
     });
     const reply = makePost({
@@ -196,6 +197,15 @@ describe("export → import round-trip", () => {
 
     // Front-matter fidelity on the root.
     const rootFm = rootBundle.frontMatter;
+    expect(rootFm.show_toc).toBe(true);
+    expect(
+      importTestHelpers.buildPostPayloadFromBundle(rootBundle, {
+        bodyMarkdown: "",
+        attachments: [],
+        memberships: { entries: [], ids: [] },
+        replyToId: null,
+      }).showToc,
+    ).toBe(true);
     expect(rootFm.featured_at).toBe(new Date(1773100000 * 1000).toISOString());
     expect(rootFm.pinned_at).toBe(new Date(1773200000 * 1000).toISOString());
     expect(rootFm.root_aliases).toEqual(["/historic-slug/"]);

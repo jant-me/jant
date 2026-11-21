@@ -29,7 +29,7 @@ const parseFrontMatter = parseFrontMatterShared;
  * writes `SITE_EXPORT_FORMAT_VERSION` from `src/services/export.ts`; a test
  * keeps the two equal.
  */
-export const SUPPORTED_SITE_EXPORT_VERSION = 4;
+export const SUPPORTED_SITE_EXPORT_VERSION = 5;
 
 /**
  * Refuse an export written in a format newer than this importer reads.
@@ -2314,6 +2314,7 @@ function buildPostPayloadFromBundle(bundle, options) {
         ? frontMatter.language
         : undefined,
     quietReply: options.quietReply ? true : undefined,
+    showToc: frontMatter.show_toc === true ? true : undefined,
   };
 
   if (options.replyToId) {

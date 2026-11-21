@@ -38,6 +38,7 @@ const FRONT_MATTER_KEY_ORDER = [
   "featured_post_ids",
   "featured_sort_at",
   "pinned_at",
+  "show_toc",
 
   // Bookkeeping / attachments
   "root_aliases",

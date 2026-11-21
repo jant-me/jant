@@ -2632,6 +2632,131 @@
     );
   }
 
+  .post-toc {
+    --post-toc-sticky-start: var(--space-xl);
+    --post-toc-link-inset: calc(var(--content-gap) / 2);
+    margin-block-end: var(--content-gap);
+    color: var(--site-reading-meta);
+    font-size: var(--type-secondary);
+  }
+
+  .post-toc .post-toc-trigger {
+    display: none;
+  }
+
+  .post-toc-title {
+    margin: 0 0 var(--post-toc-link-inset);
+    padding-inline: var(--post-toc-link-inset);
+    font-weight: var(--fw-medium);
+    color: var(--site-reading-body);
+  }
+
+  .post-toc-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .post-toc-list a {
+    display: block;
+    padding: calc(var(--post-toc-link-inset) / 2) var(--post-toc-link-inset);
+    border-radius: var(--radius);
+    color: inherit;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    text-decoration: none;
+  }
+
+  .post-toc-subsection {
+    padding-inline-start: var(--post-toc-link-inset);
+  }
+
+  .post-toc-list a:is(:hover, :focus-visible, [aria-current]) {
+    color: var(--site-reading-body);
+    background-color: color-mix(
+      in srgb,
+      var(--site-reading-meta) 12%,
+      transparent
+    );
+  }
+
+  [data-post-toc-heading] {
+    scroll-margin-block-start: var(--space-2xl);
+  }
+
+  @media (min-width: 1280px) {
+    .post-toc {
+      position: sticky;
+      inset-block-start: var(--post-toc-sticky-start);
+      inline-size: 0;
+      block-size: 0;
+      margin: 0;
+      z-index: 1;
+    }
+
+    .post-toc-panel {
+      position: absolute;
+      inset-block-start: var(--post-toc-link-inset);
+      inset-inline-end: calc(var(--space-xl) + var(--post-toc-link-inset));
+      inline-size: min(9vw, 11rem);
+      max-block-size: calc(100dvh - var(--space-2xl));
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+  }
+
+  @media (max-width: 1279px) {
+    .post-toc[data-ready] {
+      position: sticky;
+      inset-block-start: var(--post-toc-link-inset);
+      display: flex;
+      justify-content: end;
+      inline-size: var(--layout-reading-width);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .post-toc[data-ready] .post-toc-trigger {
+      display: inline-flex;
+      gap: var(--post-toc-link-inset);
+      background-color: var(--site-page-bg);
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    .post-toc-trigger svg {
+      inline-size: 1em;
+      block-size: 1em;
+    }
+
+    .post-toc[data-ready] .post-toc-title,
+    .post-toc[data-ready]:not([data-open]) .post-toc-panel {
+      display: none;
+    }
+
+    .post-toc[data-ready] .post-toc-panel {
+      position: absolute;
+      inset-block-start: calc(100% + var(--post-toc-link-inset));
+      inset-inline-end: 0;
+      inline-size: min(100%, var(--layout-reading-measure) / 2);
+      max-block-size: 60dvh;
+      padding: var(--post-toc-link-inset);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      border: 1px solid var(--site-divider);
+      border-radius: var(--radius);
+      background-color: var(--site-page-bg);
+      box-shadow: var(--shadow-md);
+      pointer-events: auto;
+    }
+  }
+
+  @media print {
+    .post-toc {
+      display: none !important;
+    }
+  }
+
   /* --- Semantic footnotes with Tufte presentation ------------------------ */
 
   /* The published DOM stays semantic and readable without CSS: body blocks

@@ -170,6 +170,7 @@ export const posts = sqliteTable(
     }).default("public"),
     pinnedAt: integer("pinned_at"),
     featuredAt: integer("featured_at"),
+    showToc: integer("show_toc", { mode: "boolean" }).notNull().default(false),
     title: text("title"),
     url: text("url"),
     body: text("body"),

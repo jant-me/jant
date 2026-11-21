@@ -21,6 +21,7 @@ const LEDGER = [
   1024, // Tufte two-column → single-column; the page frame narrows to the column.
   1079, // Collections sidebar drops out.
   1200, // Header search collapses to an icon.
+  1280, // Post contents move from the compact control to the left margin.
 ] as const;
 
 /**

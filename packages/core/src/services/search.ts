@@ -75,6 +75,7 @@ interface RawSearchRow {
   translation_group_id: string | null;
   /** SQLite returns 0/1, Postgres a boolean. */
   quiet_reply: number | boolean | null;
+  show_toc: number | boolean;
   published_at: number | null;
   last_activity_at: number | null;
   thread_updated_at: number | null;
@@ -118,6 +119,7 @@ function mapRow(row: RawSearchRow): SearchResult {
       language: row.language,
       translationGroupId: row.translation_group_id,
       quietReply: Boolean(row.quiet_reply),
+      showToc: Boolean(row.show_toc),
       publishedAt: row.published_at,
       lastActivityAt:
         row.last_activity_at ?? row.published_at ?? row.updated_at,

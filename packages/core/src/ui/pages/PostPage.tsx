@@ -17,6 +17,8 @@ import type {
   PostView,
   TimelineCardDisplayOptions,
 } from "../../types.js";
+import { buildPostToc } from "../../lib/post-toc.js";
+import { PostToc } from "./PostToc.js";
 import { TimelineItemFromPost } from "../feed/TimelineItem.js";
 
 const PREVIEW_DISPLAY: TimelineCardDisplayOptions = {
@@ -121,6 +123,9 @@ export const PostPage: FC<PostPageProps> = ({
   translations = [],
 }) => {
   const { i18n } = useLingui();
+  const toc =
+    post.showToc && post.bodyHtml ? buildPostToc(post.bodyHtml) : null;
+  const currentPost = toc ? { ...post, bodyHtml: toc.bodyHtml } : post;
 
   return (
     <div
@@ -128,15 +133,22 @@ export const PostPage: FC<PostPageProps> = ({
       data-post-view-id={post.id}
       data-thread-root-id={post.threadRootId ?? post.id}
     >
+      {toc && toc.entries.length > 0 && <PostToc entries={toc.entries} />}
       {threadPosts && threadPosts.length > 1 ? (
         <ThreadDetail
-          post={post}
-          threadPosts={threadPosts}
+          post={currentPost}
+          threadPosts={
+            toc
+              ? threadPosts.map((item) =>
+                  item.id === post.id ? currentPost : item,
+                )
+              : threadPosts
+          }
           isPreview={isPreview}
         />
       ) : (
         <TimelineItemFromPost
-          post={post}
+          post={currentPost}
           mode="detail"
           display={isPreview ? PREVIEW_DISPLAY : undefined}
         />

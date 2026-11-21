@@ -502,6 +502,7 @@
  *           the reading column (see the note below).
  *   1079px  Collections sidebar drops out.
  *   1200px  Header search collapses to an icon.
+ *   1280px  Post contents move from the compact control to the left margin.
  *
  * The header's nav links are not on this list: they collapse into More by the
  * header's own width (`@container site-header` in ui.css), because the same

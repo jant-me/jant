@@ -176,6 +176,7 @@ export const posts = pgTable(
     }).default("public"),
     pinnedAt: integer("pinned_at"),
     featuredAt: integer("featured_at"),
+    showToc: boolean("show_toc").notNull().default(false),
     title: text("title"),
     url: text("url"),
     body: text("body"),

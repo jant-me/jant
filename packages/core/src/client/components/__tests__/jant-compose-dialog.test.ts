@@ -293,6 +293,7 @@ const labels: ComposeLabels = {
   postHiddenFromLatest: "Post hidden",
   postUnlisted: "Post unlisted",
   postPrivately: "Post privately",
+  showToc: "Show table of contents",
   quietReplyLabel: "Reply quietly",
   quietReplyHint: "Won't move the thread to the top of latest.",
   threadLimitReached: "Threads can include up to 20 posts.",
@@ -3673,7 +3674,7 @@ describe("JantComposeDialog", () => {
     ).toBe("Draft title");
   });
 
-  it("includes a custom slug from the publish settings panel in the submit payload", async () => {
+  it("submits a custom link and table of contents from the post settings", async () => {
     mockSlugApi((url) => {
       if (url.searchParams.get("mode") === "suggest") {
         return { body: { slug: "configured-post" } };
@@ -3713,6 +3714,15 @@ describe("JantComposeDialog", () => {
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
     );
+    const contentsSwitch = requireElement(
+      el.querySelector<HTMLInputElement>(
+        '[data-compose-post-meta-panel] input[role="switch"]',
+      ),
+      "expected table of contents switch",
+    );
+    expect(contentsSwitch.checked).toBe(false);
+    contentsSwitch.click();
+
     slugInput.value = "custom-link";
     slugInput.dispatchEvent(new Event("input", { bubbles: true }));
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -3729,9 +3739,10 @@ describe("JantComposeDialog", () => {
     ).click();
 
     expect(receivedDetail).not.toBeNull();
-    expect((receivedDetail as unknown as ComposeSubmitDetail).slug).toBe(
-      "custom-link",
-    );
+    expect(receivedDetail).toMatchObject({
+      slug: "custom-link",
+      showToc: true,
+    });
   });
 
   it("reopens the publish settings panel with the custom link field intact", async () => {
