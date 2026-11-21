@@ -500,14 +500,12 @@ describe("timeline cards", () => {
     expect(exportCss).toMatch(
       /li\s*\{[\s\S]*margin-top:\s*0\.5em;[\s\S]*margin-bottom:\s*0\.5em;/,
     );
-    // The editor takes these from `.prose` too. What it adds: the paragraph
-    // TipTap wraps a list item in gives up its margin above a nested list, and
-    // a top-level ordered list keeps room for a two-digit marker.
+    // The editor takes these from `.prose` too. What it adds: a gap cursor
+    // between a list item's paragraph and a nested list still clears the
+    // paragraph margin, and a top-level ordered list keeps room for a
+    // two-digit marker.
     expect(uiCss).toMatch(
       /\.compose-tiptap-body\s+\.tiptap\s+>\s+ol\s*\{[^}]*padding-left:\s*2\.25em;/,
-    );
-    expect(uiCss).toContain(
-      ".compose-tiptap-body .tiptap li > p:has(+ :is(ul, ol))",
     );
     expect(uiCss).toMatch(
       /p:has\(\+ \.ProseMirror-gapcursor \+ :is\(ul, ol\)\)\s*\{[^}]*margin-bottom:\s*0;/,
@@ -521,23 +519,43 @@ describe("timeline cards", () => {
     expect(uiCss).toMatch(
       /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s+:is\(ul, ol\)\s+:is\(ul, ol\)\s*\{[^}]*padding-left:\s*1\.5em;[^}]*margin:\s*0\.2em 0;/,
     );
+    expect(uiCss).toMatch(
+      /\.compose-reply-compose-layout[\s\S]*?li\s*>\s*p:first-child\s*\{[^}]*margin-top:\s*0;/,
+    );
+    expect(uiCss).toMatch(
+      /\.compose-reply-compose-layout[\s\S]*?li\s*>\s*p:last-child[\s\S]*?\{[^}]*margin-bottom:\s*0;/,
+    );
+    expect(presetCss).toMatch(/:where\(p:empty\)\s*\{[^}]*min-height:\s*1lh;/);
+    expect(exportCss).toMatch(/p:empty\s*\{[^}]*min-height:\s*1lh;/);
     expect(presetCss).toMatch(
-      /:where\(ol ol\)\s*\{[^}]*list-style-type:\s*lower-alpha;[^}]*margin-top:\s*0\.4em;[^}]*margin-bottom:\s*0\.4em;/,
+      /:where\(:is\(ul, ol\) :is\(ul, ol\)\)\s*\{[^}]*margin-top:\s*0\.4em;[^}]*margin-bottom:\s*0\.4em;/,
+    );
+    expect(presetCss).toMatch(
+      /:where\(ul ul\)\s*\{[^}]*list-style-type:\s*circle;/,
+    );
+    expect(presetCss).toMatch(
+      /:where\(ul ul ul\)\s*\{[^}]*list-style-type:\s*square;/,
+    );
+    expect(presetCss).toMatch(
+      /:where\(ol ol\)\s*\{[^}]*list-style-type:\s*lower-alpha;/,
     );
     expect(presetCss).toMatch(
       /:where\(ol ol ol\)\s*\{[^}]*list-style-type:\s*lower-roman;/,
     );
     expect(exportCss).toMatch(
-      /ol ol\s*\{[^}]*list-style-type:\s*lower-alpha;[^}]*margin-top:\s*0\.4em;[^}]*margin-bottom:\s*0\.4em;/,
+      /:is\(ul, ol\) :is\(ul, ol\)\s*\{[^}]*margin-top:\s*0\.4em;[^}]*margin-bottom:\s*0\.4em;/,
     );
+    expect(exportCss).toMatch(/ul ul\s*\{[^}]*list-style-type:\s*circle;/);
+    expect(exportCss).toMatch(/ul ul ul\s*\{[^}]*list-style-type:\s*square;/);
+    expect(exportCss).toMatch(/ol ol\s*\{[^}]*list-style-type:\s*lower-alpha;/);
     expect(exportCss).toMatch(
       /ol ol ol\s*\{[^}]*list-style-type:\s*lower-roman;/,
     );
     expect(presetCss).toMatch(
-      /:where\(li > p:has\(\+ ol\)\)\s*\{[^}]*margin-bottom:\s*0;/,
+      /:where\(\s*li\s*>\s*p:has\(\s*\+\s*:is\(ul, ol\),\s*\+\s*:is\(\[data-note-break\], #continue\)\s*\+\s*:is\(ul, ol\)\s*\)\s*\)\s*\{[^}]*margin-bottom:\s*0;/,
     );
     expect(exportCss).toMatch(
-      /li > p:has\(\+ ol\)\s*\{[^}]*margin-bottom:\s*0;/,
+      /li > p:has\(\+ :is\(ul, ol\)\)\s*\{[^}]*margin-bottom:\s*0;/,
     );
   });
 
@@ -973,6 +991,65 @@ describe("timeline cards", () => {
     expect(html).toContain("<p>Rest</p>");
     expect(html).not.toContain("data-note-expand");
     expect(html).not.toContain("data-note-clamp");
+  });
+
+  it("clamps long link commentary in place and renders an expand control before media", () => {
+    const post = createPostView({
+      format: "link",
+      title: "Referenced Page",
+      url: "https://example.com/article",
+      bodyHtml: "<p>Intro</p><span data-note-break></span><p>Rest</p>",
+      summaryHasMore: true,
+      media: [
+        createMediaView({
+          url: "/attachments/notes.txt",
+          thumbnailUrl: undefined,
+          mimeType: "text/plain",
+        }),
+      ],
+    });
+
+    const html = renderWithI18n(LinkCard({ post, mode: "feed" }));
+
+    expect(html).toContain("data-note-clamp");
+    expect(html).toContain("data-note-break");
+    expect(html).toContain("data-note-expand");
+    expect(html).toContain('href="/post-1"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('data-label-more="Read more"');
+    expect(html).toContain('data-label-less="Read less"');
+    expect(html.indexOf("data-note-expand")).toBeLessThan(
+      html.indexOf("data-post-media"),
+    );
+
+    const detailHtml = renderWithI18n(LinkCard({ post, mode: "detail" }));
+    expect(detailHtml).toContain("<p>Rest</p>");
+    expect(detailHtml).not.toContain("data-note-clamp");
+    expect(detailHtml).not.toContain("data-note-expand");
+
+    const fullFeedHtml = renderWithI18n(
+      LinkCard({ post, mode: "feed", display: { showFullBody: true } }),
+    );
+    expect(fullFeedHtml).toContain("<p>Rest</p>");
+    expect(fullFeedHtml).not.toContain("data-note-clamp");
+    expect(fullFeedHtml).not.toContain("data-note-expand");
+  });
+
+  it("renders short link commentary without a clamp or expand control", () => {
+    const post = createPostView({
+      format: "link",
+      title: "Referenced Page",
+      url: "https://example.com/article",
+      bodyHtml: "<p>Quick thought</p>",
+      summaryHasMore: undefined,
+    });
+
+    const html = renderWithI18n(LinkCard({ post, mode: "feed" }));
+
+    expect(html).toContain("<p>Quick thought</p>");
+    expect(html).not.toContain("data-note-clamp");
+    expect(html).not.toContain("data-note-expand");
+    expect(html).not.toContain("feed-continue-link");
   });
 
   it("moves rated link detail cards into the title block without changing feed ordering", () => {

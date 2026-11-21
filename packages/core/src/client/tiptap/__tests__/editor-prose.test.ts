@@ -109,8 +109,6 @@ describe("compose editor typography", () => {
     // to `.prose`.
     expect(elementOnly.sort()).toEqual(
       [
-        // TipTap wraps a list item's text in a paragraph.
-        "li > p:has(+ :is(ul, ol))",
         // The editor scrolls sideways, which clips a hanging list marker.
         "> ol",
         // Cells keep a grid while a table is being written.

@@ -1,9 +1,9 @@
 /**
- * Expand-in-place for truncated untitled notes.
+ * Expand-in-place for truncated untitled notes and link commentary.
  *
- * The card renders the full note body with a zero-width `data-note-break`
+ * The card renders the full body with a zero-width `data-note-break`
  * marker at the summary boundary; CSS (`[data-note-clamp] [data-note-break] ~
- * *`) hides everything after it until expanded. The "Show more" control (an
+ * *`) hides everything after it until expanded. The "Read more" control (an
  * `<a>` to the permalink, which is the no-JS fallback) toggles the clamp.
  *
  * Because the tail is already laid out below the visible summary, revealing it

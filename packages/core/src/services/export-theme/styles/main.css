@@ -122,6 +122,10 @@ p {
   margin: 1.4rem 0;
 }
 
+p:empty {
+  min-height: 1lh;
+}
+
 small {
   font-size: var(--type-sm);
 }
@@ -242,10 +246,21 @@ ol {
   margin: 1.25em 0;
 }
 
-ol ol {
-  list-style-type: lower-alpha;
+:is(ul, ol) :is(ul, ol) {
   margin-top: 0.4em;
   margin-bottom: 0.4em;
+}
+
+ul ul {
+  list-style-type: circle;
+}
+
+ul ul ul {
+  list-style-type: square;
+}
+
+ol ol {
+  list-style-type: lower-alpha;
 }
 
 ol ol ol {
@@ -267,7 +282,7 @@ li > p:last-child {
   margin-bottom: 0;
 }
 
-li > p:has(+ ol) {
+li > p:has(+ :is(ul, ol)) {
   margin-bottom: 0;
 }
 

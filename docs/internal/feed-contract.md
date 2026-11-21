@@ -46,8 +46,9 @@ commentary is not either: `QuoteCard` passes `bodyHtml` straight through and
 nothing clamps `.feed-quote-commentary`, so the site shows the whole thing
 however long it runs. Cutting it here would make `<summary>` a shorter
 rendering of the feed's own rather than the timeline's. The exception runs the
-other way for an untitled note, whose body _is_ cut here even though the site
-renders it whole — there the site hides the tail with CSS the reader strips.
+other way for an untitled note or a link's commentary, whose body _is_ cut here
+even though the site renders it whole — there the site hides the tail with CSS
+the reader strips.
 
 ## Namespaces
 

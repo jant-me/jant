@@ -994,9 +994,11 @@ function buildExportedCollectionEntriesForThread(
  * isPostTruncated(longArticle); // true
  */
 function isPostTruncated(post: Post): boolean {
+  if (post.format === "quote") return false;
   return (
-    extractTimelineSummary(post.body, !!post.title, { namespace: post.id })
-      ?.hasMore === true
+    extractTimelineSummary(post.body, post.format === "note" && !!post.title, {
+      namespace: post.id,
+    })?.hasMore === true
   );
 }
 

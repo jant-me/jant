@@ -970,6 +970,85 @@ describe("extractSummaryHtml", () => {
     expect(result!.html).toContain("B".repeat(150));
     expect(result!.html).not.toContain("<img");
   });
+
+  it("cuts inside a single long bulletList and returns a nested breakPath", () => {
+    const item = (text: string, children: Record<string, unknown>[] = []) => ({
+      type: "listItem",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text }] },
+        ...children,
+      ],
+    });
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [
+            item("文".repeat(70)),
+            item("文".repeat(100)),
+            item("文".repeat(240)),
+            item("文".repeat(160)),
+            item("精英中妨碍文明再生产的三类人", [
+              {
+                type: "bulletList",
+                content: [
+                  item("理想主义者：" + "文".repeat(55)),
+                  item("普通人：" + "文".repeat(45), [
+                    {
+                      type: "bulletList",
+                      content: [
+                        item("名义上站对了边：" + "文".repeat(42)),
+                        item("捍卫者因此处境尴尬：" + "文".repeat(40)),
+                      ],
+                    },
+                  ]),
+                  item("年轻人：" + "文".repeat(180)),
+                ],
+              },
+            ]),
+          ],
+        },
+      ],
+    });
+
+    const result = extractSummaryHtml(doc, 10, 1500, 200);
+    expect(result).not.toBeNull();
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakAtIndex).toBe(0);
+    expect(result!.breakPath).toEqual([0, 4, 1, 1, 1, 1]);
+    expect(result!.html).toContain("名义上站对了边");
+    expect(result!.html).not.toContain("捍卫者因此处境尴尬");
+    expect(result!.html).not.toContain("年轻人");
+  });
+
+  it("cuts inside a multi-paragraph blockquote when it exceeds limits", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "blockquote",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "A".repeat(400) }],
+            },
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "B".repeat(400) }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = extractSummaryHtml(doc, 5, 500, 200);
+    expect(result!.hasMore).toBe(true);
+    expect(result!.breakPath).toEqual([0, 1]);
+    expect(result!.html).toBe(
+      `<blockquote><p>${"A".repeat(400)}</p></blockquote>`,
+    );
+  });
 });
 
 describe("extractSummaryHtml lead", () => {

@@ -445,16 +445,74 @@ export interface TiptapBoundaryRenderResult {
   afterHtml: string;
 }
 
+function getSplitContainerTags(
+  node: TiptapNode,
+): { open: string; close: string } | null {
+  switch (node.type) {
+    case "bulletList":
+      return { open: "<ul>", close: "</ul>" };
+    case "orderedList": {
+      const start = getNumberAttr(node.attrs, "start");
+      const startAttr =
+        start !== null && start !== 1 ? ` start="${start}"` : "";
+      return { open: `<ol${startAttr}>`, close: "</ol>" };
+    }
+    case "listItem":
+      return { open: "<li>", close: "</li>" };
+    case "blockquote":
+      return { open: "<blockquote>", close: "</blockquote>" };
+    default:
+      return null;
+  }
+}
+
+function splitContainerNode(
+  node: TiptapNode,
+  path: readonly number[],
+  context: RenderContext,
+): TiptapBoundaryRenderResult | null {
+  const tags = getSplitContainerTags(node);
+  if (!tags || path.length === 0) return null;
+  const idx = path[0]!;
+  const rest = path.slice(1);
+  const children = node.content ?? [];
+  if (
+    !Number.isInteger(idx) ||
+    idx < 0 ||
+    (rest.length === 0 ? idx > children.length : idx >= children.length)
+  ) {
+    return null;
+  }
+
+  const beforeChildren = context.renderChildren(children.slice(0, idx));
+  if (rest.length === 0) {
+    const afterChildren = context.renderChildren(children.slice(idx));
+    return {
+      beforeHtml: tags.open + beforeChildren,
+      afterHtml: afterChildren + tags.close,
+    };
+  }
+
+  const nested = splitContainerNode(children[idx]!, rest, context);
+  if (!nested) return null;
+  const afterChildren = context.renderChildren(children.slice(idx + 1));
+  return {
+    beforeHtml: tags.open + beforeChildren + nested.beforeHtml,
+    afterHtml: nested.afterHtml + afterChildren + tags.close,
+  };
+}
+
 /**
- * Render a document as two byte-compatible segments around a top-level source
- * boundary.
+ * Render a document as two byte-compatible segments around a source boundary.
  *
+ * Accepts either a top-level index in `doc.content` or a nested index path into
+ * compound containers (`bulletList`, `orderedList`, `listItem`, `blockquote`).
  * The full document is planned before either segment is rendered, so a
  * footnote before the boundary still includes backlinks to repeated references
  * after it. Joining the two strings is therefore identical to a normal render.
  *
  * @param doc - Parsed TipTap document
- * @param boundaryIndex - Index in the original `doc.content` array
+ * @param boundary - Index in `doc.content` or nested index path
  * @param options - Rendering options, including a stable footnote ID namespace
  * @returns The rendered segments, or null for an invalid root or boundary
  * @example
@@ -468,42 +526,80 @@ export interface TiptapBoundaryRenderResult {
  */
 export function renderTiptapDocumentAroundBoundary(
   doc: JSONContent,
-  boundaryIndex: number,
+  boundary: number | readonly number[],
   options: TiptapRenderOptions = {},
 ): TiptapBoundaryRenderResult | null {
   const originalContent = doc.content ?? [];
+  const path = typeof boundary === "number" ? [boundary] : boundary;
   if (
     doc.type !== "doc" ||
     !Array.isArray(doc.content) ||
-    !Number.isInteger(boundaryIndex) ||
-    boundaryIndex < 0 ||
-    boundaryIndex > originalContent.length
+    path.length === 0 ||
+    !path.every((step) => Number.isInteger(step) && step >= 0)
+  ) {
+    return null;
+  }
+
+  const topIndex = path[0]!;
+  const innerPath = path.slice(1);
+  if (
+    innerPath.length === 0
+      ? topIndex > originalContent.length
+      : topIndex >= originalContent.length
   ) {
     return null;
   }
 
   const normalized = normalizeFootnoteArtifacts(doc) as TiptapNode;
+  const normalizedNodes = normalized.content ?? [];
   const context = createRenderContext(createFootnotePlan(normalized, options));
-  const normalizedBoundaryIndex = Math.min(
-    boundaryIndex,
-    normalized.content?.length ?? 0,
-  );
-  let beforeBodyHtml = "";
-  let afterBodyHtml = "";
 
-  for (const [index, node] of (normalized.content ?? []).entries()) {
-    if (node.type === "footnoteDefinition") continue;
-    const html = context.renderNode(node);
-    if (index < normalizedBoundaryIndex) {
-      beforeBodyHtml += html;
-    } else {
-      afterBodyHtml += html;
+  if (innerPath.length === 0) {
+    const normalizedBoundaryIndex = Math.min(topIndex, normalizedNodes.length);
+    let beforeBodyHtml = "";
+    let afterBodyHtml = "";
+
+    for (const [index, node] of normalizedNodes.entries()) {
+      if (node.type === "footnoteDefinition") continue;
+      const html = context.renderNode(node);
+      if (index < normalizedBoundaryIndex) {
+        beforeBodyHtml += html;
+      } else {
+        afterBodyHtml += html;
+      }
     }
+
+    return {
+      beforeHtml: beforeBodyHtml,
+      afterHtml: afterBodyHtml + renderFootnoteEndnotes(context),
+    };
+  }
+
+  if (topIndex >= normalizedNodes.length) return null;
+  const targetNode = normalizedNodes[topIndex]!;
+  if (targetNode.type === "footnoteDefinition") return null;
+
+  let beforeBodyHtml = "";
+  for (let i = 0; i < topIndex; i++) {
+    const node = normalizedNodes[i]!;
+    if (node.type === "footnoteDefinition") continue;
+    beforeBodyHtml += context.renderNode(node);
+  }
+
+  const innerSplit = splitContainerNode(targetNode, innerPath, context);
+  if (!innerSplit) return null;
+
+  let afterBodyHtml = "";
+  for (let i = topIndex + 1; i < normalizedNodes.length; i++) {
+    const node = normalizedNodes[i]!;
+    if (node.type === "footnoteDefinition") continue;
+    afterBodyHtml += context.renderNode(node);
   }
 
   return {
-    beforeHtml: beforeBodyHtml,
-    afterHtml: afterBodyHtml + renderFootnoteEndnotes(context),
+    beforeHtml: beforeBodyHtml + innerSplit.beforeHtml,
+    afterHtml:
+      innerSplit.afterHtml + afterBodyHtml + renderFootnoteEndnotes(context),
   };
 }
 

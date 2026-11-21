@@ -7,7 +7,9 @@
  * and detail differ only in heading level, never in that order.
  */
 
+import { msg } from "@lingui/core/macro";
 import type { FC } from "hono/jsx";
+import { useLingui } from "../../i18n/context.js";
 import type { TimelineCardProps } from "../../types.js";
 import { EmptyPostContent } from "../shared/EmptyPostContent.js";
 import { StarRating } from "../shared/StarRating.js";
@@ -19,6 +21,36 @@ import { MediaGallery } from "../shared/MediaGallery.js";
 import { LinkPreview } from "./LinkPreview.js";
 import { Icon } from "../shared/Icon.js";
 
+const LinkBodyExpand: FC<{ href: string }> = ({ href }) => {
+  const { i18n } = useLingui();
+  const readMoreLabel = i18n._(
+    msg({
+      message: "Read more",
+      comment:
+        "@context: Expand the rest of a truncated untitled note in place in the feed",
+    }),
+  );
+  const readLessLabel = i18n._(
+    msg({
+      message: "Read less",
+      comment:
+        "@context: Collapse an expanded untitled note back to its preview in the feed",
+    }),
+  );
+  return (
+    <a
+      href={href}
+      class="feed-continue-link"
+      data-note-expand
+      aria-expanded="false"
+      data-label-more={readMoreLabel}
+      data-label-less={readLessLabel}
+    >
+      {readMoreLabel}
+    </a>
+  );
+};
+
 export const LinkCard: FC<TimelineCardProps> = ({
   post,
   mode = "feed",
@@ -26,6 +58,10 @@ export const LinkCard: FC<TimelineCardProps> = ({
 }) => {
   const isCompact = mode === "compact";
   const isDetail = mode === "detail";
+  const showFullBody =
+    !isCompact && !isDetail && display?.showFullBody === true;
+  const clampBody =
+    !isDetail && !isCompact && !showFullBody && post.summaryHasMore === true;
   const articleClass = `h-entry post-menu-target${isCompact ? " feed-compact" : isDetail ? " py-6" : ""}`;
   const hasVisibleRating =
     !!post.rating && post.rating > 0 && !display?.hideRating;
@@ -116,8 +152,9 @@ export const LinkCard: FC<TimelineCardProps> = ({
 
   const bodyEl = !isCompact && post.bodyHtml && (
     <div
-      class={`e-content prose${isDetail ? " post-detail-body" : ""}`}
+      class={`e-content prose${isDetail || showFullBody ? " post-detail-body" : ""}`}
       data-post-body
+      {...(clampBody ? { "data-note-clamp": "" } : {})}
       dangerouslySetInnerHTML={{ __html: post.bodyHtml }}
     />
   );
@@ -163,6 +200,7 @@ export const LinkCard: FC<TimelineCardProps> = ({
         const tail = (
           <>
             {emptyContentEl}
+            {clampBody && <LinkBodyExpand href={post.permalink} />}
             {mediaEl}
             {ratingEl}
             <PostFooter

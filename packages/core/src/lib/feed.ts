@@ -494,9 +494,9 @@ interface TimelineSummary {
  * rendering, not a shorter one of the feed's own. The quoted text is not cut
  * either, so a Quote arrives entire on both halves.
  *
- * This is the one exception. An untitled note's body *is* cut here even though
- * the site renders it whole, because the site hides the tail with CSS the
- * reader strips.
+ * This is the one exception. An untitled note or a link's commentary *is* cut
+ * here even though the site renders it whole, because the site hides the tail
+ * with CSS the reader strips.
  *
  * Each call parses and renders the TipTap document, and three elements of an
  * entry want the answer — `<summary>`, the `<jant:post>` row, and
@@ -513,9 +513,13 @@ interface TimelineSummary {
 function getTimelineSummary(post: PostView): TimelineSummary | null {
   if (post.format === "quote") return null;
 
-  return extractTimelineSummary(post.body, !!post.title, {
-    namespace: post.id,
-  });
+  return extractTimelineSummary(
+    post.body,
+    post.format === "note" && !!post.title,
+    {
+      namespace: post.id,
+    },
+  );
 }
 
 /**

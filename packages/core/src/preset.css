@@ -249,6 +249,13 @@ html {
     margin-bottom: 1.4rem;
   }
 
+  /* An inner blank line in the editor holds a trailing `<br>` and stands one
+     line tall; the published HTML renders `<p></p>`, which without a floor
+     collapses to zero height and swallows the blank line the author left. */
+  :where(p:empty) {
+    min-height: 1lh;
+  }
+
   /* A heading binds to the text it introduces: the space above it is two to
      three times the space below, and the space below is less than a paragraph
      gap. With equal margins on both sides, as before, a heading floated
@@ -287,7 +294,10 @@ html {
      bottom margin is the whole gap. Left in place, a paragraph's 1.4rem wins
      the margin collapse against any smaller heading margin, and the heading
      floats 1.4rem from both neighbours whatever its margins say. */
-  :where(h1, h2, h3, h4, h5, h6) + :where(*) {
+  :where(h1, h2, h3, h4, h5, h6) + :where(*),
+  :where(h1, h2, h3, h4, h5, h6)
+    + :where([data-note-break], #continue)
+    + :where(*) {
     margin-top: 0;
   }
 
@@ -296,10 +306,21 @@ html {
     padding-left: 1.4em;
   }
 
-  :where(ol ol) {
-    list-style-type: lower-alpha;
+  :where(:is(ul, ol) :is(ul, ol)) {
     margin-top: 0.4em;
     margin-bottom: 0.4em;
+  }
+
+  :where(ul ul) {
+    list-style-type: circle;
+  }
+
+  :where(ul ul ul) {
+    list-style-type: square;
+  }
+
+  :where(ol ol) {
+    list-style-type: lower-alpha;
   }
 
   :where(ol ol ol) {
@@ -321,7 +342,9 @@ html {
     margin-bottom: 0;
   }
 
-  :where(li > p:has(+ ol)) {
+  :where(
+    li > p:has(+ :is(ul, ol), + :is([data-note-break], #continue) + :is(ul, ol))
+  ) {
     margin-bottom: 0;
   }
 
@@ -457,6 +480,7 @@ html {
   }
 
   blockquote p + p,
+  blockquote p + :where([data-note-break], #continue) + p,
   blockquote ul,
   blockquote ol,
   blockquote pre {

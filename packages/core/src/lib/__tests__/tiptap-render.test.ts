@@ -358,6 +358,45 @@ describe("renderTiptapDocument", () => {
     expect(split!.afterHtml.endsWith("</section>")).toBe(true);
   });
 
+  it("splits around a nested list boundary while preserving exact full HTML", () => {
+    const input = doc(
+      {
+        type: "bulletList",
+        content: [
+          { type: "listItem", content: [p(text("One"))] },
+          {
+            type: "listItem",
+            content: [
+              p(text("Two")),
+              {
+                type: "orderedList",
+                attrs: { start: 3 },
+                content: [
+                  { type: "listItem", content: [p(text("Sub A"))] },
+                  { type: "listItem", content: [p(text("Sub B"))] },
+                ],
+              },
+            ],
+          },
+          { type: "listItem", content: [p(text("Three"))] },
+        ],
+      },
+      p(text("After list")),
+    );
+
+    const full = renderTiptapDocument(input);
+    const split = renderTiptapDocumentAroundBoundary(input, [0, 1, 1, 1]);
+
+    expect(split).not.toBeNull();
+    expect(split!.beforeHtml + split!.afterHtml).toBe(full);
+    expect(split!.beforeHtml).toBe(
+      '<ul><li><p>One</p></li><li><p>Two</p><ol start="3"><li><p>Sub A</p></li>',
+    );
+    expect(split!.afterHtml).toBe(
+      "<li><p>Sub B</p></li></ol></li><li><p>Three</p></li></ul><p>After list</p>",
+    );
+  });
+
   it("renders code blocks as escaped text, not nested inline markup", () => {
     const html = renderTiptapDocument(
       doc({

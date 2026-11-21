@@ -171,25 +171,25 @@ export function toMediaView(media: Media, ctx: MediaContext): MediaView {
 function spliceAtSummaryBoundary(
   bodyJson: string,
   bodyHtml: string,
-  breakAtIndex: number,
+  boundary: number | readonly number[],
   markerHtml: string,
   namespace: string,
 ): string | null {
   try {
     const doc = JSON.parse(bodyJson) as { type?: string; content?: unknown[] };
+    const path = typeof boundary === "number" ? [boundary] : boundary;
     if (
       doc.type !== "doc" ||
       !Array.isArray(doc.content) ||
-      breakAtIndex <= 0 ||
-      breakAtIndex > doc.content.length
+      path.length === 0 ||
+      (path.length === 1 && path[0]! <= 0) ||
+      path[0]! > doc.content.length
     ) {
       return null;
     }
-    const split = renderTiptapDocumentAroundBoundary(
-      doc as JSONContent,
-      breakAtIndex,
-      { namespace },
-    );
+    const split = renderTiptapDocumentAroundBoundary(doc as JSONContent, path, {
+      namespace,
+    });
     if (!split || split.beforeHtml + split.afterHtml !== bodyHtml) return null;
     return split.beforeHtml + markerHtml + split.afterHtml;
   } catch {
@@ -273,25 +273,28 @@ export function toPostView(
   // Pre-compute excerpt from the unified plain-text summary.
   const excerpt = clipPreviewText(summary, 160);
 
-  // Pre-compute feed/list truncation. The two formats differ:
+  // Pre-compute feed/list truncation. The modes differ:
   //
-  // - Titled (article-style) posts get an excerpt teaser (`summaryHtml`) and a
+  // - Titled notes (article-style) get an excerpt teaser (`summaryHtml`) and a
   //   "Continue" link to the full page; a `#continue` anchor is spliced into the
   //   body for scroll targeting on that page. The teaser keeps one inline image
   //   from ahead of the cut, unless the post has an image or video attachment:
   //   the card shows that gallery below the teaser, and one card carries one
   //   set of pictures.
-  // - Untitled notes render their body in full and expand in place. When the
-  //   body is long enough to truncate (larger limit + tolerance guard) we splice
-  //   a `data-note-break` marker at the boundary so the feed can clamp the tail
-  //   with CSS and reveal it on click — no excerpt, no extra fetch. We do NOT
-  //   set `summaryHtml` for notes (the card renders the full marked body), and
-  //   only flag `summaryHasMore` when the split actually succeeds.
+  // - Untitled notes and link commentary render their body in full and expand
+  //   in place (a link's `title` names the external page, not an article). When
+  //   the body is long enough to truncate (larger limit + tolerance guard, or
+  //   an explicit `moreBreak`), we splice a `data-note-break` marker at the
+  //   boundary so the feed can clamp the tail with CSS and reveal it on click —
+  //   no excerpt, no extra fetch. We do NOT set `summaryHtml` for these (the
+  //   card renders the full marked body), and only flag `summaryHasMore` when
+  //   the split actually succeeds.
+  // - Quotes are never cut.
   let summaryHtml: string | undefined;
   let summaryHasMore: boolean | undefined;
   let bodyHtmlWithAnchor = post.bodyHtml;
-  if (post.body) {
-    const isArticle = !!post.title;
+  if (post.body && post.format !== "quote") {
+    const isArticle = post.format === "note" && !!post.title;
     const hasVisualAttachment = post.mediaAttachments.some((m) => {
       const kind = toMediaKind(m.mimeType);
       return kind === "image" || kind === "video";
@@ -314,7 +317,7 @@ export function toPostView(
         const spliced = spliceAtSummaryBoundary(
           post.body,
           post.bodyHtml,
-          result.breakAtIndex,
+          result.breakPath ?? result.breakAtIndex,
           '<span id="continue"></span>',
           id,
         );
@@ -324,7 +327,7 @@ export function toPostView(
       const spliced = spliceAtSummaryBoundary(
         post.body,
         post.bodyHtml,
-        result.breakAtIndex,
+        result.breakPath ?? result.breakAtIndex,
         "<span data-note-break></span>",
         id,
       );

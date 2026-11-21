@@ -2508,16 +2508,17 @@
     text-decoration: underline;
   }
 
-  /* Untitled note expand-in-place. The full body is rendered with a zero-width
-     `data-note-break` marker at the summary boundary; clamping hides only the
-     marker's following siblings, leaving the visible summary untouched so the
-     note grows in place without the page jumping. note-expand.ts toggles
+  /* Untitled note & link commentary expand-in-place. The full body is rendered
+     with a zero-width `data-note-break` marker at the summary boundary (either
+     between top-level blocks or inside a list or blockquote); clamping hides
+     everything after the marker and after any ancestor container that holds it,
+     so the post grows in place without jumping. note-expand.ts toggles
      `data-note-clamp` to reveal/hide the tail. */
   [data-note-break] {
     display: none;
   }
 
-  [data-note-clamp] [data-note-break] ~ * {
+  [data-note-clamp] :is([data-note-break], :has([data-note-break])) ~ * {
     display: none;
   }
 

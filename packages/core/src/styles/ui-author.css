@@ -7677,11 +7677,8 @@
  * reader's.
  */
 
-/* TipTap wraps a list item's text in a paragraph, which the published HTML of
-   a tight list does not have. Left alone, that paragraph's bottom margin opens
-   a gap above a nested list that the post does not show. ProseMirror can put a
-   gap cursor between the two. */
-.compose-tiptap-body .tiptap li > p:has(+ :is(ul, ol)),
+/* `.prose` clears `li > p` above a nested list; in the editor ProseMirror can
+   put a gap cursor between the two. */
 .compose-tiptap-body
   .tiptap
   li
@@ -7787,4 +7784,41 @@
 .compose-reply-compose-layout .compose-tiptap-body .tiptap blockquote {
   margin: 0.72em 0;
   padding: 1.3rem 0.9em 0.76em 1em;
+}
+
+.compose-reply-compose-layout .compose-tiptap-body .tiptap > :first-child,
+.compose-reply-compose-layout
+  .compose-tiptap-body
+  .tiptap
+  :is(h1, h2, h3, h4, h5, h6)
+  + *,
+.compose-reply-compose-layout .compose-tiptap-body .tiptap li > p:first-child {
+  margin-top: 0;
+}
+
+.compose-reply-compose-layout .compose-tiptap-body .tiptap > :last-child,
+.compose-reply-compose-layout .compose-tiptap-body .tiptap li > p:last-child,
+.compose-reply-compose-layout
+  .compose-tiptap-body
+  .tiptap
+  li
+  > p:has(+ :is(ul, ol)),
+.compose-reply-compose-layout
+  .compose-tiptap-body
+  .tiptap
+  li
+  > p:has(+ .ProseMirror-gapcursor + :is(ul, ol)) {
+  margin-bottom: 0;
+}
+
+.compose-reply-compose-layout .compose-tiptap-body .tiptap blockquote p {
+  margin: 0;
+}
+
+.compose-reply-compose-layout
+  .compose-tiptap-body
+  .tiptap
+  blockquote
+  :is(p + p, ul, ol, pre) {
+  margin-top: 0.6em;
 }

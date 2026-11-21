@@ -127,4 +127,30 @@ describe("note expand", () => {
 
     expect(body.hasAttribute("data-note-clamp")).toBe(false);
   });
+
+  it("expands and re-clamps when data-note-break is nested inside a list", () => {
+    const { body, control } = buildCard();
+    body.innerHTML =
+      "<ul><li><p>First</p></li><span data-note-break></span><li><p>Second</p></li></ul><p>Trailing</p>";
+
+    // HTML parser keeps the marker inside <ul> between the two <li> elements,
+    // and CSS `:is([data-note-break], :has([data-note-break])) ~ *` matches
+    // both the remaining <li> and the trailing <p> outside <ul>.
+    const hiddenByRule = [
+      ...document.querySelectorAll(
+        "[data-note-clamp] :is([data-note-break], :has([data-note-break])) ~ *",
+      ),
+    ]
+      .map((el) => `${el.tagName}:${el.textContent}`)
+      .sort();
+    expect(hiddenByRule).toEqual(["LI:Second", "P:Trailing"]);
+
+    click(control);
+    expect(body.hasAttribute("data-note-clamp")).toBe(false);
+    expect(control.textContent).toBe("Read less");
+
+    click(control);
+    expect(body.hasAttribute("data-note-clamp")).toBe(true);
+    expect(control.textContent).toBe("Read more");
+  });
 });
