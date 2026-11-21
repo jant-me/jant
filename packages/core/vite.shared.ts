@@ -300,6 +300,8 @@ const INITIAL_ENTRIES = new Set(["client", "client-auth"]);
  * `/` or `-` matches every package under it.
  */
 const LAZY_ONLY_PACKAGES = [
+  // Syntax highlighting for code blocks.
+  "highlight.js",
   // The editor: `client-compose.ts`.
   "@tiptap/",
   "prosemirror-",

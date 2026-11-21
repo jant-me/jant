@@ -403,6 +403,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         lang={resolvedLang}
         data-theme={appConfig?.themeId}
         data-theme-mode={themeMode}
+        data-code-theme={appConfig?.codeTheme}
         data-site-path-prefix={sitePathPrefix}
         data-view-base-path={viewBasePath}
         data-view-lang={viewLang ?? undefined}

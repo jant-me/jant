@@ -288,6 +288,11 @@
         "list"
       ],
       "ARCHIVE_PAGE_SIZE": [],
+      "CODE_THEME": [
+        "github",
+        "monochrome",
+        "solarized"
+      ],
       "CUSTOM_CSS": [],
       "DASHBOARD_LANGUAGE": [
         "",

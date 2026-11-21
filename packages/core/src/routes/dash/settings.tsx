@@ -38,6 +38,7 @@ import {
   parseDiscoverSetting,
 } from "../../lib/discover.js";
 import { getAvailableThemes } from "../../lib/theme.js";
+import { codeThemeSchema } from "../../lib/code-theme.js";
 import { THEME_MODES, type ThemeMode } from "../../types/config.js";
 import { BUILTIN_FONT_THEMES } from "../../ui/font-themes.js";
 import { SettingsRootContent } from "../../ui/dash/settings/SettingsRootContent.js";
@@ -52,6 +53,7 @@ import {
 } from "../../ui/dash/settings/SessionsContent.js";
 import { NavigationContent } from "../../ui/dash/appearance/NavigationContent.js";
 import { ColorThemeContent } from "../../ui/dash/appearance/ColorThemeContent.js";
+import { CodeThemePicker } from "../../ui/dash/appearance/CodeThemePicker.js";
 import { FontThemeContent } from "../../ui/dash/appearance/FontThemeContent.js";
 import { AdvancedContent } from "../../ui/dash/appearance/AdvancedContent.js";
 import { CodeInjectionContent } from "../../ui/dash/appearance/CodeInjectionContent.js";
@@ -1498,6 +1500,10 @@ settingsRoutes.get("/color-theme", async (c) => {
           currentThemeMode={currentThemeMode}
           sitePathPrefix={c.var.appConfig.sitePathPrefix}
         />
+        <CodeThemePicker
+          codeTheme={c.var.appConfig.codeTheme}
+          sitePathPrefix={c.var.appConfig.sitePathPrefix}
+        />
       </>
     ),
   });
@@ -1535,6 +1541,32 @@ settingsRoutes.post("/color-theme", async (c) => {
   }
 
   return dsRedirect(publicPath(c, "/settings/color-theme?saved"));
+});
+
+settingsRoutes.post("/code-theme", async (c) => {
+  const body = await c.req.json<{ codeTheme?: unknown }>();
+  const theme = codeThemeSchema.safeParse(body?.codeTheme);
+  if (!theme.success) {
+    return dsToast(
+      getI18n(c)._(
+        msg({
+          message: "That code theme isn't available. Pick another one.",
+          comment: "@context: Error when saving an unknown code theme",
+        }),
+      ),
+      "error",
+    );
+  }
+
+  await c.var.services.settings.set(SETTINGS_KEYS.CODE_THEME, theme.data);
+  return dsToast(
+    getI18n(c)._(
+      msg({
+        message: "Code theme updated.",
+        comment: "@context: Toast after changing the code block color theme",
+      }),
+    ),
+  );
 });
 
 // ===========================================================================

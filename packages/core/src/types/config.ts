@@ -433,6 +433,11 @@ export const CONFIG_FIELDS = {
       resettable: true,
     },
   },
+  CODE_THEME: {
+    defaultValue: "github",
+    envOnly: false,
+    internal: true,
+  },
   TIME_ZONE: {
     defaultValue: "UTC",
     envOnly: false,
@@ -767,6 +772,9 @@ export interface ConfigEditorFieldState {
 export const THEME_MODES = ["auto", "light", "dark"] as const;
 export type ThemeMode = (typeof THEME_MODES)[number];
 
+export const CODE_THEMES = ["github", "solarized", "monochrome"] as const;
+export type CodeTheme = (typeof CODE_THEMES)[number];
+
 /**
  * Unified application configuration
  *
@@ -865,6 +873,7 @@ export interface AppConfig {
   fontThemeId: string;
   defaultFontThemeId: string;
   themeMode: ThemeMode;
+  codeTheme: CodeTheme;
   customCSS: string;
   customHeadHtml: string;
   customBodyEndHtml: string;

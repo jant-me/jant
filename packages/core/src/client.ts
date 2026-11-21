@@ -27,8 +27,10 @@ import "./client/archive-nav.js";
 import "./client/site-header-nav.js";
 import "./client/collection-sort-menu.js";
 import "./client/footnote-rail.js";
+import { observeCodeHighlighting } from "./client/code-highlighting.js";
 
 declare const __JANT_VERSION__: string;
 
 installPrefixedFetch();
+observeCodeHighlighting();
 document.documentElement.dataset.jantVersion = __JANT_VERSION__;

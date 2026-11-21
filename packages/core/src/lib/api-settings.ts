@@ -18,6 +18,7 @@ import { getAvailableThemes } from "./theme.js";
 import { BUILTIN_FONT_THEMES } from "../ui/font-themes.js";
 import { THEME_MODES } from "../types/config.js";
 import { ValidationError } from "./errors.js";
+import { codeThemeSchema, resolveCodeTheme } from "./code-theme.js";
 
 /**
  * Settings a demo site's shared visitors can't change: indexing stays off, and
@@ -262,6 +263,7 @@ export const appearanceSettingKeys = [
   "THEME",
   "FONT_THEME",
   "THEME_MODE",
+  "CODE_THEME",
   "CUSTOM_CSS",
   "SHOW_HEADER_AVATAR",
 ] as const satisfies readonly ConfigKey[];
@@ -305,6 +307,8 @@ function readScreenSetting(
       return (THEME_MODES as readonly string[]).includes(stored)
         ? stored
         : "auto";
+    case "CODE_THEME":
+      return resolveCodeTheme(stored);
     case "SHOW_HEADER_AVATAR":
     case "MULTILINGUAL_ENABLED":
       return String(stored === "true");
@@ -352,6 +356,13 @@ export function normalizeAppearanceSettingValue(
       if (!(THEME_MODES as readonly string[]).includes(trimmed)) {
         throw new ValidationError(
           `THEME_MODE must be one of: ${THEME_MODES.join(", ")}.`,
+        );
+      }
+      return trimmed;
+    case "CODE_THEME":
+      if (!codeThemeSchema.safeParse(trimmed).success) {
+        throw new ValidationError(
+          `CODE_THEME must be one of: ${codeThemeSchema.options.join(", ")}.`,
         );
       }
       return trimmed;

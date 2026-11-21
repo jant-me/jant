@@ -1303,3 +1303,10 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   (`gh run view --json status,conclusion`) before reporting a failure, and
   watch again while it is still going; `preview-site.sh` once reported "The
   deploy failed" for a deploy that went on to succeed.
+
+## Run content enhancements before capturing a share card
+
+- Share cards start from a fresh server-rendered fragment. If an enhancement
+  changes the post's DOM, run the shared enhancement in `prepareShareCard`
+  before measuring the card. Download the PNG through the share dialog to
+  verify the captured result.

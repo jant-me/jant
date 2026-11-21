@@ -53,6 +53,7 @@ describe("Settings API Routes", () => {
         THEME: "tufte",
         FONT_THEME: "classic",
         THEME_MODE: "auto",
+        CODE_THEME: "github",
         CUSTOM_CSS: "",
         SHOW_HEADER_AVATAR: "false",
         MULTILINGUAL_ENABLED: "false",
@@ -247,6 +248,7 @@ describe("Settings API Routes", () => {
           THEME: "paper",
           FONT_THEME: "literary",
           THEME_MODE: "dark",
+          CODE_THEME: "solarized",
           CUSTOM_CSS: "  body { color: red; }\n",
           SHOW_HEADER_AVATAR: "true",
         }),
@@ -257,6 +259,7 @@ describe("Settings API Routes", () => {
         THEME: "paper",
         FONT_THEME: "literary",
         THEME_MODE: "dark",
+        CODE_THEME: "solarized",
         CUSTOM_CSS: "body { color: red; }",
         SHOW_HEADER_AVATAR: "true",
       });
@@ -267,6 +270,7 @@ describe("Settings API Routes", () => {
       ["THEME", "no-such-theme"],
       ["FONT_THEME", "serif"],
       ["THEME_MODE", "sepia"],
+      ["CODE_THEME", "sepia"],
       ["SHOW_HEADER_AVATAR", "yes"],
     ])("refuses %s=%s and writes nothing", async (key, value) => {
       const { app, services } = createTestApp({ authenticated: true });
