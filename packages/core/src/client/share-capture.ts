@@ -9,6 +9,10 @@
  */
 
 import { snapdom } from "@zumer/snapdom";
+import {
+  highlightCodeBlocks,
+  LABELED_CODE_BLOCK,
+} from "./code-highlighting.js";
 import { assetBaseUrl } from "./runtime-paths.js";
 
 /**
@@ -448,6 +452,9 @@ export async function prepareShareCard(
   try {
     const card = host.querySelector<HTMLElement>("[data-share-card]");
     if (!card) throw new Error("The share card is missing.");
+    await highlightCodeBlocks(
+      card.querySelectorAll<HTMLElement>(LABELED_CODE_BLOCK),
+    );
     await settle(card);
     const excludedFamilies = unusedFontFamilies();
     cutToScreen(card);

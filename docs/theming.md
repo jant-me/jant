@@ -10,6 +10,12 @@ Start with **Settings > Color Theme** and **Settings > Font Theme**. When those 
 
 All built-in themes include both light and dark palettes. Custom CSS layers on top of the selected theme — so the best approach is usually to treat a built-in theme as your starting point rather than rewriting everything from scratch.
 
+## Code theme
+
+Under **Settings > Color Theme**, compare previews for GitHub (the default), Solarized, and Monochrome, which uses shades of violet. Selecting a theme saves it automatically. Code blocks use the light or dark palette that matches the site's appearance.
+
+To highlight a fenced code block, add its language after the opening backticks, such as `js`, `python`, `html`, or `bash`. Existing posts with supported language labels use the selected theme automatically. Blocks without a supported label display as plain code.
+
 ## Color variables
 
 Color variables come in two layers:

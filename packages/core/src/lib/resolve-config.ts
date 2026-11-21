@@ -12,6 +12,7 @@
 import type { Bindings } from "../types/bindings.js";
 import type { AppConfig } from "../types/config.js";
 import { CONFIG_FIELDS } from "../types/config.js";
+import { resolveCodeTheme } from "./code-theme.js";
 import type { ArchiveLayout, FeedKind } from "../types/constants.js";
 import { ASSET_BASE_SEGMENT, getPublicAssetBasePath } from "./asset-path.js";
 import { resolveDiscoverMode } from "./discover.js";
@@ -413,6 +414,7 @@ export function resolveConfig(
       allSettings["THEME_MODE"] === "dark"
         ? allSettings["THEME_MODE"]
         : "auto",
+    codeTheme: resolveCodeTheme(allSettings["CODE_THEME"]),
     customCSS: allSettings["CUSTOM_CSS"] ?? "",
     customHeadHtml: allSettings["CUSTOM_HEAD_HTML"] ?? "",
     customBodyEndHtml: allSettings["CUSTOM_BODY_END_HTML"] ?? "",

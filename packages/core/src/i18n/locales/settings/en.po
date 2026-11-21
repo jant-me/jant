@@ -559,6 +559,11 @@ msgstr "Choose a typographic direction for your site. Each theme changes both th
 msgid "Choose the color palette used across Jant."
 msgstr "Choose the color palette used across Jant."
 
+#. @context: Code block color theme settings description
+#: src/ui/dash/appearance/CodeThemePicker.tsx
+msgid "Choose the colors used to highlight code blocks in posts."
+msgstr "Choose the colors used to highlight code blocks in posts."
+
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Choose the content language announced to readers and search engines."
@@ -605,6 +610,16 @@ msgstr "Code injection is off in demo mode. Every visitor shares the demo site."
 #: src/routes/dash/settings.tsx
 msgid "Code injection updated."
 msgstr "Code injection updated."
+
+#. @context: Code block color theme settings heading
+#: src/ui/dash/appearance/CodeThemePicker.tsx
+msgid "Code theme"
+msgstr "Code theme"
+
+#. @context: Toast after changing the code block color theme
+#: src/routes/dash/settings.tsx
+msgid "Code theme updated."
+msgstr "Code theme updated."
 
 #. @context: Nav item type badge for collection items
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1742,6 +1757,11 @@ msgstr "Minimal color, low distraction."
 msgid "Modified"
 msgstr "Modified"
 
+#. @context: Code theme using shades of a single hue
+#: src/ui/dash/appearance/CodeThemePicker.tsx
+msgid "Monochrome"
+msgstr "Monochrome"
+
 #. @context: Section label for nav items hidden under More dropdown
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "More"
@@ -2739,6 +2759,11 @@ msgstr "That address is on another site. Navigation holds it as a link."
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "That address is reserved. Choose another one."
 msgstr "That address is reserved. Choose another one."
+
+#. @context: Error when saving an unknown code theme
+#: src/routes/dash/settings.tsx
+msgid "That code theme isn't available. Pick another one."
+msgstr "That code theme isn't available. Pick another one."
 
 #. @context: Error toast when selected font theme is not valid
 #: src/routes/dash/settings.tsx
