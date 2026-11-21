@@ -339,6 +339,7 @@ const labels: ComposeLabels = {
   postHiddenFromLatest: "Post hidden",
   postUnlisted: "Post unlisted",
   postPrivately: "Post privately",
+  showToc: "Show table of contents",
   quietReplyLabel: "Reply quietly",
   quietReplyHint: "Won't move the thread to the top of latest.",
   threadLimitReached: "Threads can include up to 20 posts.",

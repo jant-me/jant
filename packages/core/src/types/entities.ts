@@ -59,6 +59,7 @@ export interface Post {
   visibility: Visibility;
   pinnedAt: number | null;
   featuredAt: number | null;
+  showToc: boolean;
   slug: string;
   title: string | null;
   url: string | null;

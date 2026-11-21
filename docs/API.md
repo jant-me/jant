@@ -313,6 +313,7 @@ Post responses include these fields:
 | `visibility`      | `public` \| `latest_hidden` \| `unlisted` \| `private` | Resolved visibility shown to clients                                                                                                     |
 | `pinnedAt`        | integer \| `null`                                      | Pin timestamp                                                                                                                            |
 | `featuredAt`      | integer \| `null`                                      | Feature timestamp                                                                                                                        |
+| `showToc`         | boolean                                                | Shows section links on the post page                                                                                                     |
 | `slug`            | string                                                 | Canonical slug                                                                                                                           |
 | `title`           | string \| `null`                                       | Returned for non-quote responses; omitted for `quote`                                                                                    |
 | `url`             | string \| `null`                                       | Returned for non-quote responses; usually `null` on notes                                                                                |
@@ -353,6 +354,7 @@ Example:
   "visibility": "public",
   "pinnedAt": null,
   "featuredAt": null,
+  "showToc": false,
   "slug": "hello-world",
   "title": "Hello World",
   "displayTitle": "Hello World",
@@ -562,6 +564,7 @@ Fields:
 | `featured`          | boolean                                                | no                   | `false`        | Mark as featured                                                                                                                       |
 | `pinnedAt`          | integer \| `null`                                      | no                   | —              | Pin at this time instead of now; wins over `pinned`. For restores                                                                      |
 | `featuredAt`        | integer \| `null`                                      | no                   | —              | Feature at this time instead of now; wins over `featured`. For restores                                                                |
+| `showToc`           | boolean                                                | no                   | `false`        | Show a table of contents on the post page                                                                                              |
 | `url`               | absolute URL                                           | required for `link`  | —              | Allows `http:`, `https:`, or `mailto:`; not allowed for `note` or `quote`                                                              |
 | `sourceUrl`         | absolute URL                                           | no                   | `null`         | Quote attribution URL; not allowed for non-quote                                                                                       |
 | `quoteText`         | string                                                 | required for `quote` | —              | Not allowed for `note` or `link`                                                                                                       |

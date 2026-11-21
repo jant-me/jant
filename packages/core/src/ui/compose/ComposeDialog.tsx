@@ -589,6 +589,12 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         comment: "@context: Compose button - reply to post",
       }),
     ),
+    showToc: i18n._(
+      msg({
+        message: "Show table of contents",
+        comment: "@context: Post settings switch for section navigation",
+      }),
+    ),
     quietReplyLabel: i18n._(
       msg({
         message: "Reply quietly",

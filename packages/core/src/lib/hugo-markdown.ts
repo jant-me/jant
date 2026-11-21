@@ -174,6 +174,7 @@ export interface HugoFrontMatter {
    * on Latest. Round-tripped so a restore rebuilds the same ordering.
    */
   quiet_reply?: boolean;
+  show_toc?: boolean;
 
   // Derived Featured Thread projection (root bundles only)
   featured_post_ids?: string[];

@@ -23,6 +23,7 @@ export interface ApiPostResponse {
   visibility: Post["visibility"];
   pinnedAt: number | null;
   featuredAt: number | null;
+  showToc: boolean;
   slug: string;
   title?: string | null;
   url?: string | null;
@@ -266,6 +267,7 @@ export function toApiPost(
     visibility: post.visibility,
     pinnedAt: post.pinnedAt,
     featuredAt: post.featuredAt,
+    showToc: post.showToc,
     slug: post.slug,
     ...source,
     // A short name for this Post wherever it is referenced from somewhere

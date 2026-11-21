@@ -1957,6 +1957,7 @@ export function createPostService(
       visibility: ensurePostVisibility(visibility, Error),
       pinnedAt: row.pinnedAt,
       featuredAt: row.featuredAt,
+      showToc: row.showToc,
       slug,
       title: row.title,
       url: row.url,
@@ -3103,6 +3104,7 @@ export function createPostService(
               visibility,
               pinnedAt: resolvedPinnedAt,
               featuredAt: resolvedFeaturedAt,
+              showToc: data.showToc,
               title,
               url,
               body,
@@ -3197,6 +3199,7 @@ export function createPostService(
               visibility,
               pinnedAt: resolvedPinnedAt,
               featuredAt: resolvedFeaturedAt,
+              showToc: data.showToc,
               title,
               url,
               body,
@@ -3491,6 +3494,9 @@ export function createPostService(
         updates.pinnedAt = data.pinnedAt;
       } else if (data.pinned !== undefined) {
         updates.pinnedAt = data.pinned ? timestamp : null;
+      }
+      if (data.showToc !== undefined) {
+        updates.showToc = data.showToc;
       }
       if (data.featuredAt !== undefined) {
         updates.featuredAt = data.featuredAt;

@@ -161,6 +161,8 @@ Jant has no separate "page" type — a standalone page is just a Hidden from Lat
 
 Once published, the page lives at `/about` — Jant derives the slug from the title. To give visitors a way in, add a link to `/about` under **Settings → Appearance → Navigation**.
 
+For a long page, open the date and link settings in the editor and turn on **Show table of contents**. Jant links to second- and third-level headings in the body. The contents stay in view on the left on wide screens, and a **Contents** button opens them on narrow screens.
+
 ## Visibility and curation
 
 ### Publishing states

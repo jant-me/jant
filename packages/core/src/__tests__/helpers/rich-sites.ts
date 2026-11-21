@@ -255,6 +255,7 @@ export async function exportRichSite(): Promise<ExportContentFile[]> {
       featured: true,
       pinned: true,
       collectionIds: [ideas.id],
+      showToc: true,
       language: "en",
       createdAt: 1_700_000_000,
       updatedAt: 1_700_100_000,

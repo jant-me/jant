@@ -176,6 +176,7 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 | `quote_text`                | 都有 | 引用的原文                                                                                         |
 | `rating`                    | 都有 | `1` 到 `5`                                                                                         |
 | `featured_at`、`pinned_at`  | 都有 | UTC 的 RFC 3339                                                                                    |
+| `show_toc`                  | 都有 | 开启目录时写入 `true`                                                                              |
 | `media`                     | 都有 | 按顺序的附件，见下表                                                                               |
 | `aliases`                   | root | Hugo 的别名页：root 的自定义 URL 和每条回复的 slug                                                 |
 | `root_aliases`              | root | root 的自定义 URL，导入时重建                                                                      |

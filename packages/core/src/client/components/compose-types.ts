@@ -141,6 +141,7 @@ export interface LocalDraft {
   publishedAtInput?: string;
   publishedAtTimeMinutes?: number | null;
   visibility: ComposeVisibility;
+  showToc?: boolean;
   rating: number;
   showTitle: boolean;
   showRating: boolean;
@@ -175,6 +176,7 @@ export interface LocalDraft {
     publishedAtTimeMinutes?: number | null;
     /** Per-post permalink; empty means the server assigns a random id. */
     slug?: string;
+    showToc?: boolean;
     title: string;
     bodyJson: JSONContent | null;
     url: string;
@@ -342,6 +344,7 @@ export interface ComposeLabels {
   postHiddenFromLatest: string;
   postUnlisted: string;
   postPrivately: string;
+  showToc: string;
   quietReplyLabel: string;
   quietReplyHint: string;
   threadLimitReached: string;
@@ -424,6 +427,7 @@ export interface ComposeSubmitDetail {
   draftSourceId?: string;
   replyToId?: string;
   quietReply?: boolean;
+  showToc?: boolean;
   replyThreadRootId?: string;
   replyRefreshKind?: "timeline-item" | "post-card" | "post-view";
   replyRefreshId?: string;
