@@ -7159,18 +7159,19 @@
 /*
  * Post heading copy-link anchors.
  * Kept outside @layer components so text-decoration and color cleanly override
- * the unlayered `.prose a` rule.
+ * the unlayered `.prose a` rule. Zero inline-size keeps the anchor from
+ * reserving line width, so a heading that fills one line never wraps or gains
+ * a phantom blank second line for an invisible `#`.
  */
 .prose a.heading-anchor {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
   vertical-align: middle;
-  inline-size: 1.15em;
-  block-size: 1.15em;
-  margin-inline-start: 0.25em;
-  border-radius: var(--radius);
+  inline-size: 0;
+  block-size: 1em;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
   color: var(--site-reading-meta);
   text-decoration: none;
   opacity: 0;
@@ -7180,7 +7181,30 @@
     color 0.16s ease;
 }
 
+.prose a.heading-anchor::after {
+  content: "";
+  position: absolute;
+  inset-block: -0.15em;
+  inset-inline-start: 0;
+  inline-size: 1.35em;
+  border-radius: var(--radius);
+}
+
+.prose a.heading-anchor:focus-visible {
+  outline: none;
+}
+
+.prose a.heading-anchor:focus-visible::after {
+  outline: 1.5px solid
+    color-mix(in srgb, var(--site-text-primary) 28%, transparent);
+  outline-offset: 1px;
+}
+
 .prose a.heading-anchor svg {
+  position: absolute;
+  inset-inline-start: 0.28em;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
   inline-size: 0.66em;
   block-size: 0.66em;
 }
