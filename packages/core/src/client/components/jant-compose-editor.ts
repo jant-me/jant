@@ -1129,6 +1129,7 @@ export class JantComposeEditor extends LitElement {
         rehost: (src) => this.#rehostInlineImage(src),
       },
       imageNodeLabels: getInlineImageNodeLabels(this.labels),
+      codeBlockLabels: this.labels.codeBlock,
       tableControlLabels: this.labels.tableControls,
       highlightLabel: this.labels.highlight,
     });

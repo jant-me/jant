@@ -5989,6 +5989,86 @@
     color: color-mix(in srgb, var(--site-text-secondary) 55%, transparent);
   }
 
+  /* --- Code block language picker in editor ----------------------------- */
+
+  .tiptap-code-block {
+    position: relative;
+  }
+
+  .tiptap-code-block > pre {
+    padding-top: 2rem;
+  }
+
+  .tiptap-code-block-controls {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.45rem;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.65;
+    transition: opacity 0.15s;
+  }
+
+  .tiptap-code-block[data-has-language="true"] .tiptap-code-block-controls {
+    opacity: 0.8;
+  }
+
+  .tiptap-code-block:hover .tiptap-code-block-controls,
+  .tiptap-code-block:focus-within .tiptap-code-block-controls {
+    opacity: 1;
+  }
+
+  .tiptap-code-block-select {
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--site-text-secondary);
+    font-family: var(--font-ui);
+    font-size: var(--type-2xs);
+    line-height: 1.4;
+    padding: 0.15rem 1.35rem 0.15rem 0.45rem;
+    text-align: right;
+    text-align-last: right;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .tiptap-code-block-select:hover {
+    background: var(--site-subtle-bg);
+    color: var(--site-text-primary);
+  }
+
+  .tiptap-code-block-select:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+    background: var(--site-subtle-bg);
+    color: var(--site-text-primary);
+  }
+
+  .tiptap-code-block-select option {
+    background: var(--site-page-bg);
+    color: var(--site-text-primary);
+  }
+
+  .tiptap-code-block-chevron {
+    position: absolute;
+    right: 0.3rem;
+    display: inline-flex;
+    align-items: center;
+    color: var(--site-text-secondary);
+    pointer-events: none;
+  }
+
+  .tiptap-code-block-controls:hover .tiptap-code-block-chevron,
+  .tiptap-code-block-controls:focus-within .tiptap-code-block-chevron {
+    color: var(--site-text-primary);
+  }
+
   /* --- Raw HTML block card in editor ------------------------------------ */
 
   .tiptap-html-block-card {

@@ -47,6 +47,64 @@ for (const [name, grammar] of Object.entries({
 
 const MAX_HIGHLIGHT_LENGTH = 20_000;
 
+export interface HighlightToken {
+  /** Inclusive character offset within the code block text. */
+  from: number;
+  /** Exclusive character offset within the code block text. */
+  to: number;
+  /** Space-separated `hljs-*` class names for the span. */
+  className: string;
+}
+
+/**
+ * Tokenize a code string for a supported language into relative `[from, to)`
+ * spans with `hljs-*` class names. Used by editor decorations so live editing
+ * shares the exact same grammars and limits as published posts.
+ *
+ * @param source - Plain source code text
+ * @param language - Language identifier or alias (e.g. `"js"`, `"python"`)
+ * @returns Token spans, or `null` when the language is unsupported or too long
+ * @example
+ * tokenizeCode("const n = 1;", "js");
+ */
+export function tokenizeCode(
+  source: string,
+  language: string,
+): HighlightToken[] | null {
+  const normalized = language.trim().toLowerCase();
+  if (!normalized || !hljs.getLanguage(normalized)) return null;
+  if (!source || source.length > MAX_HIGHLIGHT_LENGTH) return null;
+
+  const html = hljs.highlight(source, { language: normalized }).value;
+  const template = document.createElement("template");
+  template.innerHTML = html;
+
+  const tokens: HighlightToken[] = [];
+  let offset = 0;
+
+  const walk = (parent: Node) => {
+    for (const child of parent.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        offset += (child.textContent ?? "").length;
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const element = child as HTMLElement;
+        const start = offset;
+        walk(element);
+        if (offset > start && element.className) {
+          tokens.push({
+            from: start,
+            to: Math.min(offset, source.length),
+            className: element.className,
+          });
+        }
+      }
+    }
+  };
+
+  walk(template.content);
+  return tokens;
+}
+
 /**
  * Highlight a plain-text code element with a supported language. The
  * highlighter escapes the source as it produces its token spans.

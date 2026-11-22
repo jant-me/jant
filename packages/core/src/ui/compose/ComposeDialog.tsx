@@ -913,6 +913,22 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         comment: "@context: Selection toolbar button that highlights text",
       }),
     ),
+    codeBlock: {
+      languageLabel: i18n._(
+        msg({
+          message: "Code language",
+          comment:
+            "@context: Accessible label for the code block language picker in the compose editor",
+        }),
+      ),
+      plainText: i18n._(
+        msg({
+          message: "Plain text",
+          comment:
+            "@context: Code block language option when no syntax highlighting language is selected",
+        }),
+      ),
+    },
     tableControls: {
       toolbarLabel: i18n._(
         msg({

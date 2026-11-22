@@ -2980,6 +2980,7 @@ export class JantComposeDialog extends LitElement {
         placeholder: this.labels.attachedTextPlaceholder,
         content,
         toolbarMode: "compose",
+        codeBlockLabels: this.labels.codeBlock,
         tableControlLabels: this.labels.tableControls,
         highlightLabel: this.labels.highlight,
       });

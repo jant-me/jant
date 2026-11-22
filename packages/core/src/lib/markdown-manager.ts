@@ -223,7 +223,7 @@ export const MarkdownImageNode = Node.create({
   },
 });
 
-const MarkdownCodeBlock = CodeBlock.extend({
+export const MarkdownCodeBlock = CodeBlock.extend({
   renderMarkdown(node, helpers) {
     const language = node.attrs?.language ? String(node.attrs.language) : "";
     const content = helpers.renderChildren(node.content ?? []);
@@ -1256,6 +1256,7 @@ export const MarkdownFootnoteDefinition = Node.create({
 });
 
 interface MarkdownContentExtensionOptions {
+  codeBlockExtension?: AnyExtension;
   imageExtension?: AnyExtension;
   moreBreakExtension?: AnyExtension;
   embedExtension?: AnyExtension;
@@ -1292,7 +1293,7 @@ export function createMarkdownContentExtensions(
       autolink: false,
       isAllowedUri: (url) => sanitizeRichTextHref(url) !== "",
     }),
-    MarkdownCodeBlock,
+    options.codeBlockExtension ?? MarkdownCodeBlock,
     Table.configure({
       resizable: false,
       HTMLAttributes: { class: "tiptap-table" },

@@ -516,6 +516,11 @@ msgstr ""
 msgid "Close menu"
 msgstr ""
 
+#. @context: Accessible label for the code block language picker in the compose editor
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Code language"
+msgstr "程式碼語言"
+
 #. @context: Singular collection count label on an aggregate collection page
 #: src/ui/pages/CollectionPage.tsx
 msgid "collection"
@@ -1813,6 +1818,11 @@ msgstr ""
 #: src/ui/feed/PostStatusBadges.tsx
 msgid "Pinned"
 msgstr ""
+
+#. @context: Code block language option when no syntax highlighting language is selected
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Plain text"
+msgstr "純文字"
 
 #. @context: Compose button - publish post
 #: src/ui/compose/ComposeDialog.tsx

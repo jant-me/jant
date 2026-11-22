@@ -7,6 +7,7 @@
 
 import type { JSONContent } from "@tiptap/core";
 import type { CollectionFormLabels } from "./collection-types.js";
+import type { CodeBlockNodeLabels } from "../../lib/code-languages.js";
 import type { TableControlLabels } from "../tiptap/table-control-labels.js";
 
 export type ComposeFormat = "note" | "link" | "quote";
@@ -351,6 +352,7 @@ export interface ComposeLabels {
   composeDialogLabel: string;
   slashHint: string;
   highlight: string;
+  codeBlock?: CodeBlockNodeLabels;
   tableControls: TableControlLabels;
   collectionFormLabels: CollectionFormLabels;
 }

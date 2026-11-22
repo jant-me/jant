@@ -20,6 +20,10 @@ import { InsertParagraphAround } from "./insert-paragraph-around.js";
 import { Footnotes } from "./footnotes.js";
 import type { FormattingToolbarMode } from "./toolbar-mode.js";
 import { ImageNode, type ImageNodeLabels } from "./image-node.js";
+import {
+  EditorCodeBlock,
+  type CodeBlockNodeLabels,
+} from "./code-block-node.js";
 import { MoreBreak } from "./more-break.js";
 import { EmbedNode } from "./embed-node.js";
 import { HtmlBlockNode } from "./html-block-node.js";
@@ -42,6 +46,7 @@ export interface EditorExtensionOptions {
   pasteMedia?: PasteMediaOptions;
   rehostImages?: RehostImagesOptions;
   imageNodeLabels?: Partial<ImageNodeLabels>;
+  codeBlockLabels?: Partial<CodeBlockNodeLabels>;
   tableControlLabels?: TableControlLabels;
 }
 
@@ -103,6 +108,14 @@ export function createEditorExtensions(
 ): Extensions {
   return [
     ...createMarkdownContentExtensions({
+      codeBlockExtension: options.codeBlockLabels
+        ? EditorCodeBlock.configure({
+            labels: {
+              ...EditorCodeBlock.options.labels,
+              ...options.codeBlockLabels,
+            },
+          })
+        : EditorCodeBlock,
       imageExtension: ImageNode.configure({
         labels: options.imageNodeLabels,
       }),

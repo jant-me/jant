@@ -164,6 +164,7 @@ export class JantComposeFullscreen extends LitElement {
         uploadInlineImage: (file) => this._uploadAndInsertImage(file),
       },
       imageNodeLabels: getInlineImageNodeLabels(this.labels),
+      codeBlockLabels: this.labels.codeBlock,
       tableControlLabels: this.labels.tableControls,
       highlightLabel: this.labels.highlight,
     });
