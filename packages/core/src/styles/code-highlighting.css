@@ -1,14 +1,17 @@
 /** Token colors for published code and the settings preview. */
 @layer components {
-  .hljs {
+  /* The color-scheme and light-dark() variables must resolve on the same element. */
+  [data-code-theme] {
     color-scheme: light dark;
   }
 
-  :root[data-theme-mode="light"] .hljs {
+  :root[data-theme-mode="light"][data-code-theme],
+  :root[data-theme-mode="light"] [data-code-theme] {
     color-scheme: light;
   }
 
-  :root[data-theme-mode="dark"] .hljs {
+  :root[data-theme-mode="dark"][data-code-theme],
+  :root[data-theme-mode="dark"] [data-code-theme] {
     color-scheme: dark;
   }
 
