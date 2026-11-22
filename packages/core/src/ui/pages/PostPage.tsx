@@ -17,7 +17,9 @@ import type {
   PostView,
   TimelineCardDisplayOptions,
 } from "../../types.js";
+import { enhancePostHeadings } from "../../lib/post-toc.js";
 import { TimelineItemFromPost } from "../feed/TimelineItem.js";
+import { PostToc } from "./PostToc.js";
 
 const PREVIEW_DISPLAY: TimelineCardDisplayOptions = {
   footer: { hideActions: true, hideReply: true, hideTimestamp: false },
@@ -121,6 +123,24 @@ export const PostPage: FC<PostPageProps> = ({
   translations = [],
 }) => {
   const { i18n } = useLingui();
+  const headings =
+    post.format === "note" && post.bodyHtml
+      ? enhancePostHeadings(post.bodyHtml, {
+          getAnchorLabel: (heading) =>
+            i18n._(
+              msg({
+                message: "Copy link to {heading}",
+                comment:
+                  "@context: Accessible label for the anchor link next to a post heading",
+              }),
+              { heading },
+            ),
+        })
+      : null;
+  const currentPost =
+    headings && headings.entries.length > 0
+      ? { ...post, bodyHtml: headings.bodyHtml }
+      : post;
 
   return (
     <div
@@ -128,15 +148,22 @@ export const PostPage: FC<PostPageProps> = ({
       data-post-view-id={post.id}
       data-thread-root-id={post.threadRootId ?? post.id}
     >
+      {headings?.showToc && <PostToc entries={headings.entries} />}
       {threadPosts && threadPosts.length > 1 ? (
         <ThreadDetail
-          post={post}
-          threadPosts={threadPosts}
+          post={currentPost}
+          threadPosts={
+            headings && headings.entries.length > 0
+              ? threadPosts.map((item) =>
+                  item.id === post.id ? currentPost : item,
+                )
+              : threadPosts
+          }
           isPreview={isPreview}
         />
       ) : (
         <TimelineItemFromPost
-          post={post}
+          post={currentPost}
           mode="detail"
           display={isPreview ? PREVIEW_DISPLAY : undefined}
         />
