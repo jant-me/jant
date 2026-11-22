@@ -40,20 +40,24 @@ For MCP, call `initialize`, then `tools/list`, and use the returned schemas rath
 
 For HTTP, these are the main entry points:
 
-| Task                         | Endpoint                                                         |
-| ---------------------------- | ---------------------------------------------------------------- |
-| Read public Threads          | `GET /api/public/threads`, `GET /api/public/threads/:slug/posts` |
-| Read one public post         | `GET /api/public/posts/:slug`                                    |
-| List or inspect all posts    | `GET /api/posts`, `GET /api/posts/:id`                           |
-| List or read whole Threads   | `GET /api/threads`, `GET /api/threads/:id/posts`                 |
-| Create, update, delete       | `POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id` |
-| Upload media                 | `POST /api/upload` or `/api/uploads`                             |
-| List or manage media         | `/api/media`                                                     |
-| Manage Collections           | `/api/collections`                                               |
-| Search posts, private too    | `GET /api/search`                                                |
-| Read or update site settings | `GET /api/settings`, `PUT /api/settings`                         |
+| Task                         | Endpoint                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Read public Threads          | `GET /api/public/threads`, `GET /api/public/threads/:slug/posts`                                       |
+| Read one public post         | `GET /api/public/posts/:slug`                                                                          |
+| Read public Collections      | `GET /api/public/collections`, `GET /api/public/collections/:slug`                                     |
+| Search public posts          | `GET /api/public/search`                                                                               |
+| Public read-only MCP         | `POST /api/public/mcp`                                                                                 |
+| Read as Markdown             | Send `Accept: text/markdown` to any public page, or append `.md` (and `/llms.txt` for a site overview) |
+| List or inspect all posts    | `GET /api/posts`, `GET /api/posts/:id`                                                                 |
+| List or read whole Threads   | `GET /api/threads`, `GET /api/threads/:id/posts`                                                       |
+| Create, update, delete       | `POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id`                                       |
+| Upload media                 | `POST /api/upload` or `/api/uploads`                                                                   |
+| List or manage media         | `/api/media`                                                                                           |
+| Manage Collections           | `/api/collections`                                                                                     |
+| Search posts, private too    | `GET /api/search`                                                                                      |
+| Read or update site settings | `GET /api/settings`, `PUT /api/settings`                                                               |
 
-Public post and Thread reads under `/api/public/*` can work without a token. A site can disable anonymous API reads; `/api/public/*` then becomes unavailable. Everything else, including search and Collection reads, requires authentication.
+Public reads under `/api/public/*` (including `/api/public/collections`, `/api/public/search`, and the anonymous read-only MCP endpoint `/api/public/mcp`) work without a token. A site can disable anonymous API reads; `/api/public/*` then returns `404`. Public HTML and Markdown views remain available. Everything else, including private/draft reads and all writes, requires authentication via OAuth 2.1 (`<site>/.well-known/oauth-protected-resource`) or an API token.
 
 ---
 

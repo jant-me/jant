@@ -55,7 +55,13 @@ export interface WorkerResponseCacheOptions {
 export function isWorkerResponseCachePath(path: string): boolean {
   if (isRssFeedPath(path)) return true;
 
-  if (path === "/sitemap.xml" || path === "/robots.txt") {
+  if (
+    path === "/sitemap.xml" ||
+    path === "/robots.txt" ||
+    path === "/llms.txt" ||
+    path === "/skill.md" ||
+    path.startsWith("/.well-known/")
+  ) {
     return true;
   }
 

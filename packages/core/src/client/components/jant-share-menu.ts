@@ -12,14 +12,16 @@
 import { LitElement, html, nothing } from "lit";
 import {
   copyPostLink,
+  copyPostMarkdown,
   iconImage,
   iconLink,
+  iconMarkdown,
   menuOpensAbove,
 } from "../post-menu-shared.js";
 import { openShareImage, warmShareImage } from "../share-launch.js";
 
-/** Two items, about 52 px each, inside the panel's padding. */
-const ESTIMATED_MENU_HEIGHT = 130;
+/** Three items, about 52 px each, inside the panel's padding. */
+const ESTIMATED_MENU_HEIGHT = 180;
 
 /** The post a menu is open for, from its article. */
 interface SharedPost {
@@ -132,6 +134,12 @@ export class JantShareMenu extends LitElement {
     if (permalink) void copyPostLink(permalink);
   }
 
+  #copyMarkdown() {
+    const permalink = this._post?.permalink;
+    this.#close();
+    if (permalink) void copyPostMarkdown(permalink);
+  }
+
   #shareImage() {
     const id = this._post?.id;
     const trigger = this.#trigger;
@@ -165,6 +173,16 @@ export class JantShareMenu extends LitElement {
                 >
                   <span class="post-menu-item-label">Copy link</span>
                   <span class="post-menu-item-trailing">${iconLink()}</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="post-menu-item"
+                  data-share-menu-copy-markdown
+                  @click=${() => this.#copyMarkdown()}
+                >
+                  <span class="post-menu-item-label">Copy as Markdown</span>
+                  <span class="post-menu-item-trailing">${iconMarkdown()}</span>
                 </button>
                 <button
                   type="button"

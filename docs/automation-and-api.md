@@ -45,25 +45,28 @@ Send the header:
 Authorization: Bearer jnt_...
 ```
 
-A few public read endpoints don't need a token by default: `GET /api/public/threads`, `GET /api/public/threads/:slug`, `GET /api/public/threads/:slug/posts`, and `GET /api/public/posts/:slug`. When `PUBLIC_API_ENABLED=false`, `/api/public/*` returns `404` to every caller. Public HTML pages, including `/search`, remain available.
+A few public read endpoints don't need a token by default: `GET /api/public/threads`, `GET /api/public/threads/:slug`, `GET /api/public/threads/:slug/posts`, `GET /api/public/posts/:slug`, `GET /api/public/collections`, `GET /api/public/collections/:slug`, `GET /api/public/search`, and the read-only MCP endpoint `POST /api/public/mcp`. When `PUBLIC_API_ENABLED=false`, `/api/public/*` returns `404` to every caller. Public HTML pages, Markdown views (`Accept: text/markdown` and `/{path}.md`), `/llms.txt`, and `/search` remain available.
 
 ### Common endpoints
 
-| Endpoint                 | Methods                   | Purpose                                                                                                      |
-| ------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `/api/posts`             | GET / POST / PUT / DELETE | List, read, create, update, delete posts                                                                     |
-| `/api/threads`           | GET                       | List Threads, read one, and page through its posts, drafts and private Threads included                      |
-| `/api/public/threads`    | GET                       | Public read of Threads — the homepage's list by default, with the archive's filters (no token)               |
-| `/api/public/posts`      | GET                       | Public read of one published post by slug (no token). Lists of posts are Thread lists: `/api/public/threads` |
-| `/api/upload`            | POST                      | One-shot multipart upload, single file per call — preferred for scripts                                      |
-| `/api/media`             | GET / PUT / DELETE        | List, read, update the alt text of, and delete uploaded files; give a video its poster                       |
-| `/api/uploads`           | POST → PUT → POST         | Multipart upload session — for large files or unstable networks                                              |
-| `/api/attachments`       | GET                       | Fetch raw attachment content by id                                                                           |
-| `/api/collections`       | GET / POST / PUT / DELETE | Collections                                                                                                  |
-| `/api/smart-collections` | GET / POST / PUT / DELETE | Smart collections — collections whose members come from conditions                                           |
-| `/api/settings`          | GET / PUT                 | Site settings                                                                                                |
-| `/api/search`            | GET                       | Full-text search of published posts, private ones included                                                   |
-| `/api/mcp`               | POST                      | MCP JSON-RPC (`initialize` / `tools/list`, etc.)                                                             |
+| Endpoint                  | Methods                   | Purpose                                                                                                      |
+| ------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `/api/posts`              | GET / POST / PUT / DELETE | List, read, create, update, delete posts                                                                     |
+| `/api/threads`            | GET                       | List Threads, read one, and page through its posts, drafts and private Threads included                      |
+| `/api/public/threads`     | GET                       | Public read of Threads — the homepage's list by default, with the archive's filters (no token)               |
+| `/api/public/posts`       | GET                       | Public read of one published post by slug (no token). Lists of posts are Thread lists: `/api/public/threads` |
+| `/api/public/collections` | GET                       | Public read of Collections, Smart Collections, and directory layout (no token)                               |
+| `/api/public/search`      | GET                       | Full-text search of published public posts (no token, metered by `RATE_LIMIT_SEARCH_PER_MIN`)                |
+| `/api/public/mcp`         | POST                      | Anonymous read-only MCP JSON-RPC for public Threads, Collections, and search                                 |
+| `/api/upload`             | POST                      | One-shot multipart upload, single file per call — preferred for scripts                                      |
+| `/api/media`              | GET / PUT / DELETE        | List, read, update the alt text of, and delete uploaded files; give a video its poster                       |
+| `/api/uploads`            | POST → PUT → POST         | Multipart upload session — for large files or unstable networks                                              |
+| `/api/attachments`        | GET                       | Fetch raw attachment content by id                                                                           |
+| `/api/collections`        | GET / POST / PUT / DELETE | Collections                                                                                                  |
+| `/api/smart-collections`  | GET / POST / PUT / DELETE | Smart collections — collections whose members come from conditions                                           |
+| `/api/settings`           | GET / PUT                 | Site settings                                                                                                |
+| `/api/search`             | GET                       | Full-text search of published posts, private ones included                                                   |
+| `/api/mcp`                | POST                      | MCP JSON-RPC (`initialize` / `tools/list`, etc.)                                                             |
 
 `/api/upload` and `/api/uploads` differ by a single `s` but mean different things — the first is a one-shot single-file multipart upload, the second is a three-step init/part/complete session. Default to `/api/upload`; reach for `/api/uploads` only when files are large or the connection is unreliable.
 
@@ -133,8 +136,8 @@ The API has no hard rate limit. The search limit, `RATE_LIMIT_SEARCH_PER_MIN` in
 
 For agents that already support MCP. The transport is HTTP JSON-RPC:
 
-- **Path**: `/api/mcp`
-- **Authentication**: scripts and agents send `Authorization: Bearer jnt_...`; same-origin browser extensions can reuse the session cookie.
+- **Path**: `/api/mcp` (authenticated author tools) and `/api/public/mcp` (anonymous read-only tools when `PUBLIC_API_ENABLED=true`)
+- **Authentication**: MCP clients can connect with OAuth 2.1 (`/.well-known/oauth-protected-resource` → `/_/oauth/authorize`, minting a revocable token in **Settings → API Tokens**), or send `Authorization: Bearer jnt_...`; same-origin browser extensions can reuse the session cookie.
 - **Protocol header**: `MCP-Protocol-Version: 2025-06-18`. A request without it is read as that version; any other version answers `400`. This page is updated when the version changes.
 - **Methods**: `initialize`, `ping`, `tools/list`, `tools/call`.
 

@@ -84,18 +84,18 @@ function langGet(path: string, handler: ViewHandler): void {
   });
 }
 
-langGet("/", renderHomePage);
+langGet("/", (c) => renderHomePage(c));
 langGet("/feed", renderMainFeed);
 
 langGet("/latest", redirectLatestToHome);
 langGet("/latest/feed", renderLatestFeed);
 langGet("/latest/feed/atom.xml", redirectLegacyLatestFeed);
 
-langGet("/featured", renderFeaturedPage);
+langGet("/featured", (c) => renderFeaturedPage(c));
 langGet("/featured/feed", renderFeaturedFeed);
 langGet("/featured/feed/atom.xml", redirectLegacyFeaturedFeed);
 
-langGet("/archive", renderArchiveRoute);
+langGet("/archive", (c) => renderArchiveRoute(c));
 langGet("/archive/feed", renderArchiveFeed);
 langGet("/archive/feed/atom.xml", redirectLegacyArchiveFeed);
 
@@ -103,7 +103,7 @@ langGet("/search", renderSearchPage);
 
 langGet("/subscribe", renderSubscribePage);
 
-langGet("/collections", renderCollectionsDirectory);
+langGet("/collections", (c) => renderCollectionsDirectory(c));
 langGet("/collections/:slug", renderCollectionSelectionRoute);
 langGet("/collections/:slug/feed", renderCollectionSelectionFeedRoute);
 

@@ -73,7 +73,7 @@ afterEach(() => {
 });
 
 describe("JantShareMenu", () => {
-  it("opens on a post's More button with Copy link and Share as image", async () => {
+  it("opens on a post's More button with Copy link, Copy as Markdown, and Share as image", async () => {
     const { menu, first } = await createMenu();
 
     await open(menu, first);
@@ -83,6 +83,7 @@ describe("JantShareMenu", () => {
     );
     expect(items.map((item) => item.textContent?.trim())).toEqual([
       "Copy link",
+      "Copy as Markdown",
       "Share as image",
     ]);
     expect(first.getAttribute("aria-expanded")).toBe("true");
@@ -153,6 +154,39 @@ describe("JantShareMenu", () => {
     expect(showToastMock).toHaveBeenCalledWith("Link copied.");
     expect(menu.querySelector("[role='menu']")).toBeNull();
     expect(document.activeElement).toBe(second);
+  });
+
+  it("fetches and copies the post as Markdown", async () => {
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("# Second post\n\nBody text.\n", {
+        status: 200,
+        headers: { "Content-Type": "text/markdown; charset=utf-8" },
+      }),
+    );
+
+    try {
+      const { menu, second } = await createMenu();
+      await open(menu, second);
+
+      click(menu.querySelector("[data-share-menu-copy-markdown]")!);
+      await vi.waitFor(() =>
+        expect(showToastMock).toHaveBeenCalledWith("Markdown copied."),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        new URL("/second", globalThis.location.href).href,
+        { headers: { Accept: "text/markdown" } },
+      );
+      expect(writeText).toHaveBeenCalledWith("# Second post\n\nBody text.\n");
+      expect(menu.querySelector("[role='menu']")).toBeNull();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it("hands the post to the share dialog", async () => {

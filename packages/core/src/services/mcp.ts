@@ -36,9 +36,15 @@ import {
   loadApiPostResponses,
 } from "../lib/api-posts.js";
 import { loadSearchApiResults } from "../lib/api-search.js";
-import { loadApiThreadResponses } from "../lib/api-threads.js";
+import { loadPublicPostResponses } from "../lib/api-public-posts.js";
 import {
+  loadApiThreadResponses,
+  loadPublicThreadResponses,
+} from "../lib/api-threads.js";
+import {
+  parseThreadInclude,
   parseThreadSelection,
+  queryReader,
   THREAD_AUTHOR_VISIBILITIES,
 } from "../lib/thread-query.js";
 import {
@@ -832,9 +838,242 @@ const mcpTools: McpToolDefinition[] = [
   },
 ];
 
-export async function handleMcpHttpRequest(
+const publicMcpTools: McpToolDefinition[] = [
+  {
+    name: "jant_public_threads_list",
+    description:
+      "List public Threads on this Jant site with optional filters for collection, format, language, featured, and sort order.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        collection: {
+          type: "string",
+          description:
+            "Filter by Collection slug (comma-separated for multiple collections).",
+        },
+        format: {
+          type: "string",
+          enum: ["note", "link", "quote"],
+          description: "Filter by post format.",
+        },
+        featured: {
+          type: "boolean",
+          description: "Set to true to list only featured Threads.",
+        },
+        lang: {
+          type: "string",
+          description: "BCP 47 language code to filter Threads by language.",
+        },
+        sort: {
+          type: "string",
+          enum: [...THREAD_SORTS],
+          description: "Sort order for the returned Threads.",
+        },
+        cursor: {
+          type: "string",
+          description: "Opaque pagination cursor from a previous response.",
+        },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: 100,
+          description: "Maximum number of Threads to return (default 20).",
+        },
+        content: {
+          type: "string",
+          enum: ["full", "markdown", "none"],
+          description:
+            "How post bodies are returned (default: markdown for concise reading).",
+        },
+      },
+      additionalProperties: false,
+    },
+    execute: async (args, context) => {
+      const input = z
+        .object({
+          collection: z.string().optional(),
+          format: FormatSchema.optional(),
+          featured: z.boolean().optional(),
+          lang: ContentLanguageSchema.optional(),
+          sort: z.enum(THREAD_SORTS).optional(),
+          cursor: z.string().optional(),
+          limit: pageLimitSchema(100, 20),
+          content: PostContentSchema.optional(),
+        })
+        .parse(args);
+
+      const parsed = await parseThreadSelection(
+        queryReader({
+          collection: input.collection,
+          format: input.format,
+          visibility: input.featured ? "featured" : undefined,
+        }),
+        {
+          audience: "reader",
+          loadCollections: () => context.services.collections.list(),
+        },
+      );
+      if (parsed.kind === "empty") {
+        return { threads: [], nextCursor: null };
+      }
+
+      const { threads, nextCursor } =
+        await context.services.threads.listThreads(
+          {
+            audience: "reader",
+            selection: parsed.selection,
+            includeHidden: parsed.includeHidden,
+            lang: input.lang,
+            sort: input.sort,
+            timeZone: context.appConfig.timeZone,
+          },
+          { cursor: input.cursor, limit: input.limit },
+        );
+
+      return {
+        threads: await loadPublicThreadResponses(context, threads, {
+          content: input.content ?? "markdown",
+        }),
+        nextCursor,
+      };
+    },
+  },
+  {
+    name: "jant_public_thread_get",
+    description:
+      "Read a complete public Thread (root post and all published replies in order) by any post's slug.",
+    inputSchema: {
+      type: "object",
+      required: ["slug"],
+      properties: {
+        slug: {
+          type: "string",
+          description: "Slug of the Thread root or any reply in the Thread.",
+        },
+        content: {
+          type: "string",
+          enum: ["full", "markdown", "none"],
+          description: "How post bodies are returned (default: markdown).",
+        },
+      },
+      additionalProperties: false,
+    },
+    execute: async (args, context) => {
+      const input = z
+        .object({
+          slug: z.string().trim().min(1),
+          content: PostContentSchema.optional(),
+        })
+        .parse(args);
+
+      const root = await context.services.threads.findRoot(
+        { slug: input.slug },
+        "reader",
+      );
+      if (!root) {
+        throw new NotFoundError("Thread");
+      }
+
+      const [summaries, postsPage] = await Promise.all([
+        context.services.threads.summarize(
+          [root],
+          parseThreadInclude(undefined),
+        ),
+        context.services.threads.listPosts(
+          root.id,
+          { audience: "reader" },
+          { limit: 100 },
+        ),
+      ]);
+      const [thread] = await loadPublicThreadResponses(context, summaries, {
+        content: input.content ?? "markdown",
+      });
+      if (!thread) {
+        throw new NotFoundError("Thread");
+      }
+
+      return {
+        thread,
+        posts: await loadPublicPostResponses(context, postsPage.posts, {
+          content: input.content ?? "markdown",
+        }),
+        nextCursor: postsPage.nextCursor,
+      };
+    },
+  },
+  {
+    name: "jant_public_collections_list",
+    description:
+      "List this Jant site's curated Collections and Smart Collections with descriptions and public Thread counts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        lang: {
+          type: "string",
+          description: "Optional BCP 47 language code to scope Thread counts.",
+        },
+      },
+      additionalProperties: false,
+    },
+    execute: async (args, context) => {
+      const input = z
+        .object({
+          lang: ContentLanguageSchema.optional(),
+        })
+        .parse(args);
+
+      const directoryData =
+        await context.services.collections.listDirectoryData({
+          isAuthenticated: false,
+          lang: input.lang,
+          timeZone: context.appConfig.timeZone,
+        });
+      return toApiCollectionList(directoryData);
+    },
+  },
+  {
+    name: "jant_public_posts_search",
+    description:
+      "Full-text search across published public posts on this Jant site.",
+    inputSchema: {
+      type: "object",
+      required: ["q"],
+      properties: {
+        q: {
+          type: "string",
+          description: "Search query string.",
+        },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: 50,
+          description: "Maximum number of results to return.",
+        },
+      },
+      additionalProperties: false,
+    },
+    execute: async (args, context) => {
+      const input = SearchPostsQuerySchema.parse(args);
+      const results = await context.services.search.search(input.q, {
+        limit: input.limit,
+        status: ["published"],
+        asAuthor: false,
+      });
+
+      return {
+        count: results.length,
+        query: input.q,
+        results: await loadSearchApiResults(context, results),
+      };
+    },
+  },
+];
+
+async function dispatchMcpHttpRequest(
   request: McpHttpRequest,
   context: McpHttpContext,
+  tools: readonly McpToolDefinition[],
+  serverInfo: { name: string; title: string },
 ): Promise<McpHttpResponse> {
   if (
     request.protocolVersionHeader &&
@@ -887,8 +1126,8 @@ export async function handleMcpHttpRequest(
           },
         },
         serverInfo: {
-          name: "jant",
-          title: "Jant",
+          name: serverInfo.name,
+          title: serverInfo.title,
           version: CORE_VERSION,
         },
       });
@@ -896,14 +1135,14 @@ export async function handleMcpHttpRequest(
       return jsonRpcSuccessResponse(rpc.id ?? null, {});
     case "tools/list":
       return jsonRpcSuccessResponse(rpc.id ?? null, {
-        tools: mcpTools.map((tool) => ({
+        tools: tools.map((tool) => ({
           name: tool.name,
           description: tool.description,
           inputSchema: tool.inputSchema,
         })),
       });
     case "tools/call":
-      return handleToolCall(rpc.id ?? null, rpc.params, context);
+      return handleToolCall(rpc.id ?? null, rpc.params, context, tools);
     default:
       return jsonRpcErrorResponse(
         rpc.id ?? null,
@@ -914,10 +1153,31 @@ export async function handleMcpHttpRequest(
   }
 }
 
+export async function handleMcpHttpRequest(
+  request: McpHttpRequest,
+  context: McpHttpContext,
+): Promise<McpHttpResponse> {
+  return dispatchMcpHttpRequest(request, context, mcpTools, {
+    name: "jant",
+    title: "Jant",
+  });
+}
+
+export async function handlePublicMcpHttpRequest(
+  request: McpHttpRequest,
+  context: McpHttpContext,
+): Promise<McpHttpResponse> {
+  return dispatchMcpHttpRequest(request, context, publicMcpTools, {
+    name: "jant-public",
+    title: `${context.appConfig.siteName} (Public Read-Only)`,
+  });
+}
+
 async function handleToolCall(
   id: JsonRpcId,
   params: unknown,
   context: McpHttpContext,
+  tools: readonly McpToolDefinition[],
 ): Promise<McpHttpResponse> {
   const parsedParams = z
     .object({
@@ -932,7 +1192,7 @@ async function handleToolCall(
     });
   }
 
-  const tool = mcpTools.find(
+  const tool = tools.find(
     (candidate) => candidate.name === parsedParams.data.name,
   );
   if (!tool) {

@@ -27,10 +27,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
  */
 export function requirePublicApiEnabled(): MiddlewareHandler<Env> {
   return async (c, next) => {
-    if (
-      (c.req.method !== "GET" && c.req.method !== "HEAD") ||
-      c.var.appConfig.publicApiEnabled
-    ) {
+    if (c.req.method === "OPTIONS" || c.var.appConfig.publicApiEnabled) {
       return next();
     }
 

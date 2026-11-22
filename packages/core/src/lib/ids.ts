@@ -28,6 +28,8 @@ export const ID_PREFIX = {
   collectionDirectoryItem: "cdi",
   navItem: "nav",
   apiToken: "api",
+  oauthClient: "ocl",
+  oauthCode: "ocd",
   user: "usr",
   session: "ses",
   account: "acc",

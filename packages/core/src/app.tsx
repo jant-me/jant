@@ -62,6 +62,11 @@ import { internalPostBodyHtmlRoutes } from "./routes/api/internal/post-body-html
 import { internalUploadsRoutes } from "./routes/api/internal/uploads.js";
 import { publicPostsApiRoutes } from "./routes/api/public/posts.js";
 import { publicThreadsApiRoutes } from "./routes/api/public/threads.js";
+import { publicCollectionsApiRoutes } from "./routes/api/public/collections.js";
+import { publicSearchApiRoutes } from "./routes/api/public/search.js";
+import { publicMcpApiRoutes } from "./routes/api/public/mcp.js";
+import { oauthApiRoutes } from "./routes/api/oauth.js";
+import { oauthAuthorizeRoutes } from "./routes/auth/oauth-authorize.js";
 import { discoverApiRoutes } from "./routes/api/discover.js";
 // Routes - Compose
 import { composeRoutes } from "./routes/compose.js";
@@ -71,6 +76,7 @@ import { feedRoutes } from "./routes/feed/feed.js";
 import { sitemapRoutes } from "./routes/feed/sitemap.js";
 import { manifestRoutes } from "./routes/feed/manifest.js";
 import { siteSkillRoutes } from "./routes/site-skill.js";
+import { agentDiscoveryRoutes } from "./routes/agent-discovery.js";
 
 // Middleware
 import { requireAuth } from "./middleware/auth.js";
@@ -376,6 +382,8 @@ export function createApp(): HonoApp {
     "/reset",
     "/__sso",
     "/__dev/login",
+    "/_/oauth/*",
+    "/api/oauth/*",
     "/api/auth/*",
   ]) {
     app.use(path, noStore());
@@ -519,7 +527,13 @@ export function createApp(): HonoApp {
   app.use("*", async (c, next) => {
     const path = new URL(c.req.url).pathname;
     // Skip redirect lookup for fixed machine routes and static assets.
-    if (path.startsWith("/api/") || path === "/skill.md" || isAssetPath(path)) {
+    if (
+      path.startsWith("/api/") ||
+      path === "/skill.md" ||
+      path.startsWith("/.well-known/") ||
+      path.startsWith("/_/") ||
+      isAssetPath(path)
+    ) {
       return next();
     }
 
@@ -559,12 +573,17 @@ export function createApp(): HonoApp {
 
   // --- Routes that need config ---
 
-  // Public machine-readable site guide
+  // Public machine-readable site guide and agent discovery endpoints
   app.route("/", siteSkillRoutes);
+  app.route("/", agentDiscoveryRoutes);
 
   // API Routes
   app.route("/api/public/posts", publicPostsApiRoutes);
   app.route("/api/public/threads", publicThreadsApiRoutes);
+  app.route("/api/public/collections", publicCollectionsApiRoutes);
+  app.route("/api/public/search", publicSearchApiRoutes);
+  app.route("/api/public/mcp", publicMcpApiRoutes);
+  app.route("/api/oauth", oauthApiRoutes);
   app.route("/api/discover", discoverApiRoutes);
   app.route("/api/posts", postsApiRoutes);
   app.route("/api/threads", threadsApiRoutes);
@@ -617,6 +636,7 @@ export function createApp(): HonoApp {
   app.route("/_", viewConfirmRoutes);
   app.route("/_", brandRoutes);
   app.route("/_", themeSampleRoutes);
+  app.route("/_", oauthAuthorizeRoutes);
   app.route("/collections", collectionsPageRoutes);
   app.route("/collections", collectionRoutes);
   app.route("/", homeRoutes);

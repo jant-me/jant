@@ -66,6 +66,80 @@ export async function copyPostLink(permalink: string): Promise<void> {
   }
 }
 
+/**
+ * Fetch a post's Markdown representation via `Accept: text/markdown` and copy
+ * it to the clipboard. Uses a Promise-backed `ClipboardItem` when supported so
+ * Safari preserves the user-gesture clipboard grant across the network fetch.
+ *
+ * @param permalink - The post's permalink, as the article carries it
+ * @example
+ * ```ts
+ * await copyPostMarkdown(article.dataset.postPermalink);
+ * ```
+ */
+export async function copyPostMarkdown(permalink: string): Promise<void> {
+  const url = new URL(permalink, globalThis.location.href).href;
+  const fetchMarkdown = async (): Promise<string> => {
+    const res = await fetch(url, {
+      headers: { Accept: "text/markdown" },
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    return res.text();
+  };
+
+  try {
+    const clipboard = globalThis.navigator.clipboard;
+    if (!clipboard) {
+      throw new Error("Clipboard unavailable");
+    }
+
+    if (
+      typeof globalThis.ClipboardItem === "function" &&
+      typeof clipboard.write === "function"
+    ) {
+      const blobPromise = fetchMarkdown().then(
+        (text) => new Blob([text], { type: "text/plain" }),
+      );
+      await clipboard.write([
+        new globalThis.ClipboardItem({ "text/plain": blobPromise }),
+      ]);
+      showToast("Markdown copied.");
+      return;
+    }
+
+    if (typeof clipboard.writeText !== "function") {
+      throw new Error("Clipboard unavailable");
+    }
+
+    const markdown = await fetchMarkdown();
+    await clipboard.writeText(markdown);
+    showToast("Markdown copied.");
+  } catch {
+    showToast("Could not copy Markdown.", "error");
+  }
+}
+
+/** Lucide "file-text", for Copy as Markdown. */
+export function iconMarkdown() {
+  return html`<svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <path d="M10 9H8" />
+    <path d="M16 13H8" />
+    <path d="M16 17H8" />
+  </svg>`;
+}
+
 /** Lucide "link", for Copy link. */
 export function iconLink() {
   return html`<svg

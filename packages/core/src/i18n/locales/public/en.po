@@ -18,6 +18,11 @@ msgstr ""
 msgid " and try again."
 msgstr " and try again."
 
+#. @context: OAuth consent description
+#: src/routes/auth/oauth-authorize.tsx
+msgid "{clientName} is requesting MCP access to manage {siteName}."
+msgstr "{clientName} is requesting MCP access to manage {siteName}."
+
 #. @context: Link showing count of hidden thread posts between curated posts
 #: src/ui/feed/CuratedThreadPreview.tsx
 msgid "{count, plural, one {# hidden post} other {# hidden posts}}"
@@ -313,6 +318,16 @@ msgstr "Appears in Latest."
 msgid "Apple touch icon"
 msgstr "Apple touch icon"
 
+#. @context: OAuth approve button
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Approve"
+msgstr "Approve"
+
+#. @context: OAuth permission summary
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Approving creates a revocable API token that lets this client read, publish, edit, and organize posts, Collections, media, and settings."
+msgstr "Approving creates a revocable API token that lets this client read, publish, edit, and organize posts, Collections, media, and settings."
+
 #. @context: Archive feed title prefix
 #. @context: Inactive nav link label on sample page
 #: src/routes/pages/archive.tsx
@@ -351,6 +366,16 @@ msgstr "Authentication isn't set up. Check your server config."
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Author (optional)"
 msgstr "Author (optional)"
+
+#. @context: OAuth consent heading
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Authorize {clientName}"
+msgstr "Authorize {clientName}"
+
+#. @context: OAuth consent browser title
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Authorize MCP Access"
+msgstr "Authorize MCP Access"
 
 #. @context: Theme mode option on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -763,6 +788,11 @@ msgstr "Delete this smart collection? Its link stops working."
 #: src/routes/auth/signin.tsx
 msgid "Demo credentials are pre-filled — hit Sign In to continue."
 msgstr "Demo credentials are pre-filled — hit Sign In to continue."
+
+#. @context: OAuth deny button
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Deny"
+msgstr "Deny"
 
 #. @context: Alt text textarea placeholder
 #: src/ui/compose/ComposeDialog.tsx
@@ -1978,6 +2008,11 @@ msgstr "Reading"
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Real post components"
 msgstr "Real post components"
+
+#. @context: OAuth redirect and revocation notice
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Redirect destination: {redirectHost}. You can revoke access at any time in Settings → API Tokens."
+msgstr "Redirect destination: {redirectHost}. You can revoke access at any time in Settings → API Tokens."
 
 #. @context: Collection tag on sample link post
 #: src/ui/pages/ThemeSamplePage.tsx

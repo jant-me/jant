@@ -1227,3 +1227,48 @@ export const viewHours = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.siteId, table.hour] })],
 );
+
+// =============================================================================
+// MCP OAuth 2.1 Clients & Authorization Codes
+// =============================================================================
+
+export const oauthClients = sqliteTable(
+  "oauth_client",
+  {
+    id: text("id").primaryKey(),
+    siteId: text("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    redirectUris: text("redirect_uris").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [index("idx_oauth_client_site_id").on(table.siteId)],
+);
+
+export const oauthCodes = sqliteTable(
+  "oauth_code",
+  {
+    id: text("id").primaryKey(),
+    siteId: text("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull().unique(),
+    redirectUri: text("redirect_uri").notNull(),
+    codeChallenge: text("code_challenge").notNull(),
+    scope: text("scope").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+    usedAt: integer("used_at"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [
+    index("idx_oauth_code_site_id").on(table.siteId),
+    index("idx_oauth_code_client_id").on(table.clientId),
+  ],
+);

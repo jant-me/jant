@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
+import { buildMcpWwwAuthenticateHeader } from "../../lib/agent-discovery.js";
+import { UnauthorizedError } from "../../lib/errors.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 import { handleMcpHttpRequest } from "../../services/mcp.js";
 import { triggerGitHubSyncInline } from "../../lib/github-sync-trigger.js";
@@ -9,7 +11,18 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const mcpApiRoutes = new Hono<Env>();
 
-mcpApiRoutes.use("*", requireAuthApi());
+mcpApiRoutes.use("*", async (c, next) => {
+  try {
+    await requireAuthApi()(c, next);
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return c.json({ error: err.message, code: err.code }, 401, {
+        "WWW-Authenticate": buildMcpWwwAuthenticateHeader(c.var.appConfig),
+      });
+    }
+    throw err;
+  }
+});
 
 mcpApiRoutes.post("/", async (c) => {
   const response = await handleMcpHttpRequest(

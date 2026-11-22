@@ -69,6 +69,8 @@ export const SNAPSHOT_EXCLUDED_TABLES = [
   // Credentials. Reissued per deployment, never copied between sites. The demo
   // rebuild clears these through the internal admin route instead.
   "api_token",
+  "oauth_client",
+  "oauth_code",
   // External integration bindings. They point at an installation or a chat on
   // someone else's service, so restoring them into another site would aim that
   // site at a binding it does not own.

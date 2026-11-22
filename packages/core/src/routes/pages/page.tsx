@@ -44,12 +44,22 @@ import { getOrBuildEntry } from "../../i18n/supported-locales.js";
 import { ABOUT_PAGE_SLUG } from "../../services/about-page.js";
 import type { ResolvedPath } from "../../services/path.js";
 import type { Post } from "../../types.js";
-import { renderArchivePage } from "./archive.js";
+import { renderArchivePage, renderArchiveRoute } from "./archive.js";
 import { renderCollectionFeed, renderCollectionPage } from "./collection.js";
+import { renderCollectionsDirectory } from "./collections.js";
+import { renderFeaturedPage } from "./featured.js";
+import { renderHomePage } from "./home.js";
+import { renderLlmsTxtResponse } from "../agent-discovery.js";
 import {
   renderSmartCollectionFeed,
   renderSmartCollectionPage,
 } from "./smart-collection.js";
+import {
+  markdownResponse,
+  renderPostThreadMarkdown,
+  toMarkdownHref,
+  wantsMarkdown,
+} from "../../lib/markdown-page.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -313,6 +323,8 @@ async function renderPost(
     isPreview?: boolean;
     /** The post's canonical alias, when the caller loaded it with the post. */
     canonicalAlias?: string | null;
+    /** Force Markdown output regardless of the Accept header (for `/{slug}.md`). */
+    forceMarkdown?: boolean;
   } = {},
 ) {
   // A preview is the author looking at their own draft, not a page read.
@@ -394,6 +406,32 @@ async function renderPost(
     display.threadPostViews,
     c.var.appConfig.siteUrl,
   );
+  const markdownHref =
+    post.status === "published" && !options.isPreview
+      ? toMarkdownHref(
+          display.postView.permalink,
+          c.var.appConfig.sitePathPrefix,
+        )
+      : undefined;
+
+  if (options.forceMarkdown || (!options.isPreview && wantsMarkdown(c))) {
+    const md = renderPostThreadMarkdown({
+      postView: display.postView,
+      threadPostViews: display.threadPostViews,
+      siteName: navData.siteName,
+      siteUrl: c.var.appConfig.siteUrl,
+      sitePathPrefix: c.var.appConfig.sitePathPrefix,
+      canonicalHref,
+      articlePublishedTime: display.articlePublishedTime,
+      articleModifiedTime: display.articleModifiedTime,
+      alternateLanguages: alternates,
+    });
+    return markdownResponse(c, md, {
+      canonicalHref,
+      noindex: post.visibility === "unlisted" || post.visibility === "private",
+    });
+  }
+
   const draftEditHref = `${toPublicPath(
     `/preview/${post.slug}`,
     c.var.appConfig.sitePathPrefix,
@@ -406,6 +444,7 @@ async function renderPost(
       : buildPageTitle(meta.title, navData.siteName),
     description: meta.description,
     ...(alternates.length > 0 ? { alternateLanguages: alternates } : {}),
+    ...(markdownHref ? { markdownHref } : {}),
     // "Take me to this language's site": the translation when one exists, and
     // that language's home page when it does not (§5).
     languageSwitcher: buildLanguageSwitcher(c, {
@@ -653,23 +692,76 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     }
   }
 
-  if (!resolved) return c.notFound();
+  let effectivePath = fullPath;
+  let effectiveResolved = resolved;
+  let forceMarkdown = false;
 
-  if (resolved.kind === "archive" && resolved.archiveQuery) {
-    const overrides = Object.fromEntries(
-      new URLSearchParams(resolved.archiveQuery),
-    );
-    return renderArchivePage(c, overrides);
+  // Serve `/llms.txt` when no custom URL already owns it (compatibility rule:
+  // a new top-level path never shadows existing author content).
+  if (!effectiveResolved && !inLanguageView && fullPath === "llms.txt") {
+    return renderLlmsTxtResponse(c);
   }
 
-  if (resolved.postId) {
+  if (!effectiveResolved && fullPath.endsWith(".md")) {
+    const stripped = fullPath.slice(0, -3);
+    if (!stripped) return c.notFound();
+
+    // Static reader surfaces as explicit `.md` documents, respecting any
+    // user-created custom URL with the same name (already checked above).
+    if (stripped === "latest") {
+      return renderHomePage(c, { forceMarkdown: true });
+    }
+    if (stripped === "featured") {
+      return renderFeaturedPage(c, { forceMarkdown: true });
+    }
+    if (stripped === "archive") {
+      return renderArchiveRoute(c, { forceMarkdown: true });
+    }
+    if (stripped === "collections") {
+      return renderCollectionsDirectory(c, { forceMarkdown: true });
+    }
+
+    const strippedResolved = await c.var.services.paths.resolve(stripped);
+    if (strippedResolved) {
+      effectivePath = stripped;
+      effectiveResolved = strippedResolved;
+      forceMarkdown = true;
+    }
+  }
+
+  if (!effectiveResolved) return c.notFound();
+
+  const mdSuffix = forceMarkdown ? ".md" : "";
+
+  if (
+    effectiveResolved.kind === "redirect" &&
+    effectiveResolved.redirectToPath
+  ) {
+    const target = redirectTargetHref(effectiveResolved.redirectToPath);
+    return c.redirect(
+      isFullUrl(target)
+        ? target
+        : withRequestQuery(toViewPath(c, `${target}${mdSuffix}`), c.req.url),
+      effectiveResolved.redirectType ?? 301,
+    );
+  }
+
+  if (effectiveResolved.kind === "archive" && effectiveResolved.archiveQuery) {
+    const overrides = Object.fromEntries(
+      new URLSearchParams(effectiveResolved.archiveQuery),
+    );
+    return renderArchivePage(c, overrides, { forceMarkdown });
+  }
+
+  if (effectiveResolved.postId) {
     const loaded = await c.var.services.posts.getWithCanonicalAlias(
-      resolved.postId,
+      effectiveResolved.postId,
     );
     const post = loaded?.post;
     if (!post) return c.notFound();
 
-    const allowDraft = canRenderDraftAboutEditor(c, fullPath, post);
+    const allowDraft =
+      !forceMarkdown && canRenderDraftAboutEditor(c, effectivePath, post);
     if (post.status === "draft" && !allowDraft) return c.notFound();
 
     if (post.visibility === "private" && !c.var.isAuthenticated) {
@@ -681,10 +773,10 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     // custom URL, a different letter case, a language prefix — is only a way
     // in and redirects there.
     const canonicalPath = getPostPath(post.slug, loaded.canonicalAlias);
-    if (inLanguageView || canonicalPath !== `/${fullPath}`) {
+    if (inLanguageView || canonicalPath !== `/${effectivePath}`) {
       return c.redirect(
         withRequestQuery(
-          toPublicPath(canonicalPath, sitePathPrefix),
+          toPublicPath(`${canonicalPath}${mdSuffix}`, sitePathPrefix),
           c.req.url,
         ),
         301,
@@ -694,28 +786,34 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     return renderPost(c, post, {
       allowDraft,
       canonicalAlias: loaded.canonicalAlias,
+      forceMarkdown,
     });
   }
 
-  if (resolved.smartCollectionId) {
+  if (effectiveResolved.smartCollectionId) {
     const smartCollection = await c.var.services.smartCollections.getById(
-      resolved.smartCollectionId,
+      effectiveResolved.smartCollectionId,
     );
     if (!smartCollection) return c.notFound();
-    if (fullPath !== smartCollection.slug) {
+    if (effectivePath !== smartCollection.slug) {
       return c.redirect(
-        withRequestQuery(toViewPath(c, `/${smartCollection.slug}`), c.req.url),
+        withRequestQuery(
+          toViewPath(c, `/${smartCollection.slug}${mdSuffix}`),
+          c.req.url,
+        ),
         301,
       );
     }
 
-    const result = await renderSmartCollectionPage(c, smartCollection.slug);
+    const result = await renderSmartCollectionPage(c, smartCollection.slug, {
+      forceMarkdown,
+    });
     return result ?? c.notFound();
   }
 
-  if (resolved.collectionId) {
+  if (effectiveResolved.collectionId) {
     const loaded = await c.var.services.collections.getWithCanonicalAlias(
-      resolved.collectionId,
+      effectiveResolved.collectionId,
     );
     if (!loaded) return c.notFound();
     const { collection, canonicalAlias } = loaded;
@@ -723,9 +821,12 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     // One address per collection, as for a post: its first custom URL, or
     // its slug. Any other way in redirects there, within the language view.
     const canonicalPath = canonicalAlias ?? collection.slug;
-    if (fullPath !== canonicalPath) {
+    if (effectivePath !== canonicalPath) {
       return c.redirect(
-        withRequestQuery(toViewPath(c, `/${canonicalPath}`), c.req.url),
+        withRequestQuery(
+          toViewPath(c, `/${canonicalPath}${mdSuffix}`),
+          c.req.url,
+        ),
         301,
       );
     }
@@ -739,6 +840,7 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
         slugExpression: collection.slug,
       },
       canonicalAlias ? `/${canonicalAlias}` : undefined,
+      { forceMarkdown },
     );
     return result ?? c.notFound();
   }

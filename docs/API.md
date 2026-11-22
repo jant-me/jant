@@ -15,28 +15,32 @@ For static export and round-trip import, also see [Export and Import](export-and
 
 ## API Surface
 
-| Area                    | Base path                | Auth                 |
-| ----------------------- | ------------------------ | -------------------- |
-| Public posts            | `/api/public/posts`      | Public when enabled  |
-| Public Threads          | `/api/public/threads`    | Public when enabled  |
-| Discover post status    | `/api/discover/posts`    | Public               |
-| Posts                   | `/api/posts`             | API token or session |
-| Threads                 | `/api/threads`           | API token or session |
-| Upload sessions         | `/api/uploads`           | API token or session |
-| One-shot upload         | `/api/upload`            | API token or session |
-| Media                   | `/api/media`             | API token or session |
-| Text attachment content | `/api/attachments`       | API token or session |
-| MCP                     | `/api/mcp`               | API token or session |
-| Collections             | `/api/collections`       | API token or session |
-| Smart collections       | `/api/smart-collections` | API token or session |
-| Navigation items        | `/api/nav-items`         | API token or session |
-| Custom URLs             | `/api/custom-urls`       | API token or session |
-| Settings                | `/api/settings`          | API token or session |
-| Search                  | `/api/search`            | API token or session |
-| Export                  | `/api/export`            | API token or session |
-| GitHub webhooks         | `/api/github-sync`       | GitHub signature     |
-| Telegram webhook        | `/api/telegram`          | Telegram secret      |
-| Internal admin          | `/api/internal/*`        | Internal admin token |
+| Area                    | Base path                 | Auth                 |
+| ----------------------- | ------------------------- | -------------------- |
+| Public posts            | `/api/public/posts`       | Public when enabled  |
+| Public Threads          | `/api/public/threads`     | Public when enabled  |
+| Public collections      | `/api/public/collections` | Public when enabled  |
+| Public search           | `/api/public/search`      | Public when enabled  |
+| Public read-only MCP    | `/api/public/mcp`         | Public when enabled  |
+| Discover post status    | `/api/discover/posts`     | Public               |
+| MCP OAuth 2.1           | `/api/oauth`              | Public / PKCE        |
+| Posts                   | `/api/posts`              | API token or session |
+| Threads                 | `/api/threads`            | API token or session |
+| Upload sessions         | `/api/uploads`            | API token or session |
+| One-shot upload         | `/api/upload`             | API token or session |
+| Media                   | `/api/media`              | API token or session |
+| Text attachment content | `/api/attachments`        | API token or session |
+| MCP                     | `/api/mcp`                | API token or session |
+| Collections             | `/api/collections`        | API token or session |
+| Smart collections       | `/api/smart-collections`  | API token or session |
+| Navigation items        | `/api/nav-items`          | API token or session |
+| Custom URLs             | `/api/custom-urls`        | API token or session |
+| Settings                | `/api/settings`           | API token or session |
+| Search                  | `/api/search`             | API token or session |
+| Export                  | `/api/export`             | API token or session |
+| GitHub webhooks         | `/api/github-sync`        | GitHub signature     |
+| Telegram webhook        | `/api/telegram`           | Telegram secret      |
+| Internal admin          | `/api/internal/*`         | Internal admin token |
 
 Auth labels in this document:
 
@@ -88,6 +92,34 @@ This is meant for local tooling, not production clients.
 `/api/internal/*` endpoints only accept the environment-provided `INTERNAL_ADMIN_TOKEN`.
 
 If that token is not configured, those endpoints behave as if they do not exist and return `404`.
+
+### MCP OAuth 2.1
+
+Unauthenticated requests to `POST /api/mcp` return `401` with a `WWW-Authenticate` header pointing to `/.well-known/oauth-protected-resource` (RFC 9728). Authorization server metadata is published at `/.well-known/oauth-authorization-server` (RFC 8414), and browser consent runs at `/_/oauth/authorize` with required PKCE (`S256`). Approved authorizations mint a revocable API token that appears in **Settings → API Tokens**.
+
+#### Register an OAuth client
+
+`POST /api/oauth/register`
+
+Auth: `Public` (RFC 7591 Dynamic Client Registration)
+
+Request body:
+
+| Field                        | Type     | Required | Notes                                                                                    |
+| ---------------------------- | -------- | -------- | ---------------------------------------------------------------------------------------- |
+| `redirect_uris`              | string[] | yes      | `1` to `10` redirect URIs (`https:`, loopback `http:`, or custom native app URI schemes) |
+| `client_name`                | string   | no       | Human-readable client name shown on the consent screen (defaults to `"MCP Client"`)      |
+| `grant_types`                | string[] | no       | Informational; Jant issues `authorization_code`                                          |
+| `response_types`             | string[] | no       | Informational; Jant issues `code`                                                        |
+| `token_endpoint_auth_method` | string   | no       | Informational; Jant uses public PKCE clients (`"none"`)                                  |
+
+#### Exchange an authorization code for a token
+
+`POST /api/oauth/token`
+
+Auth: `Public` (PKCE `S256` verification)
+
+Accepts `application/x-www-form-urlencoded` or `application/json` with `grant_type=authorization_code`, `code`, `client_id`, `redirect_uri`, and `code_verifier`. Authorization codes expire after 5 minutes and are single-use. Returns `{ "access_token": "jnt_...", "token_type": "Bearer", "scope": "mcp" }`.
 
 ---
 
@@ -156,6 +188,19 @@ curl -X POST https://your-site.com/api/mcp \
   -H "MCP-Protocol-Version: 2025-06-18" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"jant_posts_create","arguments":{"format":"note","bodyMarkdown":"Created through MCP.","status":"published","visibility":"public"}}}'
 ```
+
+### Public read-only MCP
+
+`POST /api/public/mcp`
+
+Auth: `Public when enabled`
+
+Anonymous read-only MCP JSON-RPC endpoint gated by `PUBLIC_API_ENABLED`. Uses the same protocol framing and `MCP-Protocol-Version` handling as `POST /api/mcp`, and exposes read-only tools for public content only:
+
+- `jant_public_threads_list` — list public Threads with optional `collection`, `format`, `featured`, `lang`, `sort`, `cursor`, `limit`, and `content` (defaults to `"markdown"`)
+- `jant_public_thread_get` — read a complete public Thread (root and replies) by `slug`
+- `jant_public_collections_list` — list curated Collections and Smart Collections with public Thread counts
+- `jant_public_posts_search` — full-text search across published public posts
 
 ---
 
@@ -1878,6 +1923,32 @@ unpinning one changes nothing. Response:
 
 ---
 
+### Public collections
+
+#### List public collections
+
+`GET /api/public/collections`
+
+Auth: `Public when enabled`
+
+Returns the same `{ collections, smartCollections, directoryItems }` shape as `GET /api/collections`, with Thread counts scoped to published public content.
+
+Query parameters:
+
+| Parameter | Type                 | Required | Default | Notes                                                 |
+| --------- | -------------------- | -------- | ------- | ----------------------------------------------------- |
+| `lang`    | BCP 47 language code | no       | none    | Narrow each collection's Thread count to one language |
+
+#### Get a public collection by slug
+
+`GET /api/public/collections/:slug`
+
+Auth: `Public when enabled`
+
+Returns one regular collection or smart collection matching `:slug`, using the same response shape as `GET /api/collections/:id` or `GET /api/smart-collections/:id`.
+
+---
+
 ## Smart Collections
 
 Base path: `/api/smart-collections`
@@ -2675,7 +2746,22 @@ Notes:
 - All search results include `permalink`.
 - Quote results use `sourceName` and `sourceUrl` instead of `title` and `url`.
 - Search covers published posts only. Drafts don't match.
-- Search isn't rate-limited. The per-client limit, `RATE_LIMIT_SEARCH_PER_MIN`, applies to signed-out readers on the `/search` page.
+- Search isn't rate-limited. The per-client limit, `RATE_LIMIT_SEARCH_PER_MIN`, applies to signed-out readers on the `/search` page and `GET /api/public/search`.
+
+### Public search
+
+`GET /api/public/search`
+
+Auth: `Public when enabled`
+
+Searches published public posts only (leaving out Unlisted, private, and draft posts) and returns the same `{ query, results, count }` shape as `GET /api/search`. Signed-out requests are metered by `RATE_LIMIT_SEARCH_PER_MIN`.
+
+Query parameters:
+
+| Parameter | Type    | Required | Default | Notes                |
+| --------- | ------- | -------- | ------- | -------------------- |
+| `q`       | string  | yes      | none    | Maximum length `200` |
+| `limit`   | integer | no       | `20`    | `1` to `50`          |
 
 ---
 
@@ -3034,26 +3120,33 @@ Notes:
 
 These are not part of the JSON content-management API, but they are often useful in automation or operations.
 
-| Endpoint                      | Auth   | Response | Notes                                                           |
-| ----------------------------- | ------ | -------- | --------------------------------------------------------------- |
-| `GET /healthz`                | Public | JSON     | Lightweight liveness probe                                      |
-| `GET /readyz`                 | Public | JSON     | Readiness check for startup config and database                 |
-| `GET /feed`                   | Public | RSS      | Canonical site feed (`latest` or `featured`, based on settings) |
-| `GET /feed/atom.xml`          | Public | Atom     | Canonical site feed in Atom format                              |
-| `GET /latest/feed`            | Public | RSS      | Latest public posts feed (accepts `?format=`)                   |
-| `GET /featured/feed`          | Public | RSS      | Featured posts feed                                             |
-| `GET /archive/feed`           | Public | RSS      | Full archive feed incl. `latest_hidden` (archive filters apply) |
-| `GET /feed/latest`            | Public | Redirect | Legacy `308` → `/latest/feed` (preserves query string)          |
-| `GET /feed/latest/atom.xml`   | Public | Redirect | Legacy `308` → `/latest/feed`                                   |
-| `GET /feed/featured`          | Public | Redirect | Legacy `308` → `/featured/feed`                                 |
-| `GET /feed/featured/atom.xml` | Public | Redirect | Legacy `308` → `/featured/feed`                                 |
-| `GET /feed/all`               | Public | Redirect | Legacy alias → `/latest/feed`                                   |
-| `GET /feed/all/atom.xml`      | Public | Redirect | Legacy Atom alias → `/latest/feed`                              |
-| `GET /:slug/feed`             | Public | RSS      | Collection feed for one collection                              |
-| `GET /collections/:slug/feed` | Public | RSS      | Collection feed for a collection selection                      |
-| `GET /sitemap.xml`            | Public | XML      | Sitemap for published posts                                     |
-| `GET /robots.txt`             | Public | Text     | Robots rules and sitemap location                               |
-| `GET /api/discover/posts`     | Public | JSON     | Whether posts are still in the feeds a Discover directory reads |
+| Endpoint                                      | Auth   | Response | Notes                                                                        |
+| --------------------------------------------- | ------ | -------- | ---------------------------------------------------------------------------- |
+| `GET /healthz`                                | Public | JSON     | Lightweight liveness probe                                                   |
+| `GET /readyz`                                 | Public | JSON     | Readiness check for startup config and database                              |
+| `GET /feed`                                   | Public | RSS      | Canonical site feed (`latest` or `featured`, based on settings)              |
+| `GET /feed/atom.xml`                          | Public | Atom     | Canonical site feed in Atom format                                           |
+| `GET /latest/feed`                            | Public | RSS      | Latest public posts feed (accepts `?format=`)                                |
+| `GET /featured/feed`                          | Public | RSS      | Featured posts feed                                                          |
+| `GET /archive/feed`                           | Public | RSS      | Full archive feed incl. `latest_hidden` (archive filters apply)              |
+| `GET /feed/latest`                            | Public | Redirect | Legacy `308` → `/latest/feed` (preserves query string)                       |
+| `GET /feed/latest/atom.xml`                   | Public | Redirect | Legacy `308` → `/latest/feed`                                                |
+| `GET /feed/featured`                          | Public | Redirect | Legacy `308` → `/featured/feed`                                              |
+| `GET /feed/featured/atom.xml`                 | Public | Redirect | Legacy `308` → `/featured/feed`                                              |
+| `GET /feed/all`                               | Public | Redirect | Legacy alias → `/latest/feed`                                                |
+| `GET /feed/all/atom.xml`                      | Public | Redirect | Legacy Atom alias → `/latest/feed`                                           |
+| `GET /:slug/feed`                             | Public | RSS      | Collection feed for one collection                                           |
+| `GET /collections/:slug/feed`                 | Public | RSS      | Collection feed for a collection selection                                   |
+| `GET /sitemap.xml`                            | Public | XML      | Sitemap for published posts                                                  |
+| `GET /robots.txt`                             | Public | Text     | Robots rules and sitemap location                                            |
+| `GET /llms.txt`                               | Public | Markdown | AI-readable site overview, Collections, highlights, and machine access guide |
+| `GET /skill.md`                               | Public | Markdown | Site-bound agent skill for operating this site                               |
+| `GET /.well-known/agent-skills/index.json`    | Public | JSON     | Agent Skills discovery index (v0.2.0) pointing to `/skill.md`                |
+| `GET /.well-known/api-catalog`                | Public | JSON     | RFC 9727 API catalog (`application/linkset+json`)                            |
+| `GET /.well-known/oauth-protected-resource`   | Public | JSON     | RFC 9728 OAuth 2.0 protected resource metadata for `/api/mcp`                |
+| `GET /.well-known/oauth-authorization-server` | Public | JSON     | RFC 8414 OAuth 2.0 authorization server metadata for MCP OAuth 2.1           |
+| `GET /{path}.md` / `Accept: text/markdown`    | Public | Markdown | Native Markdown view of public posts, Threads, timelines, and Collections    |
+| `GET /api/discover/posts`                     | Public | JSON     | Whether posts are still in the feeds a Discover directory reads              |
 
 ### Health and readiness
 
