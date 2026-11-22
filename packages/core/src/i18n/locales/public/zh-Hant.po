@@ -18,6 +18,11 @@ msgstr ""
 msgid " and try again."
 msgstr ""
 
+#. @context: OAuth consent description
+#: src/routes/auth/oauth-authorize.tsx
+msgid "{clientName} is requesting MCP access to manage {siteName}."
+msgstr ""
+
 #. @context: Link showing count of hidden thread posts between curated posts
 #: src/ui/feed/CuratedThreadPreview.tsx
 msgid "{count, plural, one {# hidden post} other {# hidden posts}}"
@@ -313,6 +318,16 @@ msgstr ""
 msgid "Apple touch icon"
 msgstr ""
 
+#. @context: OAuth approve button
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Approve"
+msgstr ""
+
+#. @context: OAuth permission summary
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Approving creates a revocable API token that lets this client read, publish, edit, and organize posts, Collections, media, and settings."
+msgstr ""
+
 #. @context: Archive feed title prefix
 #. @context: Inactive nav link label on sample page
 #: src/routes/pages/archive.tsx
@@ -350,6 +365,16 @@ msgstr ""
 #. @context: Compose quote author placeholder
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Author (optional)"
+msgstr ""
+
+#. @context: OAuth consent heading
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Authorize {clientName}"
+msgstr ""
+
+#. @context: OAuth consent browser title
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Authorize MCP Access"
 msgstr ""
 
 #. @context: Theme mode option on sample page
@@ -762,6 +787,11 @@ msgstr ""
 #. @context: Hint shown on signin page when demo credentials are pre-filled
 #: src/routes/auth/signin.tsx
 msgid "Demo credentials are pre-filled — hit Sign In to continue."
+msgstr ""
+
+#. @context: OAuth deny button
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Deny"
 msgstr ""
 
 #. @context: Alt text textarea placeholder
@@ -1975,6 +2005,11 @@ msgstr ""
 #. @context: Section heading for real post component samples on the theme sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Real post components"
+msgstr ""
+
+#. @context: OAuth redirect and revocation notice
+#: src/routes/auth/oauth-authorize.tsx
+msgid "Redirect destination: {redirectHost}. You can revoke access at any time in Settings → API Tokens."
 msgstr ""
 
 #. @context: Collection tag on sample link post

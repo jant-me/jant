@@ -15,7 +15,17 @@ import { formatPageLabel, parsePageNumber } from "../../lib/pagination.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { assembleFeaturedTimeline } from "../../lib/timeline.js";
-import { buildSurfaceAlternates, toViewPath } from "../../lib/view-language.js";
+import {
+  buildSurfaceAlternates,
+  toViewPath,
+  viewBasePath,
+} from "../../lib/view-language.js";
+import { toAbsoluteSiteUrl } from "../../lib/url.js";
+import {
+  markdownResponse,
+  renderThreadListMarkdown,
+  wantsMarkdown,
+} from "../../lib/markdown-page.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import { feedsPublished, renderFeed } from "../../lib/feed-policy.js";
 import { buildFeedData } from "../feed/feed.js";
@@ -31,7 +41,10 @@ export const featuredRoutes = new Hono<Env>();
  * @param c - Hono context
  * @returns Featured page response
  */
-export async function renderFeaturedPage(c: Context<Env>): Promise<Response> {
+export async function renderFeaturedPage(
+  c: Context<Env>,
+  options: { forceMarkdown?: boolean } = {},
+): Promise<Response> {
   c.set("viewTarget", { kind: "path" });
   // The chrome and the timeline are independent, so they load together. The
   // timeline only ever wanted `navData.isAuthenticated`, which is
@@ -55,6 +68,40 @@ export async function renderFeaturedPage(c: Context<Env>): Promise<Response> {
     }),
   ]);
 
+  const markdownHref = toViewPath(c, "/featured.md");
+  if (options.forceMarkdown || wantsMarkdown(c)) {
+    const { siteUrl, sitePathPrefix, publicApiEnabled } = c.var.appConfig;
+    const pageUrl = toAbsoluteSiteUrl(
+      `${viewBasePath(c)}/featured`,
+      siteUrl,
+      sitePathPrefix,
+    );
+    const markdownUrl = toAbsoluteSiteUrl(
+      `${viewBasePath(c)}/featured.md`,
+      siteUrl,
+      sitePathPrefix,
+    );
+    const md = renderThreadListMarkdown({
+      title: buildPageTitle(featuredTitle, navData.siteName),
+      pageUrl,
+      markdownUrl,
+      siteName: navData.siteName,
+      siteDescription: navData.siteDescription || undefined,
+      siteUrl,
+      sitePathPrefix,
+      publicApiEnabled,
+      language: c.var.viewLang ?? c.var.appConfig.siteLanguage,
+      items,
+      currentPage,
+      totalPages,
+      nextPageUrl:
+        currentPage < totalPages
+          ? `${markdownUrl}?page=${currentPage + 1}`
+          : undefined,
+    });
+    return markdownResponse(c, md, { canonicalHref: pageUrl });
+  }
+
   return renderPublicPage(c, {
     page: "featured",
     title:
@@ -62,6 +109,7 @@ export async function renderFeaturedPage(c: Context<Env>): Promise<Response> {
         ? buildPageTitle(featuredTitle, paginatedPageTitle, navData.siteName)
         : buildPageTitle(featuredTitle, navData.siteName),
     alternateLanguages: buildSurfaceAlternates(c),
+    markdownHref,
     navData,
     content: (
       <FeaturedPage
@@ -74,7 +122,7 @@ export async function renderFeaturedPage(c: Context<Env>): Promise<Response> {
   });
 }
 
-featuredRoutes.get("/", renderFeaturedPage);
+featuredRoutes.get("/", (c) => renderFeaturedPage(c));
 
 /**
  * Render the featured Atom feed for the current view language.

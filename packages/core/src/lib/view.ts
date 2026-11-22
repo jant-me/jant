@@ -372,6 +372,7 @@ export function toPostView(
     slug: post.slug,
     title: post.title ?? undefined,
     bodyHtml: bodyHtmlWithAnchor ?? undefined,
+    rawBody: post.body ?? undefined,
     summary,
     excerpt,
     summaryHtml,

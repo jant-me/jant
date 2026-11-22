@@ -28,6 +28,11 @@ import {
   renderFeed,
 } from "../../lib/feed-policy.js";
 import { toPlainText as markdownToPlainText } from "../../lib/markdown.js";
+import {
+  markdownResponse,
+  renderThreadListMarkdown,
+  wantsMarkdown,
+} from "../../lib/markdown-page.js";
 
 import { toAbsoluteSiteUrl } from "../../lib/url.js";
 import {
@@ -78,6 +83,7 @@ async function loadConditionVocabulary(
 export async function renderSmartCollectionPage(
   c: Context<Env>,
   slug: string,
+  options: { forceMarkdown?: boolean } = {},
 ): Promise<Response | null> {
   c.set("viewTarget", { kind: "path" });
   const page = parsePageNumber(c.req.query("page"));
@@ -147,6 +153,42 @@ export async function renderSmartCollectionPage(
   const feedHref = c.var.appConfig.rssFeedsEnabled
     ? `${canonicalPagePath}/feed`
     : undefined;
+  const markdownHref = toViewPath(c, `${canonicalPagePath}.md`);
+  const description = smartCollection.description
+    ? markdownToPlainText(smartCollection.description)
+    : undefined;
+
+  if (options.forceMarkdown || wantsMarkdown(c)) {
+    const { siteUrl, sitePathPrefix, publicApiEnabled } = c.var.appConfig;
+    const pageUrl = toAbsoluteSiteUrl(
+      `${viewBasePath(c)}${canonicalPagePath}`,
+      siteUrl,
+      sitePathPrefix,
+    );
+    const markdownUrl = toAbsoluteSiteUrl(
+      `${viewBasePath(c)}${canonicalPagePath}.md`,
+      siteUrl,
+      sitePathPrefix,
+    );
+    const md = renderThreadListMarkdown({
+      title: smartCollection.title,
+      description,
+      pageUrl,
+      markdownUrl,
+      siteName: navData.siteName,
+      siteDescription: navData.siteDescription || undefined,
+      siteUrl,
+      sitePathPrefix,
+      publicApiEnabled,
+      language: getViewLang(c) ?? c.var.appConfig.siteLanguage,
+      items,
+      currentPage: page,
+      totalPages,
+      nextPageUrl:
+        page < totalPages ? `${markdownUrl}?page=${page + 1}` : undefined,
+    });
+    return markdownResponse(c, md, { canonicalHref: pageUrl });
+  }
 
   return renderPublicPage(c, {
     page: "collection",
@@ -158,15 +200,14 @@ export async function renderSmartCollectionPage(
             navData.siteName,
           )
         : buildPageTitle(smartCollection.title, navData.siteName),
-    description: smartCollection.description
-      ? markdownToPlainText(smartCollection.description)
-      : undefined,
+    description,
     // A page the author declared, so it is always indexable and always has a
     // canonical and an hreflang set — unlike an archive URL a reader assembled.
     alternateLanguages: buildSurfaceAlternates(c),
     pageFeed: feedHref
       ? { href: toViewPath(c, feedHref), title: smartCollection.title }
       : undefined,
+    markdownHref,
     navData,
     content: (
       <SmartCollectionPage

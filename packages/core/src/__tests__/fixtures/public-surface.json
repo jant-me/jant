@@ -615,6 +615,13 @@
         "type",
         "url"
       ],
+      "POST /api/oauth/register": [
+        "client_name",
+        "grant_types",
+        "redirect_uris",
+        "response_types",
+        "token_endpoint_auth_method"
+      ],
       "POST /api/posts": [
         "attachments",
         "attachments.alt",
@@ -826,7 +833,10 @@
       "GET /api/posts/:id/translations/candidates",
       "GET /api/posts/:id/translations/resolve",
       "GET /api/posts/slug",
+      "GET /api/public/collections",
+      "GET /api/public/collections/:slug",
       "GET /api/public/posts/:slug",
+      "GET /api/public/search",
       "GET /api/public/threads",
       "GET /api/public/threads/:slug",
       "GET /api/public/threads/:slug/posts",
@@ -847,8 +857,11 @@
       "POST /api/github-sync/webhook",
       "POST /api/mcp",
       "POST /api/nav-items",
+      "POST /api/oauth/register",
+      "POST /api/oauth/token",
       "POST /api/posts",
       "POST /api/posts/:id/translations",
+      "POST /api/public/mcp",
       "POST /api/settings/avatar",
       "POST /api/smart-collections",
       "POST /api/smart-collections/preview",
@@ -920,8 +933,15 @@
         "slug",
         "title"
       ],
+      "GET /api/public/collections": [
+        "lang"
+      ],
       "GET /api/public/posts/:slug": [
         "content"
+      ],
+      "GET /api/public/search": [
+        "limit",
+        "q"
       ],
       "GET /api/public/threads": [
         "collection",

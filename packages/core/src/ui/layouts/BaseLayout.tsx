@@ -119,6 +119,11 @@ export interface BaseLayoutProps {
    */
   pageFeed?: PageFeedLink;
   /**
+   * Explicit Markdown representation of this page, rendered as
+   * `<link rel="alternate" type="text/markdown">` for AI agents and tools.
+   */
+  markdownHref?: string;
+  /**
    * Crawler policy for this page, overriding the site-wide setting.
    *
    * `true` is the blunt form for utility pages that should leave no trace:
@@ -157,6 +162,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
   canonicalHref,
   alternateLanguages,
   pageFeed,
+  markdownHref,
   noindex,
   isAuthenticated = false,
   clientBundle,
@@ -569,6 +575,9 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
               title={alternateFeed.title}
               href={alternateFeed.href}
             />
+          )}
+          {markdownHref && (
+            <link rel="alternate" type="text/markdown" href={markdownHref} />
           )}
           {IS_VITE_DEV && (
             <script type="module" src={assetPath("/@vite/client")} />

@@ -31,6 +31,11 @@ import {
   renderFeed,
 } from "../../lib/feed-policy.js";
 import { toPlainText as markdownToPlainText } from "../../lib/markdown.js";
+import {
+  markdownResponse,
+  renderThreadListMarkdown,
+  wantsMarkdown,
+} from "../../lib/markdown-page.js";
 import { toAbsoluteSiteUrl } from "../../lib/url.js";
 import {
   buildLanguageSwitcher,
@@ -84,6 +89,7 @@ export async function renderCollectionPage(
   c: Context<Env>,
   slugExpressionOrSelection: string | ResolvedCollectionSelection,
   pagePathOverride?: string,
+  options: { forceMarkdown?: boolean } = {},
 ): Promise<Response | null> {
   c.set("viewTarget", { kind: "path" });
   const page = parsePageNumber(c.req.query("page"));
@@ -219,6 +225,44 @@ export async function renderCollectionPage(
   const feedHref = c.var.appConfig.rssFeedsEnabled
     ? `${canonicalPagePath}/feed`
     : undefined;
+  const markdownHref = toViewPath(c, `${canonicalPagePath}.md`);
+  const collectionDescription = isAggregate
+    ? undefined
+    : primaryCollection.description
+      ? markdownToPlainText(primaryCollection.description)
+      : undefined;
+
+  if (options.forceMarkdown || wantsMarkdown(c)) {
+    const { siteUrl, sitePathPrefix, publicApiEnabled } = c.var.appConfig;
+    const pageUrl = toAbsoluteSiteUrl(
+      `${viewBasePath(c)}${canonicalPagePath}`,
+      siteUrl,
+      sitePathPrefix,
+    );
+    const markdownUrl = toAbsoluteSiteUrl(
+      `${viewBasePath(c)}${canonicalPagePath}.md`,
+      siteUrl,
+      sitePathPrefix,
+    );
+    const md = renderThreadListMarkdown({
+      title: selectionTitle,
+      description: collectionDescription,
+      pageUrl,
+      markdownUrl,
+      siteName: navData.siteName,
+      siteDescription: navData.siteDescription || undefined,
+      siteUrl,
+      sitePathPrefix,
+      publicApiEnabled,
+      language: getViewLang(c) ?? c.var.appConfig.siteLanguage,
+      items,
+      currentPage: page,
+      totalPages,
+      nextPageUrl:
+        page < totalPages ? `${markdownUrl}?page=${page + 1}` : undefined,
+    });
+    return markdownResponse(c, md, { canonicalHref: pageUrl });
+  }
 
   return renderPublicPage(c, {
     page: "collection",
@@ -226,15 +270,12 @@ export async function renderCollectionPage(
       page > 1
         ? buildPageTitle(selectionTitle, paginatedPageTitle, navData.siteName)
         : buildPageTitle(selectionTitle, navData.siteName),
-    description: isAggregate
-      ? undefined
-      : primaryCollection.description
-        ? markdownToPlainText(primaryCollection.description)
-        : undefined,
+    description: collectionDescription,
     alternateLanguages: buildSurfaceAlternates(c),
     pageFeed: feedHref
       ? { href: toViewPath(c, feedHref), title: selectionTitle }
       : undefined,
+    markdownHref,
     navData,
     composeCollectionId: !isAggregate ? primaryCollection.id : undefined,
     content: (
@@ -366,7 +407,10 @@ export async function renderCollectionFeed(
 export async function renderCollectionSelectionRoute(
   c: Context<Env>,
 ): Promise<Response> {
-  const slugExpression = c.req.param("slug");
+  const rawSlug = c.req.param("slug");
+  if (!rawSlug) return c.notFound();
+  const forceMarkdown = rawSlug.endsWith(".md");
+  const slugExpression = forceMarkdown ? rawSlug.slice(0, -3) : rawSlug;
   if (!slugExpression) return c.notFound();
 
   if (!isAggregateCollectionSelection(slugExpression)) {
@@ -375,13 +419,16 @@ export async function renderCollectionSelectionRoute(
     if (!collection) return c.notFound();
 
     const search = new URL(c.req.url).search;
+    const targetPath = getCollectionPagePath(collection.slug);
     return c.redirect(
-      `${toViewPath(c, getCollectionPagePath(collection.slug))}${search}`,
+      `${toViewPath(c, forceMarkdown ? `${targetPath}.md` : targetPath)}${search}`,
       301,
     );
   }
 
-  const result = await renderCollectionPage(c, slugExpression);
+  const result = await renderCollectionPage(c, slugExpression, undefined, {
+    forceMarkdown,
+  });
   return result ?? c.notFound();
 }
 

@@ -56,9 +56,15 @@ import {
 } from "../../lib/feed-policy.js";
 import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
+import {
+  markdownResponse,
+  renderThreadListMarkdown,
+  toMarkdownHref,
+  wantsMarkdown,
+} from "../../lib/markdown-page.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { formatYearMonth } from "../../lib/time.js";
-import { toAbsoluteSiteUrl } from "../../lib/url.js";
+import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
 import {
   buildSurfaceAlternates,
   getViewLang,
@@ -422,6 +428,7 @@ function archiveParamsRedirect(
 export async function renderArchivePage(
   c: Context<Env>,
   queryOverrides?: Record<string, string>,
+  options: { forceMarkdown?: boolean } = {},
 ): Promise<Response> {
   c.set("viewTarget", { kind: "path" });
   const { services, appConfig } = c.var;
@@ -668,6 +675,58 @@ export async function renderArchivePage(
   const canonicalHref = readerAssembled
     ? undefined
     : `${toAbsoluteSiteUrl(c.req.path, appConfig.siteUrl, appConfig.sitePathPrefix)}${canonicalQuery}`;
+  const archiveTitle = getArchiveViewTitle(
+    params.selection,
+    getI18n(c),
+    dimensionCtx,
+  );
+  const requestPathWithoutMd = c.req.path.endsWith(".md")
+    ? c.req.path.slice(0, -3)
+    : c.req.path;
+  const markdownBasePath = toMarkdownHref(
+    toPublicPath(requestPathWithoutMd, appConfig.sitePathPrefix),
+    appConfig.sitePathPrefix,
+  );
+  const requestSearch = new URL(c.req.url).search;
+  const markdownHref = `${markdownBasePath}${requestSearch}`;
+
+  if (options.forceMarkdown || wantsMarkdown(c)) {
+    const pageUrl = toAbsoluteSiteUrl(
+      requestPathWithoutMd,
+      appConfig.siteUrl,
+      appConfig.sitePathPrefix,
+    );
+    const markdownUrl = toAbsoluteSiteUrl(
+      `${requestPathWithoutMd}.md`,
+      appConfig.siteUrl,
+      appConfig.sitePathPrefix,
+    );
+    const markdownItems =
+      flatItems ??
+      groups.flatMap((group) => group.posts.map((post) => ({ post })));
+    const md = renderThreadListMarkdown({
+      title: buildPageTitle(archiveTitle, navData.siteName),
+      pageUrl: `${pageUrl}${requestSearch}`,
+      markdownUrl: `${markdownUrl}${requestSearch}`,
+      siteName: navData.siteName,
+      siteDescription: navData.siteDescription || undefined,
+      siteUrl: appConfig.siteUrl,
+      sitePathPrefix: appConfig.sitePathPrefix,
+      publicApiEnabled: appConfig.publicApiEnabled,
+      language: getViewLang(c) ?? appConfig.siteLanguage,
+      items: markdownItems,
+      currentPage: params.currentPage,
+      totalPages,
+      nextPageUrl:
+        params.currentPage < totalPages
+          ? `${markdownUrl}?page=${params.currentPage + 1}`
+          : undefined,
+    });
+    return markdownResponse(c, md, {
+      canonicalHref: canonicalHref ?? `${pageUrl}${requestSearch}`,
+      noindex: readerAssembled,
+    });
+  }
 
   return renderPublicPage(c, {
     page: "archive",
@@ -675,7 +734,7 @@ export async function renderArchivePage(
     // name the selection itself — otherwise every bookmarked filtered view
     // reads identically in the tab bar.
     title: buildPageTitle(
-      getArchiveViewTitle(params.selection, getI18n(c), dimensionCtx),
+      archiveTitle,
       params.sort === "updated" ? "Recently updated" : undefined,
       navData.siteName,
     ),
@@ -695,6 +754,7 @@ export async function renderArchivePage(
           title: buildArchiveFeedLabel(c, params, dimensionCtx),
         }
       : undefined,
+    markdownHref,
     navData,
     content: (
       <ArchivePage
@@ -729,13 +789,14 @@ export async function renderArchivePage(
  */
 export function renderArchiveRoute(
   c: Context<Env>,
+  options: { forceMarkdown?: boolean } = {},
 ): Promise<Response> | Response {
   const redirect = archiveParamsRedirect(c);
   if (redirect) return c.redirect(redirect.location, redirect.status);
-  return renderArchivePage(c);
+  return renderArchivePage(c, undefined, options);
 }
 
-archiveRoutes.get("/", renderArchiveRoute);
+archiveRoutes.get("/", (c) => renderArchiveRoute(c));
 
 // =============================================================================
 // Archive feed

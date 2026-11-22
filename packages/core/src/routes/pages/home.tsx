@@ -23,6 +23,11 @@ import {
   viewBasePath,
 } from "../../lib/view-language.js";
 import { buildWebSiteJsonLd } from "../../lib/structured-data.js";
+import {
+  markdownResponse,
+  renderThreadListMarkdown,
+  wantsMarkdown,
+} from "../../lib/markdown-page.js";
 import { HomePage } from "../../ui/pages/HomePage.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -35,7 +40,10 @@ export const homeRoutes = new Hono<Env>();
  * @param c - Hono context
  * @returns Home page response
  */
-export async function renderHomePage(c: Context<Env>): Promise<Response> {
+export async function renderHomePage(
+  c: Context<Env>,
+  options: { forceMarkdown?: boolean } = {},
+): Promise<Response> {
   c.set("viewTarget", { kind: "path" });
   const i18n = getI18n(c);
   const page = parsePageNumber(c.req.query("page"));
@@ -50,20 +58,48 @@ export async function renderHomePage(c: Context<Env>): Promise<Response> {
   ]);
 
   const { items, currentPage, totalPages } = timeline;
+  const { siteUrl, sitePathPrefix, publicApiEnabled } = c.var.appConfig;
+  const homePath = viewBasePath(c) || "/";
+  const markdownHref = toViewPath(c, "/latest.md");
+
+  if (options.forceMarkdown || wantsMarkdown(c)) {
+    const pageUrl = toAbsoluteSiteUrl(homePath, siteUrl, sitePathPrefix);
+    const markdownUrl = toAbsoluteSiteUrl(
+      `${viewBasePath(c)}/latest.md`,
+      siteUrl,
+      sitePathPrefix,
+    );
+    const nextPageUrl =
+      currentPage < totalPages
+        ? `${markdownUrl}?page=${currentPage + 1}`
+        : undefined;
+    const md = renderThreadListMarkdown({
+      title: navData.siteName,
+      description: navData.siteDescription || undefined,
+      pageUrl,
+      markdownUrl,
+      siteName: navData.siteName,
+      siteDescription: navData.siteDescription || undefined,
+      siteUrl,
+      sitePathPrefix,
+      publicApiEnabled,
+      language: c.var.viewLang ?? c.var.appConfig.siteLanguage,
+      items,
+      currentPage,
+      totalPages,
+      nextPageUrl,
+    });
+    return markdownResponse(c, md, { canonicalHref: pageUrl });
+  }
 
   // WebSite + SearchAction structured data, emitted only on the first page
   // (the canonical site entry point) and only when a site URL is configured
   // so the search-box action resolves to an absolute URL.
-  const { siteUrl } = c.var.appConfig;
   const websiteJsonLd =
     page === 1 && siteUrl
       ? buildWebSiteJsonLd({
           name: navData.siteName,
-          url: toAbsoluteSiteUrl(
-            viewBasePath(c) || "/",
-            siteUrl,
-            navData.sitePathPrefix,
-          ),
+          url: toAbsoluteSiteUrl(homePath, siteUrl, navData.sitePathPrefix),
           searchUrlTemplate: `${toAbsoluteSiteUrl(
             `${viewBasePath(c)}/search`,
             siteUrl,
@@ -87,6 +123,7 @@ export async function renderHomePage(c: Context<Env>): Promise<Response> {
         : navData.siteName,
     jsonLd: websiteJsonLd,
     alternateLanguages: buildSurfaceAlternates(c),
+    markdownHref,
     navData,
     showHomeBranding:
       c.var.appConfig.showJantBrandingOnHome && currentPage === 1,
@@ -103,4 +140,4 @@ export async function renderHomePage(c: Context<Env>): Promise<Response> {
   });
 }
 
-homeRoutes.get("/", renderHomePage);
+homeRoutes.get("/", (c) => renderHomePage(c));

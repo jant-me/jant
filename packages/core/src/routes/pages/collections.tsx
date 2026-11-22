@@ -17,7 +17,15 @@ import { renderPublicPage } from "../../lib/render.js";
 import {
   buildSurfaceAlternates,
   getViewLang,
+  toViewPath,
+  viewBasePath,
 } from "../../lib/view-language.js";
+import { toAbsoluteSiteUrl } from "../../lib/url.js";
+import {
+  markdownResponse,
+  renderCollectionsDirectoryMarkdown,
+  wantsMarkdown,
+} from "../../lib/markdown-page.js";
 import { CollectionsPage } from "../../ui/pages/CollectionsPage.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -36,6 +44,7 @@ export const collectionsPageRoutes = new Hono<Env>();
  */
 export async function renderCollectionsDirectory(
   c: Context<Env>,
+  options: { forceMarkdown?: boolean } = {},
 ): Promise<Response> {
   c.set("viewTarget", { kind: "path" });
   // The numbers have to match the collection pages these rows link to, so they
@@ -52,10 +61,32 @@ export async function renderCollectionsDirectory(
     getNavigationData(c),
   ]);
 
+  const markdownHref = toViewPath(c, "/collections.md");
+  if (options.forceMarkdown || wantsMarkdown(c)) {
+    const { siteUrl, sitePathPrefix, publicApiEnabled } = c.var.appConfig;
+    const pageUrl = toAbsoluteSiteUrl(
+      `${viewBasePath(c)}/collections`,
+      siteUrl,
+      sitePathPrefix,
+    );
+    const md = renderCollectionsDirectoryMarkdown({
+      siteName: navData.siteName,
+      siteDescription: navData.siteDescription || undefined,
+      siteUrl,
+      sitePathPrefix,
+      pageUrl,
+      publicApiEnabled,
+      language: getViewLang(c) ?? c.var.appConfig.siteLanguage,
+      items: directoryData.items,
+    });
+    return markdownResponse(c, md, { canonicalHref: pageUrl });
+  }
+
   return renderPublicPage(c, {
     page: "collections",
     title: buildPageTitle("Collections", navData.siteName),
     alternateLanguages: buildSurfaceAlternates(c),
+    markdownHref,
     navData,
     content: (
       <CollectionsPage
@@ -71,4 +102,4 @@ export async function renderCollectionsDirectory(
   });
 }
 
-collectionsPageRoutes.get("/", renderCollectionsDirectory);
+collectionsPageRoutes.get("/", (c) => renderCollectionsDirectory(c));

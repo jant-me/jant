@@ -34,6 +34,7 @@ import { createThreadService, type ThreadService } from "./thread.js";
 import { createNavItemService, type NavItemService } from "./navigation.js";
 import { createAuthService, type AuthService } from "./auth.js";
 import { createApiTokenService, type ApiTokenService } from "./api-token.js";
+import { createOAuthService, type OAuthService } from "./oauth.js";
 import { createBootstrapService, type BootstrapService } from "./bootstrap.js";
 import { createSiteAdminService, type SiteAdminService } from "./site-admin.js";
 import {
@@ -74,6 +75,7 @@ export interface Services {
   navItems: NavItemService;
   auth: AuthService;
   apiTokens: ApiTokenService;
+  oauth: OAuthService;
   bootstrap: BootstrapService;
   siteAdmin: SiteAdminService;
   siteMembers: SiteMemberService;
@@ -105,6 +107,11 @@ export function createServices(
   const databaseSchema = config?.schema ?? sqliteSchemaBundle;
   const dialect = config?.databaseDialect ?? "sqlite";
   const site = createSiteService(db, databaseSchema);
+  const apiTokens = createApiTokenService(db, siteId, databaseSchema);
+  const oauth = createOAuthService(db, siteId, apiTokens, {
+    schema: databaseSchema,
+    authSecret: config?.authSecret,
+  });
   const settings = createSettingsService(db, siteId, databaseSchema, dialect);
   const paths = createPathService(db, siteId, databaseSchema);
   const navItems = createNavItemService(db, siteId, databaseSchema, paths);
@@ -164,7 +171,8 @@ export function createServices(
       },
       databaseSchema,
     ),
-    apiTokens: createApiTokenService(db, siteId, databaseSchema),
+    apiTokens,
+    oauth,
     bootstrap: createBootstrapService(db, siteId, {
       schema: databaseSchema,
       databaseDialect: dialect,
@@ -236,6 +244,11 @@ export type { AboutPageService, AboutPageStatus } from "./about-page.js";
 export type { LanguageService, LanguageState } from "./language.js";
 export type { AuthService, DeleteAccountDeps } from "./auth.js";
 export type { ApiTokenService } from "./api-token.js";
+export type {
+  OAuthService,
+  OAuthClientRecord,
+  OAuthTokenExchangeResult,
+} from "./oauth.js";
 export type {
   BootstrapService,
   CompleteSiteSetupData,

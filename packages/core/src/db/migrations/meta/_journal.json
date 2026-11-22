@@ -288,6 +288,13 @@
       "when": 1795162986143,
       "tag": "0040_aspiring_captain_america",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1795365359813,
+      "tag": "0041_chemical_triathlon",
+      "breakpoints": true
     }
   ]
 }

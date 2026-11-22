@@ -25,8 +25,10 @@ import { pickPost } from "../post-picker.js";
 import { openShareImage, warmShareImage } from "../share-launch.js";
 import {
   copyPostLink,
+  copyPostMarkdown,
   iconImage,
   iconLink,
+  iconMarkdown,
   menuOpensAbove,
 } from "../post-menu-shared.js";
 import {
@@ -1042,6 +1044,12 @@ export class JantPostMenu extends LitElement {
     const permalink = this._data?.permalink;
     this.#close();
     if (permalink) void copyPostLink(permalink);
+  }
+
+  #copyMarkdown() {
+    const permalink = this._data?.permalink;
+    this.#close();
+    if (permalink) void copyPostMarkdown(permalink);
   }
 
   #shareImage() {
@@ -2443,17 +2451,33 @@ export class JantPostMenu extends LitElement {
                     ${
                       canCopyLink
                         ? html`<button
-                            type="button"
-                            role="menuitem"
-                            class="post-menu-item"
-                            data-post-menu-copy-link
-                            @click=${() => this.#copyLink()}
-                          >
-                            <span class="post-menu-item-label">Copy link</span>
-                            <span class="post-menu-item-trailing"
-                              >${iconLink()}</span
+                              type="button"
+                              role="menuitem"
+                              class="post-menu-item"
+                              data-post-menu-copy-link
+                              @click=${() => this.#copyLink()}
                             >
-                          </button>`
+                              <span class="post-menu-item-label"
+                                >Copy link</span
+                              >
+                              <span class="post-menu-item-trailing"
+                                >${iconLink()}</span
+                              >
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              class="post-menu-item"
+                              data-post-menu-copy-markdown
+                              @click=${() => this.#copyMarkdown()}
+                            >
+                              <span class="post-menu-item-label"
+                                >Copy as Markdown</span
+                              >
+                              <span class="post-menu-item-trailing"
+                                >${iconMarkdown()}</span
+                              >
+                            </button>`
                         : nothing
                     }
                     ${

@@ -40,6 +40,8 @@ export interface PostView {
   title?: string;
   /** Pre-sanitized HTML */
   bodyHtml?: string;
+  /** Raw stored TipTap JSON body, used lazily when rendering Markdown views */
+  rawBody?: string;
   /** Unified plain-text preview summary for cards, lists, and meta fallbacks */
   summary?: string;
   /** Pre-computed excerpt, max 160 chars */

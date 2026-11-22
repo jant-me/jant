@@ -10,6 +10,7 @@ import type { Child } from "hono/jsx";
 import type { SiteLayoutProps } from "../types.js";
 import type { PageName } from "../types/constants.js";
 import { SETTINGS_KEYS } from "./constants.js";
+import { buildDiscoveryLinkHeader } from "./agent-discovery.js";
 import {
   BaseLayout,
   type PageFeedLink,
@@ -71,6 +72,12 @@ export interface RenderPublicPageOptions {
    * reader's extension finds that feed rather than only the site-wide ones.
    */
   pageFeed?: PageFeedLink;
+  /**
+   * Explicit Markdown alternate path for this page (e.g. `/hello.md`), emitted
+   * as `<link rel="alternate" type="text/markdown">` and in the HTTP `Link`
+   * header alongside `Vary: Accept`.
+   */
+  markdownHref?: string;
   /**
    * Language switcher entries. Defaults to the current surface in each of the
    * site's languages; a post overrides it with its translations.
@@ -152,6 +159,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
     canonicalHref,
     alternateLanguages,
     pageFeed,
+    markdownHref,
     languageSwitcher,
     navData,
     content,
@@ -204,6 +212,12 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
   };
   const faviconUrl = appConfig.siteAvatarUrl || undefined;
   const faviconVersion = appConfig.faviconVersion || undefined;
+  if (!WIDE_FRAME_PAGES.has(page)) {
+    c.header("Link", buildDiscoveryLinkHeader(appConfig, { markdownHref }));
+    if (markdownHref) {
+      c.header("Vary", "Accept");
+    }
+  }
   // `noindex` is passed straight through: BaseLayout reads the site-wide
   // setting from this same context and is the single place the two resolve.
   return c.html(
@@ -225,6 +239,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
       canonicalHref={canonicalHref}
       alternateLanguages={alternateLanguages}
       pageFeed={pageFeed}
+      markdownHref={markdownHref}
       faviconUrl={faviconUrl}
       faviconVersion={faviconVersion}
       noindex={noindex}
