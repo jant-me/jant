@@ -2632,6 +2632,339 @@
     );
   }
 
+  /* --- Post headings & automatic table of contents ----------------------- */
+
+  [data-post-heading] {
+    scroll-margin-block-start: var(--space-2xl);
+  }
+
+  [data-post-heading]:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .post-toc {
+    color: var(--site-reading-meta);
+    font-size: var(--type-ui-hint);
+  }
+
+  /* No-JS fallback: keep the semantic directory accessible above the post. */
+  .post-toc:not([data-ready]) {
+    margin-block-end: var(--space-xl);
+  }
+
+  .post-toc:not([data-ready]) .post-toc-trigger {
+    display: none;
+  }
+
+  /* Short posts that fit comfortably on one screen keep the page quiet. */
+  .post-toc[data-ready]:not([data-toc-active]) {
+    display: none;
+  }
+
+  .post-toc-title {
+    margin: 0 0 0.45rem;
+    padding-inline: 0.625rem;
+    font-size: var(--type-ui-caption);
+    font-weight: var(--fw-medium);
+    letter-spacing: 0.02em;
+    color: var(--site-reading-meta);
+  }
+
+  .post-toc-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .post-toc-item a {
+    position: relative;
+    display: block;
+    padding: 0.35rem 0.625rem;
+    border-radius: var(--radius);
+    color: var(--site-reading-meta);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    text-decoration: none;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .post-toc-item[data-depth="1"] a {
+    padding-inline-start: 1.25rem;
+  }
+
+  .post-toc-item[data-depth="2"] a {
+    padding-inline-start: 1.875rem;
+  }
+
+  .post-toc-item a:is(:hover, :focus-visible) {
+    color: var(--site-reading-body);
+    background-color: color-mix(
+      in srgb,
+      var(--site-reading-meta) 8%,
+      transparent
+    );
+  }
+
+  .post-toc-item a[aria-current="location"] {
+    color: var(--site-reading-body);
+    font-weight: var(--fw-medium);
+  }
+
+  .post-toc-item a[aria-current="location"]::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0.125rem;
+    inset-block: 0.4rem;
+    inline-size: 2px;
+    border-radius: 999px;
+    background-color: var(--site-reading-body);
+  }
+
+  /* Wide desktop with hover: quiet left-margin tick-bar minimap that unfolds
+     into a floating card on hover or keyboard activation. Sits in the left
+     gutter so it never competes with the right-side Tufte footnote rail. */
+  .post-toc[data-ready][data-toc-active] {
+    position: sticky;
+    inset-block-start: 24vh;
+    inline-size: 0;
+    block-size: 0;
+    margin: 0;
+    z-index: 25;
+  }
+
+  .post-toc[data-ready][data-toc-active] .post-toc-trigger {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: calc(var(--space-xl) + 0.5rem);
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0.75rem 1rem 0.75rem 0.75rem;
+    margin-block-start: -0.75rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--site-reading-meta);
+    cursor: pointer;
+  }
+
+  .post-toc[data-ready][data-toc-active] .post-toc-trigger:focus-visible {
+    outline: 1.5px solid
+      color-mix(in srgb, var(--site-text-primary) 24%, transparent);
+    outline-offset: 2px;
+  }
+
+  .post-toc[data-ready][data-toc-active] .post-toc-fab-icon {
+    display: none;
+  }
+
+  .post-toc[data-ready][data-toc-active] .post-toc-ticks {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+    max-block-size: 46dvh;
+    overflow: hidden;
+    transition: opacity 0.16s ease;
+  }
+
+  .post-toc[data-ready][data-toc-active][data-dense] .post-toc-ticks {
+    gap: 6px;
+  }
+
+  .post-toc[data-ready][data-toc-active][data-open] .post-toc-ticks {
+    opacity: 0;
+  }
+
+  .post-toc-tick {
+    display: block;
+    block-size: 2px;
+    border-radius: 999px;
+    background-color: color-mix(
+      in srgb,
+      var(--site-reading-meta) 36%,
+      transparent
+    );
+    transition:
+      background-color 0.2s ease,
+      inline-size 0.2s ease;
+  }
+
+  .post-toc-tick[data-depth="0"] {
+    inline-size: 18px;
+  }
+
+  .post-toc-tick[data-depth="1"] {
+    inline-size: 12px;
+  }
+
+  .post-toc-tick[data-depth="2"] {
+    inline-size: 8px;
+  }
+
+  .post-toc-trigger:hover .post-toc-tick {
+    background-color: color-mix(
+      in srgb,
+      var(--site-reading-meta) 58%,
+      transparent
+    );
+  }
+
+  .post-toc-tick[data-active] {
+    background-color: var(--site-reading-body);
+  }
+
+  .post-toc-tick[data-active][data-depth="0"] {
+    inline-size: 22px;
+  }
+
+  .post-toc-tick[data-active][data-depth="1"] {
+    inline-size: 16px;
+  }
+
+  .post-toc-tick[data-active][data-depth="2"] {
+    inline-size: 12px;
+  }
+
+  .post-toc[data-ready][data-toc-active] .post-toc-panel {
+    position: absolute;
+    inset-block-start: -0.75rem;
+    inset-inline-start: -5.5rem;
+    inline-size: min(16rem, calc(100vw - 2rem));
+    max-block-size: min(64dvh, 28rem);
+    padding: 0.75rem 0.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 0.5px solid
+      color-mix(in srgb, var(--site-text-primary) 12%, transparent);
+    border-radius: var(--radius-lg, 0.75rem);
+    background: color-mix(
+      in srgb,
+      var(--site-page-bg) 94%,
+      var(--site-subtle-bg) 6%
+    );
+    box-shadow: 0 12px 32px
+      color-mix(in srgb, var(--site-text-primary) 10%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate3d(-4px, 0, 0) scale(0.98);
+    transform-origin: left top;
+    transition:
+      opacity 0.16s ease,
+      transform 0.16s ease,
+      visibility 0.16s ease;
+  }
+
+  .post-toc[data-ready][data-toc-active][data-open] .post-toc-panel {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  /* Narrow screens & touch devices: out-of-flow bottom-right frosted trigger
+     (matching Jant's floating button language) so it adds no orphan row above
+     the title and never covers top-right body text while scrolling. */
+  @media (max-width: 1024px), (hover: none) {
+    .post-toc[data-ready][data-toc-active] {
+      position: fixed;
+      inset-block-start: auto;
+      inset-block-end: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem));
+      inset-inline-end: max(1rem, calc(env(safe-area-inset-right) + 0.75rem));
+      inline-size: auto;
+      block-size: auto;
+      z-index: 34;
+      transition: opacity 0.2s ease;
+    }
+
+    body:has(dialog[open]) .post-toc[data-ready],
+    body:has(.site-nav-drawer[aria-hidden="false"]) .post-toc[data-ready] {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .post-toc[data-ready][data-toc-active] .post-toc-ticks {
+      display: none;
+    }
+
+    .post-toc[data-ready][data-toc-active] .post-toc-fab-icon {
+      display: block;
+      inline-size: 1.1rem;
+      block-size: 1.1rem;
+      opacity: 0.84;
+    }
+
+    .post-toc[data-ready][data-toc-active] .post-toc-trigger {
+      position: static;
+      inset: auto;
+      inline-size: 2.75rem;
+      block-size: 2.75rem;
+      margin: 0;
+      padding: 0;
+      justify-content: center;
+      border: 0.5px solid
+        color-mix(in srgb, var(--site-text-primary) 12%, transparent);
+      border-radius: 999px;
+      background: color-mix(
+        in srgb,
+        var(--site-page-bg) 90%,
+        var(--site-subtle-bg) 10%
+      );
+      color: var(--site-text-primary);
+      box-shadow: 0 12px 28px
+        color-mix(in srgb, var(--site-text-primary) 10%, transparent);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      transition:
+        border-color 0.16s ease,
+        background-color 0.16s ease,
+        transform 0.16s ease;
+    }
+
+    .post-toc[data-ready][data-toc-active] .post-toc-trigger:active {
+      transform: scale(0.96);
+    }
+
+    .post-toc[data-ready][data-toc-active] .post-toc-panel {
+      inset-block-start: auto;
+      inset-block-end: calc(100% + 0.625rem);
+      inset-inline-start: auto;
+      inset-inline-end: 0;
+      inline-size: min(17.5rem, calc(100vw - 2rem));
+      max-block-size: min(58dvh, 24rem);
+      transform: translate3d(0, 6px, 0) scale(0.98);
+      transform-origin: right bottom;
+    }
+
+    .post-toc[data-ready][data-toc-active] .post-toc-item a {
+      padding-block: 0.45rem;
+      font-size: var(--type-ui-control);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .post-toc[data-ready][data-toc-active] .post-toc-panel,
+    .post-toc-tick,
+    .post-toc-item a {
+      transition: none;
+    }
+
+    .post-toc[data-ready][data-toc-active] .post-toc-panel {
+      transform: none;
+    }
+  }
+
+  @media print {
+    .post-toc {
+      display: none !important;
+    }
+  }
+
   /* --- Semantic footnotes with Tufte presentation ------------------------ */
 
   /* The published DOM stays semantic and readable without CSS: body blocks
@@ -6821,4 +7154,69 @@
 .collection-page-description,
 .collection-page-description p {
   line-height: 1.5;
+}
+
+/*
+ * Post heading copy-link anchors.
+ * Kept outside @layer components so text-decoration and color cleanly override
+ * the unlayered `.prose a` rule.
+ */
+.prose a.heading-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  inline-size: 1.15em;
+  block-size: 1.15em;
+  margin-inline-start: 0.25em;
+  border-radius: var(--radius);
+  color: var(--site-reading-meta);
+  text-decoration: none;
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity 0.16s ease,
+    color 0.16s ease;
+}
+
+.prose a.heading-anchor svg {
+  inline-size: 0.66em;
+  block-size: 0.66em;
+}
+
+.prose a.heading-anchor .heading-anchor-hash,
+.prose a.heading-anchor .heading-anchor-check {
+  transition: opacity 0.15s ease;
+}
+
+.prose a.heading-anchor .heading-anchor-check {
+  opacity: 0;
+}
+
+.prose a.heading-anchor[data-copied] .heading-anchor-hash {
+  opacity: 0;
+}
+
+.prose a.heading-anchor[data-copied] .heading-anchor-check {
+  opacity: 1;
+}
+
+.prose
+  :where([data-post-heading]:is(:hover, :focus-within, :target))
+  a.heading-anchor,
+.prose a.heading-anchor:is(:focus-visible, [data-copied]) {
+  opacity: 0.6;
+}
+
+.prose a.heading-anchor:is(:hover, :focus-visible, [data-copied]) {
+  opacity: 1;
+  color: var(--site-reading-body);
+  text-decoration: none;
+}
+
+@media print {
+  .prose a.heading-anchor {
+    display: none !important;
+  }
 }

@@ -594,6 +594,11 @@ msgstr "Conditions choose what belongs here, not you. Posts you write later join
 msgid "Confirm Password"
 msgstr "Confirm Password"
 
+#. @context: Table of contents navigation label on a post page
+#: src/ui/pages/PostToc.tsx
+msgid "Contents"
+msgstr "Contents"
+
 #. @context: Feed link from a truncated article excerpt to its full page
 #: src/ui/feed/NoteCard.tsx
 msgid "Continue →"
@@ -608,6 +613,11 @@ msgstr "Continue writing this draft"
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Controls"
 msgstr "Controls"
+
+#. @context: Accessible label for the anchor link next to a post heading
+#: src/ui/pages/PostPage.tsx
+msgid "Copy link to {heading}"
+msgstr "Copy link to {heading}"
 
 #. @context: Collection dialog load failure
 #: src/ui/shared/collection-management-labels.ts

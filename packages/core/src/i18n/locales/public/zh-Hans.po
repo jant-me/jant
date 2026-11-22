@@ -594,6 +594,11 @@ msgstr ""
 msgid "Confirm Password"
 msgstr ""
 
+#. @context: Table of contents navigation label on a post page
+#: src/ui/pages/PostToc.tsx
+msgid "Contents"
+msgstr "目录"
+
 #. @context: Feed link from a truncated article excerpt to its full page
 #: src/ui/feed/NoteCard.tsx
 msgid "Continue →"
@@ -608,6 +613,11 @@ msgstr ""
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Controls"
 msgstr ""
+
+#. @context: Accessible label for the anchor link next to a post heading
+#: src/ui/pages/PostPage.tsx
+msgid "Copy link to {heading}"
+msgstr "复制「{heading}」的链接"
 
 #. @context: Collection dialog load failure
 #: src/ui/shared/collection-management-labels.ts
