@@ -116,7 +116,6 @@ async function createAgentReadyTestSite() {
     quoteText: "Simplicity is prerequisite for reliability.",
     title: "Edsger Dijkstra",
     url: "https://example.org/dijkstra",
-    bodyMarkdown: "Still holds decades later.",
     status: "published",
     visibility: "public",
   });
@@ -321,6 +320,10 @@ describe("AI agent-ready surface", () => {
     expect(quoteMd).toContain(
       "— [Edsger Dijkstra](https://example.org/dijkstra)",
     );
+    // Commentary-free quote must not repeat quoteText as a plain paragraph
+    expect(
+      quoteMd.match(/Simplicity is prerequisite for reliability\./g)?.length,
+    ).toBe(1);
 
     // Private and draft posts stay 404 to signed-out callers
     expect((await req("/secret-diary.md")).status).toBe(404);

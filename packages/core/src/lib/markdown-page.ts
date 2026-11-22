@@ -225,7 +225,22 @@ function extractPostBodyMarkdown(post: PostView): string {
     const md = toBodyMarkdown(post.id, post.rawBody);
     if (md) return md.trim();
   }
-  return post.summary?.trim() ?? "";
+  // Quotes and commentary-free links derive `post.summary` from `quoteText` or
+  // `url`, which are already rendered above — don't duplicate them as a body.
+  if (post.format === "quote") return "";
+  const summary = post.summary?.trim() ?? "";
+  if (post.format === "link" && summary === post.url?.trim()) return "";
+  return summary;
+}
+
+function clipFrontmatterTitle(text: string, maxChars = 80): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxChars) return normalized;
+  const slice = normalized.slice(0, maxChars);
+  const lastSpace = slice.lastIndexOf(" ");
+  const cut =
+    lastSpace > Math.floor(maxChars * 0.6) ? slice.slice(0, lastSpace) : slice;
+  return `${cut.trimEnd()}...`;
 }
 
 function renderMediaAttachmentsMarkdown(
@@ -375,7 +390,11 @@ export function renderPostThreadMarkdown(
   const collectionLabels = root.collections.map((col) => col.title);
 
   const frontmatter = renderFrontmatter([
-    ["title", root.title || root.summary?.slice(0, 80) || siteName],
+    [
+      "title",
+      root.title ||
+        (root.summary ? clipFrontmatterTitle(root.summary) : siteName),
+    ],
     ["url", canonicalHref],
     ["markdown_url", canonicalMarkdownUrl],
     ["format", root.format],
