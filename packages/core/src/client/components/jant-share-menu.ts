@@ -11,12 +11,15 @@
 
 import { LitElement, html, nothing } from "lit";
 import {
+  computePostMenuPlacement,
   copyPostLink,
   copyPostMarkdown,
   iconImage,
   iconLink,
   iconMarkdown,
-  menuOpensAbove,
+  isPostMenuSheetViewport,
+  postMenuSurfaceStyle,
+  type PostMenuPlacement,
 } from "../post-menu-shared.js";
 import { openShareImage, warmShareImage } from "../share-launch.js";
 
@@ -32,24 +35,24 @@ interface SharedPost {
 export class JantShareMenu extends LitElement {
   static properties = {
     _post: { state: true },
-    _x: { state: true },
-    _y: { state: true },
-    _openAbove: { state: true },
+    _isSheet: { state: true },
   };
 
   declare _post: SharedPost | null;
-  declare _x: number;
-  declare _y: number;
-  declare _openAbove: boolean;
+  declare _isSheet: boolean;
 
   #trigger: HTMLElement | null = null;
+  #placement: PostMenuPlacement = {
+    x: 0,
+    y: 0,
+    anchorBottom: false,
+    maxHeight: ESTIMATED_MENU_HEIGHT,
+  };
 
   constructor() {
     super();
     this._post = null;
-    this._x = 0;
-    this._y = 0;
-    this._openAbove = false;
+    this._isSheet = false;
   }
 
   createRenderRoot() {
@@ -60,14 +63,28 @@ export class JantShareMenu extends LitElement {
     super.connectedCallback();
     document.addEventListener("click", this.#handleDocumentClick);
     document.addEventListener("keydown", this.#handleKeydown);
-    window.addEventListener("resize", this.#place);
+    window.addEventListener("resize", this.#handleViewportChange);
+    globalThis.visualViewport?.addEventListener(
+      "resize",
+      this.#handleViewportChange,
+    );
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener("click", this.#handleDocumentClick);
     document.removeEventListener("keydown", this.#handleKeydown);
-    window.removeEventListener("resize", this.#place);
+    window.removeEventListener("resize", this.#handleViewportChange);
+    globalThis.visualViewport?.removeEventListener(
+      "resize",
+      this.#handleViewportChange,
+    );
+  }
+
+  updated() {
+    if (this._post && !this._isSheet) {
+      this.#place(true);
+    }
   }
 
   #handleDocumentClick = (event: Event) => {
@@ -91,10 +108,12 @@ export class JantShareMenu extends LitElement {
     this.#trigger = trigger;
     trigger.setAttribute("aria-expanded", "true");
     this._post = { id, permalink };
-    this.#place();
+    this.#place(false);
     warmShareImage();
     void this.updateComplete.then(() => {
-      this.querySelector<HTMLElement>("[role='menuitem']")?.focus();
+      this.querySelector<HTMLElement>("[role='menuitem']")?.focus({
+        preventScroll: true,
+      });
     });
   };
 
@@ -105,20 +124,44 @@ export class JantShareMenu extends LitElement {
     this.#close();
   };
 
-  /** Right-aligned to the trigger, above it when there is no room below. */
-  #place = () => {
+  #handleViewportChange = () => {
+    this.#place(true);
+  };
+
+  /** Right-aligned to the trigger on desktop, clamped inside the viewport; sheet on phones. */
+  #place(measure = false) {
     const trigger = this.#trigger;
     if (!this._post || !trigger) return;
     if (!trigger.isConnected) {
       this.#close({ restoreFocus: false });
       return;
     }
-    const rect = trigger.getBoundingClientRect();
-    this._openAbove = menuOpensAbove(rect, ESTIMATED_MENU_HEIGHT);
-    this._x = window.scrollX + rect.right;
-    this._y =
-      window.scrollY + (this._openAbove ? rect.top - 6 : rect.bottom + 6);
-  };
+    const nextSheet = isPostMenuSheetViewport();
+    const sheetChanged = nextSheet !== this._isSheet;
+    this._isSheet = nextSheet;
+    if (nextSheet) return;
+
+    const panel = measure
+      ? this.querySelector<HTMLElement>(".post-menu-panel")
+      : null;
+    const panelRect = panel?.getBoundingClientRect();
+    const placement = computePostMenuPlacement(
+      trigger.getBoundingClientRect(),
+      {
+        panelHeight: panelRect?.height ?? 0,
+        panelWidth: panelRect?.width ?? 0,
+        estimatedHeight: ESTIMATED_MENU_HEIGHT,
+      },
+    );
+    this.#placement = placement;
+
+    if (!sheetChanged) {
+      const wrapper = this.querySelector<HTMLElement>(".post-menu-surface");
+      if (wrapper) {
+        wrapper.setAttribute("style", postMenuSurfaceStyle(placement));
+      }
+    }
+  }
 
   #close({ restoreFocus = true }: { restoreFocus?: boolean } = {}) {
     const trigger = this.#trigger;
@@ -150,16 +193,16 @@ export class JantShareMenu extends LitElement {
 
   render() {
     if (!this._post) return nothing;
-    const transform = this._openAbove
-      ? "transform:translate(-100%, -100%);"
-      : "transform:translateX(-100%);";
-    const style = `position:absolute;z-index:100;left:${Math.round(this._x)}px;top:${Math.round(this._y)}px;${transform}`;
     return html`
       <div
         class="post-menu-backdrop"
         @click=${() => this.#close({ restoreFocus: false })}
       ></div>
-      <div class="dropdown-menu" style=${style}>
+      <div
+        class="dropdown-menu post-menu-surface"
+        ?data-post-menu-sheet=${this._isSheet}
+        style=${this._isSheet ? nothing : postMenuSurfaceStyle(this.#placement)}
+      >
         <div data-popover aria-hidden="false" class="!static post-menu-panel">
           <div class="post-menu-view post-menu-main">
             <div role="menu" class="post-menu-list">

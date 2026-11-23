@@ -4219,10 +4219,18 @@
     max-width: min(21rem, calc(100vw - 1.25rem));
   }
 
+  .post-menu-surface .post-menu-panel {
+    margin: 0;
+    padding: 0;
+  }
+
   .post-menu-panel {
+    display: flex;
+    flex-direction: column;
     width: min(15rem, calc(100vw - 1.25rem));
     min-width: min(15rem, calc(100vw - 1.25rem));
     max-width: min(17rem, calc(100vw - 1.25rem));
+    max-height: var(--post-menu-max-height, calc(100dvh - 1.5rem));
     padding: 0;
     border-radius: 1.75rem;
     border: 1px solid color-mix(in srgb, var(--site-divider) 74%, white 26%);
@@ -4240,12 +4248,15 @@
   .post-menu-view {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     gap: 0;
   }
 
   .post-menu-panel-header {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
     gap: 0.65rem;
     padding: 0.95rem 1rem 0.78rem;
     border-bottom: 1px solid
@@ -4294,7 +4305,12 @@
   .post-menu-list {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     gap: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 0.18rem 0 0.24rem;
   }
 
@@ -4669,6 +4685,7 @@
   .post-menu-picker-search {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
     gap: 0.55rem;
     margin: 0.4rem 0.15rem 0.45rem;
     padding: 0.65rem 0.78rem;
@@ -4697,8 +4714,12 @@
   }
 
   .post-menu-picker-list {
+    flex: 1 1 auto;
+    min-height: 0;
     max-height: 240px;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 0 0.15rem;
   }
 
@@ -4797,6 +4818,7 @@
   }
 
   .post-menu-picker-footer {
+    flex-shrink: 0;
     margin-top: 0.35rem;
     padding: 0.35rem 0.22rem 0.12rem;
     border-top: 1px solid
@@ -5159,12 +5181,12 @@
     .post-menu-panel [role="menuitemradio"],
     .post-menu-picker-option,
     .post-menu-picker-add {
-      min-height: 3.25rem;
+      min-height: 2.95rem;
     }
 
-    /* Grows with the rows around it, which the rule above just made taller. */
+    /* Grows with the rows around it, keeping secondary row actions balanced. */
     .post-menu-panel .post-menu-row .post-menu-row-action {
-      min-height: 2.75rem;
+      min-height: 2.5rem;
       padding: 0 0.75rem;
     }
 
@@ -5172,13 +5194,117 @@
     .post-menu-item-trailing,
     .post-menu-picker-icon,
     .post-menu-picker-marker {
-      width: 1.45rem;
-      height: 1.45rem;
+      width: 1.3rem;
+      height: 1.3rem;
     }
 
     .post-menu-picker-search {
       margin-bottom: 0.55rem;
       padding: 0.78rem 0.9rem;
+    }
+  }
+
+  @keyframes post-menu-backdrop-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes post-menu-sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  /* On phones the post menu rises from the bottom edge as an action sheet so
+     long author menus never collide with the top of the page (e.g. a pinned
+     post at scrollY = 0) and every action stays in thumb reach. */
+  @media (max-width: 699px) {
+    .post-menu-backdrop {
+      background: rgba(0, 0, 0, 0.32);
+      touch-action: none;
+      animation: post-menu-backdrop-in 0.2s ease both;
+    }
+
+    .dropdown-menu.post-menu-surface {
+      position: fixed;
+      inset: auto 0 0 0;
+      z-index: 100;
+      display: flex;
+      width: 100%;
+      transform: none;
+      animation: post-menu-sheet-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .post-menu-surface .post-menu-panel,
+    .post-menu-surface .post-menu-panel:has(.post-menu-collection-picker),
+    .post-menu-surface .post-menu-panel:has(.post-menu-language-panel) {
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+      max-height: min(85dvh, calc(100dvh - 1.5rem));
+      border-radius: 1.5rem 1.5rem 0 0;
+      border-bottom: none;
+      border-inline: none;
+      margin: 0;
+      padding: 0 0 max(0.5rem, env(safe-area-inset-bottom));
+      box-shadow: 0 -16px 40px -24px rgba(15, 23, 42, 0.28);
+    }
+
+    .post-menu-surface .post-menu-panel::before {
+      content: "";
+      display: block;
+      flex-shrink: 0;
+      width: 2.25rem;
+      height: 0.25rem;
+      margin: 0.55rem auto 0.2rem;
+      border-radius: 999px;
+      background: color-mix(
+        in srgb,
+        var(--site-text-secondary) 28%,
+        transparent
+      );
+    }
+
+    .post-menu-surface .post-menu-panel-header {
+      padding: 0.55rem 1rem 0.75rem;
+    }
+
+    .post-menu-surface .post-menu-section {
+      padding: 0 0.5rem;
+    }
+
+    .post-menu-surface .post-menu-section + .post-menu-section {
+      margin-top: 0.05rem;
+      padding-top: 0.2rem;
+    }
+
+    .post-menu-surface .post-menu-picker-search {
+      margin: 0.45rem 0.65rem 0.45rem;
+    }
+
+    .post-menu-surface .post-menu-picker-list {
+      max-height: min(45dvh, 22rem);
+      padding: 0 0.5rem;
+    }
+
+    .post-menu-surface .post-menu-picker-footer {
+      padding: 0.35rem 0.5rem 0.12rem;
+    }
+  }
+
+  @media (max-width: 699px) and (prefers-reduced-motion: reduce) {
+    .post-menu-backdrop,
+    .dropdown-menu.post-menu-surface {
+      animation: none;
     }
   }
 

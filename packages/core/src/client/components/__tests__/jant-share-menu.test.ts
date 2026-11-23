@@ -199,4 +199,27 @@ describe("JantShareMenu", () => {
     expect(openShareImageMock).toHaveBeenCalledWith("post-1", first);
     expect(menu.querySelector("[role='menu']")).toBeNull();
   });
+
+  it("renders as a bottom sheet on phone viewports and anchored popover on desktop", async () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    });
+    const { menu, first } = await createMenu();
+    await open(menu, first);
+
+    const surface = menu.querySelector<HTMLElement>(".post-menu-surface");
+    expect(surface?.hasAttribute("data-post-menu-sheet")).toBe(true);
+    expect(surface?.getAttribute("style")).toBeNull();
+
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 1024,
+    });
+    window.dispatchEvent(new Event("resize"));
+    await menu.updateComplete;
+
+    expect(surface?.hasAttribute("data-post-menu-sheet")).toBe(false);
+    expect(surface?.getAttribute("style")).toContain("position:absolute");
+  });
 });
