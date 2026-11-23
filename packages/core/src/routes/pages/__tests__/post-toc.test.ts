@@ -3,7 +3,7 @@ import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { pageRoutes } from "../page.js";
 
 describe("Automatic post table of contents and heading anchors", () => {
-  it("automatically renders TOC and heading anchors for notes with 3+ headings including H1", async () => {
+  it("automatically renders TOC and heading anchors for notes with 5+ headings including H1", async () => {
     const { app, services } = createTestApp();
     app.route("/", pageRoutes);
 
@@ -15,6 +15,10 @@ describe("Automatic post table of contents and heading anchors", () => {
         "First paragraph.",
         "## What to bring",
         "Notebook and pencil.",
+        "## Midday stop",
+        "Coffee by the river.",
+        "## Afternoon notes",
+        "More observations.",
         "# Evening review",
         "Final notes.",
         "> ## Quoted heading",
@@ -35,13 +39,14 @@ describe("Automatic post table of contents and heading anchors", () => {
     expect(html).not.toContain("section-quoted-heading");
   });
 
-  it("adds heading anchors without TOC when a note has fewer than 3 headings", async () => {
+  it("adds heading anchors without TOC when a note has fewer than 5 headings", async () => {
     const { app, services } = createTestApp();
     app.route("/", pageRoutes);
 
     const post = await services.posts.create({
       format: "note",
-      bodyMarkdown: "## Part one\n\nSome text.\n\n## Part two\n\nMore text.",
+      bodyMarkdown:
+        "## Part one\n\nText.\n\n## Part two\n\nText.\n\n## Part three\n\nText.\n\n## Part four\n\nText.",
     });
 
     const response = await app.request(`/${post.slug}`);
@@ -61,7 +66,7 @@ describe("Automatic post table of contents and heading anchors", () => {
       format: "link",
       url: "https://example.com/article",
       title: "Shared link",
-      bodyMarkdown: "## One\n\n## Two\n\n## Three",
+      bodyMarkdown: "## One\n\n## Two\n\n## Three\n\n## Four\n\n## Five",
     });
 
     const response = await app.request(`/${post.slug}`);

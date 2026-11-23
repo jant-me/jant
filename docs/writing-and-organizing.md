@@ -161,7 +161,7 @@ Jant has no separate "page" type — a standalone page is just a Hidden from Lat
 
 Once published, the page lives at `/about` — Jant derives the slug from the title. To give visitors a way in, add a link to `/about` under **Settings → Appearance → Navigation**.
 
-Any Note with section headings (`#`, `##`, or `###`) gets a hover link beside each heading to copy its direct address. When a Note is longer than a screen and has at least three headings, Jant automatically shows a table of contents — a quiet bar outline in the left margin on wide screens that opens on hover, and a floating button in the bottom-right corner on narrow or touch screens.
+Any Note with section headings (`#`, `##`, or `###`) gets a hover link beside each heading to copy its direct address. When a Note spans at least two screens and has at least five headings, Jant automatically shows a table of contents — a quiet bar outline in the left margin on wide screens that opens on hover, and a floating button in the bottom-right corner on narrow or touch screens.
 
 ## Visibility and curation
 

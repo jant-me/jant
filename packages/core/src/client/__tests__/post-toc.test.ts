@@ -118,15 +118,15 @@ describe("post-toc client interactions", () => {
     expect(button.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("stays inactive when a post fits within one viewport", () => {
+  it("stays inactive when a post is shorter than two viewports", () => {
     renderTocDom();
     vi.spyOn(globalThis, "innerHeight", "get").mockReturnValue(900);
     const body = document.querySelector<HTMLElement>("[data-post-body]")!;
     vi.spyOn(body, "getBoundingClientRect").mockReturnValue({
-      height: 500,
+      height: 1200,
     } as globalThis.DOMRect);
     vi.spyOn(document.scrollingElement!, "scrollHeight", "get").mockReturnValue(
-      700,
+      1500,
     );
 
     initPostToc(document);

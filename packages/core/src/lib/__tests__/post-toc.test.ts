@@ -8,6 +8,8 @@ describe("enhancePostHeadings", () => {
       "<p>Intro</p>",
       "<h2>Details</h2>",
       "<h3>Caveats</h3>",
+      "<h2>Examples</h2>",
+      "<h2>Summary</h2>",
     ].join("");
     const result = enhancePostHeadings(html, {
       getAnchorLabel: (heading) => `Copy link to ${heading}`,
@@ -18,6 +20,8 @@ describe("enhancePostHeadings", () => {
       { id: "section-overview", label: "Overview", level: 1, depth: 0 },
       { id: "section-details", label: "Details", level: 2, depth: 1 },
       { id: "section-caveats", label: "Caveats", level: 3, depth: 2 },
+      { id: "section-examples", label: "Examples", level: 2, depth: 1 },
+      { id: "section-summary", label: "Summary", level: 2, depth: 1 },
     ]);
     expect(result.bodyHtml).toContain('id="section-overview"');
     expect(result.bodyHtml).toContain('data-post-heading=""');
@@ -26,20 +30,22 @@ describe("enhancePostHeadings", () => {
   });
 
   it("normalizes h2 + h3 posts so h2 starts at depth 0", () => {
-    const html = "<h2>First</h2><h3>Nested</h3><h2>Second</h2>";
+    const html =
+      "<h2>First</h2><h3>Nested</h3><h2>Second</h2><h2>Third</h2><h2>Fourth</h2>";
     const result = enhancePostHeadings(html);
 
     expect(result.showToc).toBe(true);
-    expect(result.entries.map((entry) => entry.depth)).toEqual([0, 1, 0]);
+    expect(result.entries.map((entry) => entry.depth)).toEqual([0, 1, 0, 0, 0]);
   });
 
-  it("adds heading anchors without enabling TOC when fewer than 3 headings exist", () => {
-    const html = "<h2>Only one</h2><p>Body</p><h2>And two</h2>";
+  it("adds heading anchors without enabling TOC when fewer than 5 headings exist", () => {
+    const html =
+      "<h2>One</h2><p>Body</p><h2>Two</h2><h2>Three</h2><h2>Four</h2>";
     const result = enhancePostHeadings(html);
 
     expect(result.showToc).toBe(false);
-    expect(result.entries).toHaveLength(2);
-    expect(result.bodyHtml).toContain('id="section-only-one"');
+    expect(result.entries).toHaveLength(4);
+    expect(result.bodyHtml).toContain('id="section-one"');
     expect(result.bodyHtml).toContain('data-heading-anchor=""');
   });
 
@@ -48,6 +54,8 @@ describe("enhancePostHeadings", () => {
       '<h2>Start &amp; <em>continue</em><sup class="footnote-ref"><a href="#fn-1">1</a></sup></h2>',
       "<h3>中文标题</h3>",
       "<h2>Start &amp; continue</h2>",
+      "<h2>Next</h2>",
+      "<h2>End</h2>",
       "<blockquote><h2>Quoted heading</h2></blockquote>",
     ].join("");
     const result = enhancePostHeadings(html);
@@ -67,6 +75,8 @@ describe("enhancePostHeadings", () => {
         level: 2,
         depth: 0,
       },
+      { id: "section-next", label: "Next", level: 2, depth: 0 },
+      { id: "section-end", label: "End", level: 2, depth: 0 },
     ]);
     expect(result.bodyHtml).not.toContain("section-quoted-heading");
   });

@@ -4,7 +4,7 @@ type Node = DefaultTreeAdapterMap["childNode"];
 type Element = DefaultTreeAdapterMap["element"];
 
 /** Minimum number of headings required before showing the table of contents. */
-export const MIN_TOC_HEADINGS = 3;
+export const MIN_TOC_HEADINGS = 5;
 
 export type PostHeadingLevel = 1 | 2 | 3;
 export type PostTocDepth = 0 | 1 | 2;

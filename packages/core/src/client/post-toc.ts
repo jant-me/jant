@@ -7,8 +7,8 @@ const HEADING_ANCHOR_SELECTOR = "[data-heading-anchor]";
 
 const DESKTOP_HOVER_QUERY = "(max-width: 1024px), (hover: none)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-const MIN_BODY_VIEWPORT_RATIO = 1.15;
-const MIN_SCROLL_VIEWPORT_RATIO = 1.35;
+const MIN_BODY_VIEWPORT_RATIO = 1.6;
+const MIN_SCROLL_VIEWPORT_RATIO = 2.0;
 const HOVER_CLOSE_DELAY_MS = 180;
 const COPIED_RESET_MS = 1600;
 
