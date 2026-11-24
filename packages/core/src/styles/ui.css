@@ -21,7 +21,7 @@
     max-block-size: 100%;
     overflow: hidden;
     padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
-    background-color: color-mix(in srgb, var(--color-black) 75%, transparent);
+    background-color: color-mix(in srgb, var(--color-black) 55%, transparent);
     color: var(--color-white);
     font-size: var(--text-sm);
     line-height: var(--text-sm--line-height);
