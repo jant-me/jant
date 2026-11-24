@@ -138,63 +138,105 @@ function unusedFontFamilies(): string[] {
   return [...declared].filter((family) => !used.has(family));
 }
 
-function isReadable(link: globalThis.HTMLLinkElement): boolean {
-  try {
-    return link.sheet?.cssRules != null;
-  } catch {
-    return false;
-  }
-}
-
 /**
- * Fetch `url` as snapdom will, and again past the browser's cache if the
- * cached copy fails.
- */
-async function cacheReadableCopy(url: string): Promise<void> {
-  const read = async (cache: "default" | "reload"): Promise<boolean> => {
-    try {
-      // snapdom fetches another origin without credentials.
-      const response = await fetch(url, { credentials: "omit", cache });
-      // The cache keeps the copy once its body has been read.
-      await response.blob();
-      return response.ok;
-    } catch {
-      return false;
-    }
-  };
-  if (!(await read("default"))) await read("reload");
-}
-
-/**
- * Let snapdom read the page's stylesheets on the asset host, and name the
- * host for its `fontStylesheetDomains`.
+ * The asset host for snapdom's `fontStylesheetDomains`, or none when assets
+ * share the page's origin.
  *
  * snapdom embeds a web font only from a stylesheet on the page's origin, or
- * one it may fetch from a host it is told about. The font themes' faces are
- * in `client.css`, which `ASSET_BASE_URL` puts on another origin. Left out,
- * the picture paints in a local font while the card was laid out in the web
- * font: lines break in other places and a gap opens under the title.
- *
- * snapdom's fetch reads the browser's cache, and the copy there came from
- * the page's own link, made without CORS. An asset host like R2 sends
- * `Access-Control-Allow-Origin` only to a request that carries an `Origin`,
- * so Chromium fails a CORS read of that copy. A sheet whose copy fails is
- * fetched again past the cache, which replaces it.
+ * one it may fetch from a host it is told about. The font themes' and CJK
+ * faces live in `client.css` and `client-cjk.css`, which `ASSET_BASE_URL`
+ * puts on another origin. Left out, the picture paints in a local font while
+ * the card was laid out in the web font: lines break in other places and a
+ * gap opens under the title.
  *
  * @returns The asset host, or none when assets share the page's origin
  */
-async function readableAssetStylesheets(): Promise<string[]> {
+function assetFontDomains(): string[] {
   const base = assetBaseUrl();
-  if (base.origin === window.location.origin) return [];
-  const links = document.querySelectorAll<globalThis.HTMLLinkElement>(
-    'link[rel~="stylesheet"]',
-  );
-  await Promise.all(
-    Array.from(links)
-      .filter((link) => link.href.startsWith(base.href) && !isReadable(link))
-      .map((link) => cacheReadableCopy(link.href)),
-  );
-  return [base.host];
+  return base.origin === window.location.origin ? [] : [base.host];
+}
+
+/**
+ * Run `fn` with cross-origin `GET` fetches retrying once past the browser's
+ * cache when a cached copy fails.
+ *
+ * Two browser cache quirks break snapdom's CORS fetches of stylesheets and
+ * font files on another origin (such as `ASSET_BASE_URL`):
+ * - The page links `client.css` and `client-cjk.css` without CORS, and an
+ *   asset host like R2 sends `Access-Control-Allow-Origin` only when an
+ *   `Origin` is sent, so Chromium fails a CORS read of that cached copy.
+ * - On iOS Safari, `fetch(..., { credentials: "omit" })` throws
+ *   `TypeError: Load failed` from cache for `.woff2` files WebKit's own
+ *   `@font-face` loader already fetched, even when the host answered with
+ *   `Access-Control-Allow-Origin: *`. snapdom leaves those URLs uninlined in
+ *   the SVG, where the image sandbox blocks network loads, so the affected
+ *   CJK subsets fall back to the system sans font while other subsets render
+ *   in serif.
+ *
+ * Retrying a failed default-cache `GET` once with `cache: "reload"` fetches a
+ * readable copy and replaces the unusable cache entry. Aborted requests (such
+ * as snapdom's own timeout) are not retried. The patch lives only as long as
+ * `fn`.
+ */
+async function withReadableAssetFetch<T>(fn: () => Promise<T>): Promise<T> {
+  const realFetch = globalThis.fetch;
+  if (typeof realFetch !== "function") return fn();
+  const pageOrigin = window.location.origin;
+
+  const patchedFetch: typeof globalThis.fetch = async (input, init) => {
+    const isRequest =
+      typeof globalThis.Request === "function" &&
+      input instanceof globalThis.Request;
+    const rawUrl =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+    const method = (
+      init?.method ?? (isRequest ? input.method : "GET")
+    ).toUpperCase();
+    const cache = init?.cache ?? (isRequest ? input.cache : undefined);
+    const signal = init?.signal ?? (isRequest ? input.signal : undefined);
+
+    let crossOrigin = false;
+    try {
+      crossOrigin = new URL(rawUrl, window.location.href).origin !== pageOrigin;
+    } catch {
+      // Leave `crossOrigin` false when the URL cannot be parsed.
+    }
+
+    try {
+      return await realFetch.call(globalThis, input, init);
+    } catch (error) {
+      if (
+        !crossOrigin ||
+        method !== "GET" ||
+        (cache && cache !== "default") ||
+        signal?.aborted ||
+        !(error instanceof TypeError)
+      ) {
+        throw error;
+      }
+      const reloadInit: globalThis.RequestInit = { ...init, cache: "reload" };
+      if (isRequest) {
+        return realFetch.call(
+          globalThis,
+          new globalThis.Request(input, reloadInit),
+        );
+      }
+      return realFetch.call(globalThis, input, reloadInit);
+    }
+  };
+
+  globalThis.fetch = patchedFetch;
+  try {
+    return await fn();
+  } finally {
+    if (globalThis.fetch === patchedFetch) {
+      globalThis.fetch = realFetch;
+    }
+  }
 }
 
 /** Fonts the card uses, then every image in it, decoded. */
@@ -447,8 +489,6 @@ export async function prepareShareCard(
   host.innerHTML = cardHtml;
   document.body.appendChild(host);
   const dispose = () => host.remove();
-  // Alongside the layout; only the painting needs it.
-  const fontStylesheetDomains = readableAssetStylesheets();
   try {
     const card = host.querySelector<HTMLElement>("[data-share-card]");
     if (!card) throw new Error("The share card is missing.");
@@ -468,16 +508,18 @@ export async function prepareShareCard(
           const paperShadow = readPaperShadow(card);
           host.dataset.capturing = "";
           const canvas = await withTimeout(
-            withSettledFontsReady(async () => {
-              const capture = await snapdom(card, {
-                scale: SCALE,
-                dpr: 1,
-                reconcile: true,
-                excludeFonts: { families: excludedFamilies },
-                fontStylesheetDomains: await fontStylesheetDomains,
-              });
-              return capture.toCanvas();
-            }),
+            withSettledFontsReady(() =>
+              withReadableAssetFetch(async () => {
+                const capture = await snapdom(card, {
+                  scale: SCALE,
+                  dpr: 1,
+                  reconcile: true,
+                  excludeFonts: { families: excludedFamilies },
+                  fontStylesheetDomains: assetFontDomains(),
+                });
+                return capture.toCanvas();
+              }),
+            ),
             CAPTURE_TIMEOUT_MS,
           );
           const context = canvas.getContext("2d");

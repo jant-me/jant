@@ -277,86 +277,118 @@ describe("capture", () => {
     }) as unknown as typeof snapdom);
   }
 
-  /** Give the page these stylesheet links, each readable to it or not. */
-  function linkStylesheets(sheets: Array<[href: string, readable: boolean]>) {
-    const links = sheets.map(([href, readable]) => {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = href;
-      Object.defineProperty(link, "sheet", {
-        get() {
-          if (!readable)
-            throw new globalThis.DOMException("No rules", "SecurityError");
-          return { cssRules: [] };
-        },
-      });
-      return link;
-    });
-    const query = document.querySelectorAll.bind(document);
-    vi.spyOn(document, "querySelectorAll").mockImplementation(((
-      selector: string,
-    ) =>
-      selector === 'link[rel~="stylesheet"]'
-        ? links
-        : query(selector)) as typeof document.querySelectorAll);
-  }
-
-  it("lets snapdom read the asset host's stylesheets for their fonts", async () => {
+  it("names the asset host and retries failed cross-origin asset fetches past the cache", async () => {
     const base = "https://media.example.com/_assets";
     document.documentElement.dataset.assetBasePath = base;
     const steps: string[] = [];
     stubPainting(steps);
-    linkStylesheets([
-      // Linked without CORS, and its cached copy has no CORS header.
-      [`${base}/client.css`, false],
-      // Linked without CORS too, but its cached copy reads.
-      [`${base}/client-cjk.css`, false],
-      // Linked with CORS: snapdom reads it already.
-      [`${base}/client-share.css`, true],
-      // Not the site's: its host may not answer with CORS at all.
-      ["https://fonts.example.net/serif.css", false],
-    ]);
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string, init: globalThis.RequestInit) => {
-        steps.push(`${init.cache} ${url.slice(base.length + 1)}`);
-        if (url.endsWith("/client.css") && init.cache === "default") {
-          throw new TypeError("Failed to fetch");
+
+    const calls: Array<{
+      url: string;
+      init: globalThis.RequestInit | undefined;
+    }> = [];
+    const realFetch = vi.fn(
+      async (
+        input: globalThis.RequestInfo | URL,
+        init?: globalThis.RequestInit,
+      ) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+        calls.push({ url, init });
+        if (
+          (url.endsWith("/client-cjk.css") || url.endsWith("/subset.woff2")) &&
+          init?.cache !== "reload"
+        ) {
+          throw new TypeError("Load failed");
         }
-        return new Response("");
-      }),
+        return new Response("ok");
+      },
     );
+    vi.stubGlobal("fetch", realFetch);
+
+    const { context } = recordingContext(1620, 2160);
+    const canvas = Object.assign(context.canvas, {
+      getContext: () => context,
+      toBlob: (done: (blob: Blob) => void) => done(new Blob(["png"])),
+    });
+    vi.mocked(snapdom).mockImplementation((async () => {
+      steps.push("paint");
+      // Simulate snapdom reading a cached stylesheet and a cached woff2 subset
+      // whose default-cache copies fail in Safari/Chromium, plus one that hits.
+      const css = await fetch(`${base}/client-cjk.css`, {
+        credentials: "omit",
+      });
+      const font = await fetch(`${base}/chunks/subset.woff2`, {
+        credentials: "omit",
+      });
+      const cached = await fetch(`${base}/chunks/cached.woff2`, {
+        credentials: "omit",
+      });
+      expect(await css.text()).toBe("ok");
+      expect(await font.text()).toBe("ok");
+      expect(await cached.text()).toBe("ok");
+      return { toCanvas: async () => canvas };
+    }) as unknown as typeof snapdom);
 
     const prepared = await prepareShareCard("<div data-share-card></div>");
     await prepared.capture();
 
-    expect(steps).toEqual([
-      "default client.css",
-      "default client-cjk.css",
-      "reload client.css",
-      "paint",
-    ]);
-    expect(fetch).toHaveBeenCalledWith(`${base}/client.css`, {
-      credentials: "omit",
-      cache: "reload",
-    });
+    expect(globalThis.fetch).toBe(realFetch);
     expect(vi.mocked(snapdom).mock.lastCall?.[1]).toMatchObject({
       fontStylesheetDomains: ["media.example.com"],
     });
+    expect(
+      calls.map(
+        ({ url, init }) =>
+          `${init?.cache ?? "default"} ${url.slice(base.length + 1)}`,
+      ),
+    ).toEqual([
+      "default client-cjk.css",
+      "reload client-cjk.css",
+      "default chunks/subset.woff2",
+      "reload chunks/subset.woff2",
+      "default chunks/cached.woff2",
+    ]);
+    expect(calls[3]!.init).toEqual({ credentials: "omit", cache: "reload" });
   });
 
-  it("fetches nothing when the assets share the page's origin", async () => {
+  it("does not retry same-origin, aborted, or non-default-cache fetches and restores fetch on error", async () => {
     document.documentElement.dataset.assetBasePath = "/_assets";
     stubPainting([]);
-    linkStylesheets([
-      [new URL("/_assets/client.css", window.location.href).href, true],
-    ]);
-    vi.stubGlobal("fetch", vi.fn());
+
+    const realFetch = vi.fn(async () => {
+      throw new TypeError("Load failed");
+    });
+    vi.stubGlobal("fetch", realFetch);
+
+    const controller = new AbortController();
+    controller.abort();
+    vi.mocked(snapdom).mockImplementation((async () => {
+      await expect(fetch("/_assets/chunks/local.woff2")).rejects.toThrow(
+        TypeError,
+      );
+      await expect(
+        fetch("https://media.example.com/_assets/chunks/a.woff2", {
+          signal: controller.signal,
+        }),
+      ).rejects.toThrow(TypeError);
+      await expect(
+        fetch("https://media.example.com/_assets/chunks/b.woff2", {
+          cache: "no-store",
+        }),
+      ).rejects.toThrow(TypeError);
+      throw new Error("capture failed");
+    }) as unknown as typeof snapdom);
 
     const prepared = await prepareShareCard("<div data-share-card></div>");
-    await prepared.capture();
+    await expect(prepared.capture()).rejects.toThrow("capture failed");
 
-    expect(fetch).not.toHaveBeenCalled();
+    expect(realFetch).toHaveBeenCalledTimes(3);
+    expect(globalThis.fetch).toBe(realFetch);
     expect(vi.mocked(snapdom).mock.lastCall?.[1]).toMatchObject({
       fontStylesheetDomains: [],
     });
