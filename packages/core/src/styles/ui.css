@@ -9,6 +9,26 @@
 @source "../ui/";
 
 @layer components {
+  .media-image-frame {
+    position: relative;
+  }
+
+  .media-image-alt {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    box-sizing: border-box;
+    max-block-size: 100%;
+    overflow: hidden;
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    background-color: color-mix(in srgb, var(--color-black) 75%, transparent);
+    color: var(--color-white);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    overflow-wrap: anywhere;
+    pointer-events: none;
+  }
+
   /* =========================================================================
    * Page Layout
    * ========================================================================= */

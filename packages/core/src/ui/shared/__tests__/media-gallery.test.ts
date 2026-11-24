@@ -56,6 +56,23 @@ describe("MediaGallery", () => {
     expect(html).not.toContain("object-contain");
   });
 
+  it("shows escaped alt text over an image and skips blank descriptions", () => {
+    const html = renderToString(
+      MediaGallery({
+        attachments: [
+          createMediaView({ altText: "  A sign reading <Closed>  " }),
+          createMediaView({ id: "media-2", altText: "  " }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('alt="  A sign reading &lt;Closed&gt;  "');
+    expect(html).toContain(
+      '<span class="media-image-alt" aria-hidden="true">A sign reading &lt;Closed&gt;</span>',
+    );
+    expect(html.match(/class="media-image-alt"/g)).toHaveLength(1);
+  });
+
   it("renders intrinsic video dimensions and keeps a blurhash backdrop", () => {
     const html = renderToString(
       MediaGallery({

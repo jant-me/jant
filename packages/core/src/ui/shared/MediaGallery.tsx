@@ -380,6 +380,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
           >
             {galleryItems.map((item) => {
               if (item._kind === "image") {
+                const alt = item.altText?.trim() ?? "";
                 const ratio = getMediaAspectRatio(item.width, item.height);
                 const placeholder = getMediaPlaceholderDataUrl(
                   item.blurhash,
@@ -411,7 +412,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                     key={item.id}
                     href={item.url}
                     data-lightbox-index={item._lbIdx}
-                    class={`${singleVisual ? "" : "shrink-0"} media-visual-frame`}
+                    class={`${singleVisual ? "" : "shrink-0"} media-visual-frame media-image-frame`}
                     style={{
                       ...(singleVisual
                         ? {
@@ -441,6 +442,11 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                       loading="lazy"
                       decoding="async"
                     />
+                    {alt && (
+                      <span class="media-image-alt" aria-hidden="true">
+                        {alt}
+                      </span>
+                    )}
                   </a>
                 );
               }
