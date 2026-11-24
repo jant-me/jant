@@ -24,12 +24,15 @@ import { looksLikeAddress } from "../../lib/url.js";
 import { pickPost } from "../post-picker.js";
 import { openShareImage, warmShareImage } from "../share-launch.js";
 import {
+  computePostMenuPlacement,
   copyPostLink,
   copyPostMarkdown,
   iconImage,
   iconLink,
   iconMarkdown,
-  menuOpensAbove,
+  isPostMenuSheetViewport,
+  postMenuSurfaceStyle,
+  type PostMenuPlacement,
 } from "../post-menu-shared.js";
 import {
   ensureComposeDialog,
@@ -134,7 +137,8 @@ type PostMenuView =
 const LANGUAGE_PANEL_FOCUS =
   "[data-post-menu-translation] a, [data-post-menu-translation-first], [data-post-menu-open-language-switch]";
 
-const ESTIMATED_MENU_HEIGHT = 360;
+/** Fallback height before the panel has been measured (9 desktop rows + dividers). */
+const ESTIMATED_MENU_HEIGHT = 460;
 
 export function removeLeadingFeedDivider(
   feedContainer: HTMLElement | null | undefined,
@@ -196,9 +200,7 @@ export class JantPostMenu extends LitElement {
     languages: { type: Array },
     _open: { state: true },
     _data: { state: true },
-    _x: { state: true },
-    _y: { state: true },
-    _openAbove: { state: true },
+    _isSheet: { state: true },
     _view: { state: true },
     _collections: { state: true },
     _collectionsLoading: { state: true },
@@ -213,9 +215,7 @@ export class JantPostMenu extends LitElement {
   declare languages: MenuLanguage[];
   declare _open: boolean;
   declare _data: PostMenuData | null;
-  declare _x: number;
-  declare _y: number;
-  declare _openAbove: boolean;
+  declare _isSheet: boolean;
   declare _view: PostMenuView;
   declare _collections: CollectionItem[] | null;
   declare _collectionsLoading: boolean;
@@ -231,6 +231,12 @@ export class JantPostMenu extends LitElement {
   #collectionsDirty = false;
   #collectionPickerOrder: string[] = [];
   #restoreTriggerFocusOnClose = true;
+  #placement: PostMenuPlacement = {
+    x: 0,
+    y: 0,
+    anchorBottom: false,
+    maxHeight: ESTIMATED_MENU_HEIGHT,
+  };
 
   createRenderRoot() {
     this.innerHTML = "";
@@ -242,9 +248,7 @@ export class JantPostMenu extends LitElement {
     this.languages = [];
     this._open = false;
     this._data = null;
-    this._x = 0;
-    this._y = 0;
-    this._openAbove = true;
+    this._isSheet = false;
     this._view = "menu";
     this._collections = null;
     this._collectionsLoading = false;
@@ -262,6 +266,10 @@ export class JantPostMenu extends LitElement {
     document.addEventListener("click", this.#handleDocumentClick);
     document.addEventListener("keydown", this.#handleKeydown);
     window.addEventListener("resize", this.#handleViewportChange);
+    globalThis.visualViewport?.addEventListener(
+      "resize",
+      this.#handleViewportChange,
+    );
   }
 
   disconnectedCallback() {
@@ -269,9 +277,19 @@ export class JantPostMenu extends LitElement {
     document.removeEventListener("click", this.#handleDocumentClick);
     document.removeEventListener("keydown", this.#handleKeydown);
     window.removeEventListener("resize", this.#handleViewportChange);
+    globalThis.visualViewport?.removeEventListener(
+      "resize",
+      this.#handleViewportChange,
+    );
   }
 
-  #syncPositionFromTrigger() {
+  updated() {
+    if (this._open && !this._isSheet && !this._addCollectionPanelOpen) {
+      this.#syncPositionFromTrigger(true);
+    }
+  }
+
+  #syncPositionFromTrigger(measure = false) {
     const trigger = this._triggerEl;
     if (!trigger?.isConnected) {
       if (this._open) {
@@ -280,16 +298,36 @@ export class JantPostMenu extends LitElement {
       return;
     }
 
-    const rect = trigger.getBoundingClientRect();
-    this._openAbove = menuOpensAbove(rect, ESTIMATED_MENU_HEIGHT);
-    this._x = window.scrollX + rect.right;
-    this._y =
-      window.scrollY + (this._openAbove ? rect.top - 6 : rect.bottom + 6);
+    const nextSheet = isPostMenuSheetViewport();
+    const sheetChanged = nextSheet !== this._isSheet;
+    this._isSheet = nextSheet;
+    if (nextSheet) return;
+
+    const panel = measure
+      ? this.querySelector<HTMLElement>(".post-menu-panel")
+      : null;
+    const panelRect = panel?.getBoundingClientRect();
+    const placement = computePostMenuPlacement(
+      trigger.getBoundingClientRect(),
+      {
+        panelHeight: panelRect?.height ?? 0,
+        panelWidth: panelRect?.width ?? 0,
+        estimatedHeight: ESTIMATED_MENU_HEIGHT,
+      },
+    );
+    this.#placement = placement;
+
+    if (!sheetChanged) {
+      const wrapper = this.querySelector<HTMLElement>(".post-menu-surface");
+      if (wrapper) {
+        wrapper.setAttribute("style", postMenuSurfaceStyle(placement));
+      }
+    }
   }
 
   #handleViewportChange = () => {
     if (!this._open || this._addCollectionPanelOpen) return;
-    this.#syncPositionFromTrigger();
+    this.#syncPositionFromTrigger(true);
   };
 
   #handleKeydown = (e: Event) => {
@@ -432,7 +470,7 @@ export class JantPostMenu extends LitElement {
 
   #focusAfterUpdate(selector: string) {
     this.updateComplete.then(() => {
-      this.querySelector<HTMLElement>(selector)?.focus();
+      this.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
     });
   }
 
@@ -2524,10 +2562,6 @@ export class JantPostMenu extends LitElement {
   render() {
     if (!this._open || !this._data) return nothing;
 
-    const transformStyle = this._openAbove
-      ? "transform:translate(-100%, -100%);"
-      : "transform:translateX(-100%);";
-    const wrapperStyle = `position:absolute;z-index:100;left:${Math.round(this._x)}px;top:${Math.round(this._y)}px;${transformStyle}`;
     const showMenuSurface = !this._addCollectionPanelOpen;
 
     return html`
@@ -2538,7 +2572,15 @@ export class JantPostMenu extends LitElement {
                 class="post-menu-backdrop"
                 @click=${() => this.#close({ restoreFocus: false })}
               ></div>
-              <div class="dropdown-menu" style=${wrapperStyle}>
+              <div
+                class="dropdown-menu post-menu-surface"
+                ?data-post-menu-sheet=${this._isSheet}
+                style=${
+                  this._isSheet
+                    ? nothing
+                    : postMenuSurfaceStyle(this.#placement)
+                }
+              >
                 <div
                   data-popover
                   aria-hidden="false"

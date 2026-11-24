@@ -11,30 +11,153 @@ import { showToast } from "./toast.js";
 export interface MenuTriggerRect {
   top: number;
   bottom: number;
+  right: number;
+  left?: number;
 }
 
+/** Input sizes for placing a desktop post menu against its trigger. */
+export interface PostMenuPlacementOptions {
+  /** Measured height of `.post-menu-panel`, or `0` before first layout. */
+  panelHeight?: number;
+  /** Measured width of `.post-menu-panel`, or `0` before first layout. */
+  panelWidth?: number;
+  /** Fallback menu height when `panelHeight` is `0`. */
+  estimatedHeight: number;
+}
+
+/** Computed document-space coordinates and viewport height cap for a menu. */
+export interface PostMenuPlacement {
+  /** Document-space X for the menu's right edge (used with `translateX(-100%)`). */
+  x: number;
+  /** Document-space Y anchor (`top` when `anchorBottom` is false, `bottom` when true). */
+  y: number;
+  /** True when the menu anchors cleanly above the trigger (`translate(-100%, -100%)`). */
+  anchorBottom: boolean;
+  /** Maximum height in pixels that fits inside the current visual viewport margins. */
+  maxHeight: number;
+}
+
+/** Matches the phone switch (`max-width: 699px`) in `styles/tokens.css`. */
+const POST_MENU_SHEET_MAX_WIDTH = 699;
 const MENU_VIEWPORT_MARGIN = 12;
+const MENU_TRIGGER_GAP = 6;
+const MENU_MIN_MAX_HEIGHT = 120;
 
 /**
- * Whether a menu should open above its trigger: when it would not fit below
- * and there is more room above.
+ * Whether the post menu should present as a bottom action sheet instead of an
+ * anchored floating popover. Matches the phone breakpoint (`max-width: 699px`).
  *
- * @param rect - The trigger's box
- * @param menuHeight - The menu's height, estimated before it renders
- * @returns True to open above the trigger
+ * @returns True on phone viewports
  *
  * @example
  * ```ts
- * menuOpensAbove(trigger.getBoundingClientRect(), 360);
+ * const sheet = isPostMenuSheetViewport();
  * ```
  */
-export function menuOpensAbove(
+export function isPostMenuSheetViewport(): boolean {
+  return window.innerWidth <= POST_MENU_SHEET_MAX_WIDTH;
+}
+
+/**
+ * Compute document-space coordinates for a desktop post menu anchored to its
+ * trigger, clamping within the visual viewport so top items can never overflow
+ * above the screen or document edge.
+ *
+ * @param rect - The trigger's bounding client rect
+ * @param options - Measured panel dimensions (when available) and fallback height
+ * @returns Document-space placement and viewport-bounded max height
+ *
+ * @example
+ * ```ts
+ * computePostMenuPlacement(trigger.getBoundingClientRect(), {
+ *   panelHeight: 520,
+ *   panelWidth: 240,
+ *   estimatedHeight: 460,
+ * });
+ * ```
+ */
+export function computePostMenuPlacement(
   rect: MenuTriggerRect,
-  menuHeight: number,
-): boolean {
-  const spaceBelow = window.innerHeight - rect.bottom - MENU_VIEWPORT_MARGIN;
-  const spaceAbove = rect.top - MENU_VIEWPORT_MARGIN;
-  return spaceBelow < menuHeight && spaceAbove > spaceBelow;
+  options: PostMenuPlacementOptions,
+): PostMenuPlacement {
+  const vv = globalThis.visualViewport;
+  const viewportTop = vv?.offsetTop ?? 0;
+  const viewportLeft = vv?.offsetLeft ?? 0;
+  const viewportWidth = vv?.width ?? window.innerWidth;
+  const viewportHeight = vv?.height ?? window.innerHeight;
+  const viewportBottom = viewportTop + viewportHeight;
+  const viewportRight = viewportLeft + viewportWidth;
+
+  const minTop = viewportTop + MENU_VIEWPORT_MARGIN;
+  const maxBottom = viewportBottom - MENU_VIEWPORT_MARGIN;
+  const maxHeight = Math.max(
+    MENU_MIN_MAX_HEIGHT,
+    Math.floor(viewportHeight - MENU_VIEWPORT_MARGIN * 2),
+  );
+
+  const rawHeight =
+    options.panelHeight && options.panelHeight > 0
+      ? options.panelHeight
+      : options.estimatedHeight;
+  const height = Math.min(rawHeight, maxHeight);
+
+  const spaceBelow = maxBottom - (rect.bottom + MENU_TRIGGER_GAP);
+  const spaceAbove = rect.top - MENU_TRIGGER_GAP - minTop;
+
+  let y: number;
+  let anchorBottom = false;
+
+  if (height <= spaceBelow) {
+    y = window.scrollY + rect.bottom + MENU_TRIGGER_GAP;
+  } else if (height <= spaceAbove) {
+    y = window.scrollY + rect.top - MENU_TRIGGER_GAP;
+    anchorBottom = true;
+  } else {
+    // Neither side fits the full panel on its own: keep the whole menu inside
+    // the viewport margins, favoring the side with more room.
+    const desiredTop =
+      spaceAbove > spaceBelow
+        ? rect.top - MENU_TRIGGER_GAP - height
+        : rect.bottom + MENU_TRIGGER_GAP;
+    const maxTop = Math.max(minTop, maxBottom - height);
+    const clampedTop = Math.max(minTop, Math.min(desiredTop, maxTop));
+    y = window.scrollY + clampedTop;
+  }
+
+  let rightInViewport = rect.right;
+  const panelWidth = options.panelWidth ?? 0;
+  if (panelWidth > 0) {
+    const usableWidth = Math.max(0, viewportWidth - MENU_VIEWPORT_MARGIN * 2);
+    const minRight =
+      viewportLeft + MENU_VIEWPORT_MARGIN + Math.min(panelWidth, usableWidth);
+    const maxRight = viewportRight - MENU_VIEWPORT_MARGIN;
+    rightInViewport = Math.max(minRight, Math.min(rect.right, maxRight));
+  }
+
+  return {
+    x: window.scrollX + rightInViewport,
+    y,
+    anchorBottom,
+    maxHeight,
+  };
+}
+
+/**
+ * Format the inline `style` attribute for a desktop anchored post menu surface.
+ *
+ * @param placement - Placement computed by `computePostMenuPlacement`
+ * @returns CSS inline style string
+ *
+ * @example
+ * ```ts
+ * wrapper.setAttribute("style", postMenuSurfaceStyle(placement));
+ * ```
+ */
+export function postMenuSurfaceStyle(placement: PostMenuPlacement): string {
+  const transform = placement.anchorBottom
+    ? "transform:translate(-100%, -100%);"
+    : "transform:translateX(-100%);";
+  return `position:absolute;z-index:100;left:${Math.round(placement.x)}px;top:${Math.round(placement.y)}px;${transform}--post-menu-max-height:${placement.maxHeight}px;`;
 }
 
 /**

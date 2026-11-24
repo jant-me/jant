@@ -309,6 +309,91 @@ describe("JantPostMenu", () => {
     expect(style).toContain("top:590px");
   });
 
+  it("opens as a bottom action sheet without inline coordinates on phone viewports", async () => {
+    setViewport(390, 844);
+    const { menu, trigger } = await createMenu();
+    trigger.getBoundingClientRect = () =>
+      new globalThis.DOMRect(340, 410, 34, 34);
+
+    click(trigger);
+    await menu.updateComplete;
+
+    const wrapper = requireElement(
+      menu.querySelector<HTMLElement>(".post-menu-surface"),
+      "expected post menu surface",
+    );
+    expect(wrapper.hasAttribute("data-post-menu-sheet")).toBe(true);
+    expect(wrapper.getAttribute("style")).toBeNull();
+  });
+
+  it("re-measures the rendered panel on desktop and clamps when upward placement would overflow", async () => {
+    setViewport(1024, 700);
+    Object.defineProperty(window, "scrollX", { configurable: true, value: 0 });
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
+
+    const { menu, trigger } = await createMenu();
+    trigger.getBoundingClientRect = () =>
+      new globalThis.DOMRect(736, 380, 24, 24);
+
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.classList.contains("post-menu-panel")) {
+          return new globalThis.DOMRect(0, 0, 240, 560);
+        }
+        if (this === trigger) {
+          return new globalThis.DOMRect(736, 380, 24, 24);
+        }
+        return new globalThis.DOMRect(0, 0, 0, 0);
+      });
+
+    try {
+      click(trigger);
+      await menu.updateComplete;
+
+      const wrapper = requireElement(
+        menu.querySelector<HTMLElement>(".post-menu-surface"),
+        "expected post menu surface",
+      );
+      const style = wrapper.getAttribute("style") ?? "";
+
+      expect(wrapper.hasAttribute("data-post-menu-sheet")).toBe(false);
+      // Clamped to the 12px top margin instead of overflowing above y = 0.
+      expect(style).toContain("top:12px");
+      expect(style).toContain("transform:translateX(-100%)");
+      expect(style).toContain("--post-menu-max-height:676px");
+    } finally {
+      rectSpy.mockRestore();
+    }
+  });
+
+  it("switches between sheet and anchored desktop mode when resized across 700px", async () => {
+    setViewport(390, 844);
+    const { menu, trigger } = await createMenu();
+    trigger.getBoundingClientRect = () =>
+      new globalThis.DOMRect(340, 200, 24, 24);
+
+    click(trigger);
+    await menu.updateComplete;
+
+    let wrapper = requireElement(
+      menu.querySelector<HTMLElement>(".post-menu-surface"),
+      "expected post menu surface",
+    );
+    expect(wrapper.hasAttribute("data-post-menu-sheet")).toBe(true);
+
+    setViewport(1024, 900);
+    window.dispatchEvent(new Event("resize"));
+    await menu.updateComplete;
+
+    wrapper = requireElement(
+      menu.querySelector<HTMLElement>(".post-menu-surface"),
+      "expected post menu surface after resize",
+    );
+    expect(wrapper.hasAttribute("data-post-menu-sheet")).toBe(false);
+    expect(wrapper.getAttribute("style")).toContain("position:absolute");
+  });
+
   it("hides the collection picker surface behind quick add", async () => {
     const { menu, trigger } = await createMenu();
 
