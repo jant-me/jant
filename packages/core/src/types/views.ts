@@ -234,6 +234,8 @@ export interface SearchResultView {
   titleHighlighted?: string;
   /** quoteText (truncated) with matched query terms wrapped in <mark> */
   quoteHighlighted?: string;
+  /** True when `snippet` was built from `post.url` rather than body/quote/title */
+  snippetFromUrl?: boolean;
 }
 
 /**

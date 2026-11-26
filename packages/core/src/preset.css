@@ -668,6 +668,12 @@ html {
   width: var(--layout-reading-width);
 }
 
+/* `.search-page` already constrains the column to `--layout-reading-width`,
+   so quotes inside it should fill the column rather than halving it again. */
+.search-page .feed-quote {
+  width: auto;
+}
+
 .post-detail-title {
   width: min(80%, 45rem);
 }

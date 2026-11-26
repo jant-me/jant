@@ -1193,4 +1193,37 @@ describe("toSearchResultView", () => {
     expect(view.post.url).toBe("https://example.com");
     expect(view.post.permalink).toBe("/my-link");
   });
+
+  it("flags snippets built from post.url without false-positiving on body snippets", () => {
+    const url = "https://news.ycombinator.com/item?id=7271413";
+    const query = "https://news.ycombinator.com/";
+    const urlResult: SearchResult = {
+      post: makePost({
+        id: UUID_POST,
+        format: "quote",
+        url,
+        bodyText: null,
+      }),
+      rank: 0.5,
+      snippet:
+        "<mark>https</mark>://<mark>news</mark>.<mark>ycombinator</mark>.<mark>com</mark>/item?id=7271413",
+    };
+    const bodyResult: SearchResult = {
+      post: makePost({
+        id: UUID_POST,
+        format: "link",
+        url: "https://example.com/post",
+        bodyText: "example",
+      }),
+      rank: 0.5,
+      snippet: "<mark>example</mark>",
+    };
+
+    expect(toSearchResultView(urlResult, EMPTY_CTX, query).snippetFromUrl).toBe(
+      true,
+    );
+    expect(
+      toSearchResultView(bodyResult, EMPTY_CTX, "example").snippetFromUrl,
+    ).toBeUndefined();
+  });
 });

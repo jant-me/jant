@@ -1127,6 +1127,89 @@
     padding: 1.1rem 1.25rem;
   }
 
+  /* Compact external-link affordances on search results (Link domain eyebrow
+     and Quote source attribution). Kept inline so the external-link arrow sits
+     on the last wrapped line of long domains or URLs. */
+  .search-result-external-link,
+  .search-result-source-link {
+    display: inline;
+    color: var(--site-text-secondary);
+    font-family: var(--font-ui);
+    font-size: var(--type-xs);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    transition: color 0.18s ease;
+  }
+
+  .search-result-external-link {
+    text-decoration: none;
+  }
+
+  .search-result-external-link:hover,
+  .search-result-external-link:focus-visible {
+    color: var(--site-text-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Quote source carries a subtle underline at rest (matching `.feed-quote-source`)
+     so a linked attribution is visually distinct from plain author text. */
+  .search-result-source-link {
+    text-decoration: underline;
+    text-decoration-color: color-mix(
+      in srgb,
+      var(--site-text-secondary) 55%,
+      transparent
+    );
+    text-underline-offset: 3px;
+  }
+
+  .search-result-source-link:hover,
+  .search-result-source-link:focus-visible {
+    color: var(--site-text-primary);
+    text-decoration-color: currentColor;
+  }
+
+  .search-result-external-icon {
+    display: inline-block;
+    width: 0.72rem;
+    height: 0.72rem;
+    margin-left: 0.3rem;
+    vertical-align: -0.1em;
+    flex-shrink: 0;
+  }
+
+  .search-quote-attribution {
+    margin-top: 0.35rem;
+    color: var(--site-text-secondary);
+    font-family: var(--font-ui);
+    font-size: var(--type-xs);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .search-result-url-snippet {
+    color: inherit;
+    overflow-wrap: anywhere;
+    text-decoration: underline;
+    text-decoration-color: color-mix(
+      in srgb,
+      var(--site-text-secondary) 45%,
+      transparent
+    );
+    text-underline-offset: 3px;
+    transition:
+      color 0.18s ease,
+      text-decoration-color 0.18s ease;
+  }
+
+  .search-result-url-snippet:hover,
+  .search-result-url-snippet:focus-visible {
+    color: var(--site-text-primary);
+    text-decoration-color: currentColor;
+  }
+
   /* --- Sidebar layout (collections pages) -------------------------------- */
 
   .site-container-sidebar {

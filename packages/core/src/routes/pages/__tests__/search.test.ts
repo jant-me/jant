@@ -125,6 +125,55 @@ describe("Search Page Routes", () => {
     expect(html).toContain("Root Search Collection");
   });
 
+  it("renders clickable external links for quote sources and link URLs matched by search", async () => {
+    const { app, services } = createTestApp({ fts: true });
+    app.route("/search", searchRoutes);
+
+    await services.posts.create({
+      format: "quote",
+      quoteText: "Cities built for cars waste billions.",
+      url: "https://news.ycombinator.com/item?id=7271413",
+    });
+    await services.posts.create({
+      format: "quote",
+      quoteText: "Every idea builds on what you have seen.",
+      title: "Wittgenstein",
+      url: "https://news.ycombinator.com/item?id=23097738",
+    });
+    await services.posts.create({
+      format: "link",
+      title: "How to put down your phone",
+      url: "https://news.ycombinator.com/item?id=33072552",
+    });
+
+    const response = await app.request(
+      "/search?q=" + encodeURIComponent("https://news.ycombinator.com/"),
+    );
+
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    // Untitled quote folds the highlighted URL into a clickable external source link.
+    expect(html).toContain(
+      'href="https://news.ycombinator.com/item?id=7271413" target="_blank" rel="noopener noreferrer" class="search-result-source-link"',
+    );
+    // Titled quote links both attribution and URL snippet.
+    expect(html).toContain(
+      'href="https://news.ycombinator.com/item?id=23097738" target="_blank" rel="noopener noreferrer" class="search-result-source-link"',
+    );
+    expect(html).toContain(
+      'href="https://news.ycombinator.com/item?id=23097738" target="_blank" rel="noopener noreferrer" class="search-result-url-snippet"',
+    );
+    // Link card makes the domain eyebrow and URL snippet clickable too.
+    expect(html).toContain(
+      'href="https://news.ycombinator.com/item?id=33072552" target="_blank" rel="noopener noreferrer" class="search-result-external-link"',
+    );
+    expect(html).toContain(
+      'href="https://news.ycombinator.com/item?id=33072552" target="_blank" rel="noopener noreferrer" class="search-result-url-snippet"',
+    );
+    // Shared external-link icon symbol is collected into the page's icon sprite.
+    expect(html).toContain('id="icon-link-domain"');
+  });
+
   describe("rate limit", () => {
     // The test app uses the default limit of 30 searches per minute.
     const headers = { "cf-connecting-ip": "203.0.113.9" };

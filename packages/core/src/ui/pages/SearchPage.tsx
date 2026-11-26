@@ -9,7 +9,12 @@ import { msg } from "@lingui/core/macro";
 import type { FC } from "hono/jsx";
 import { useLingui } from "../../i18n/context.js";
 import type { SearchPageProps, SearchResultView } from "../../types.js";
-import { toPublicPath } from "../../lib/url.js";
+import {
+  extractDisplayDomain,
+  sanitizeUrl,
+  toPublicPath,
+} from "../../lib/url.js";
+import { Icon } from "../shared/Icon.js";
 import { PagePagination } from "../shared/Pagination.js";
 import {
   CompactCollectionTags,
@@ -17,35 +22,35 @@ import {
 } from "../shared/PostFooter.js";
 import { getPostArticleAttributes } from "../shared/post-article-attributes.js";
 
-// External link icon (shared by LinkCard)
-const ExternalLinkIcon = () => (
-  <svg
-    class="size-3 shrink-0"
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke-width="2"
-    stroke="currentColor"
-  >
-    <path d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-  </svg>
-);
+const SearchSnippet: FC<{
+  snippet: string;
+  externalHref?: string;
+}> = ({ snippet, externalHref }) =>
+  externalHref ? (
+    <p class="search-snippet">
+      <a
+        href={externalHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="search-result-url-snippet"
+        dangerouslySetInnerHTML={{ __html: snippet }}
+      />
+    </p>
+  ) : (
+    <p class="search-snippet" dangerouslySetInnerHTML={{ __html: snippet }} />
+  );
 
 const SearchResultCard: FC<{
   result: SearchResultView;
   isAuthenticated?: boolean;
 }> = ({ result, isAuthenticated }) => {
-  const { post, snippet, titleHighlighted, quoteHighlighted } = result;
+  const { post, snippet, titleHighlighted, quoteHighlighted, snippetFromUrl } =
+    result;
 
-  // Extract domain for link posts
-  let domain: string | undefined;
-  if (post.format === "link" && post.url) {
-    try {
-      domain = new URL(post.url).hostname.replace(/^www\./, "");
-    } catch {
-      // Invalid URL, skip
-    }
-  }
+  const safeUrl = post.url ? sanitizeUrl(post.url) : "";
+  const domain = safeUrl ? extractDisplayDomain(safeUrl) : null;
+  const externalLabel = domain || safeUrl;
+  const isUrlSnippet = Boolean(snippetFromUrl && snippet && safeUrl);
 
   const isChildPost = !!post.replyToId || !!post.threadRootId;
   const visibleCollections = isChildPost ? [] : post.collections;
@@ -77,27 +82,34 @@ const SearchResultCard: FC<{
   if (post.format === "link") {
     return (
       <article {...postAttrs}>
-        {domain && (
-          <div class="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-            <ExternalLinkIcon />
-            <span>{domain}</span>
+        {safeUrl && (
+          <div class="mb-1">
+            <a
+              href={safeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="search-result-external-link"
+            >
+              <span>{externalLabel}</span>
+              <Icon name="link-domain" class="search-result-external-icon" />
+            </a>
           </div>
         )}
         {(titleHighlighted ?? post.title) && (
           <h3 class="font-semibold text-lg mb-1">
             {titleHighlighted ? (
               <a
-                href={post.url || post.permalink}
-                target={post.url ? "_blank" : undefined}
-                rel={post.url ? "noopener noreferrer" : undefined}
+                href={safeUrl || post.permalink}
+                target={safeUrl ? "_blank" : undefined}
+                rel={safeUrl ? "noopener noreferrer" : undefined}
                 class="hover:underline"
                 dangerouslySetInnerHTML={{ __html: titleHighlighted }}
               />
             ) : (
               <a
-                href={post.url || post.permalink}
-                target={post.url ? "_blank" : undefined}
-                rel={post.url ? "noopener noreferrer" : undefined}
+                href={safeUrl || post.permalink}
+                target={safeUrl ? "_blank" : undefined}
+                rel={safeUrl ? "noopener noreferrer" : undefined}
                 class="hover:underline"
               >
                 {post.title}
@@ -106,9 +118,9 @@ const SearchResultCard: FC<{
           </h3>
         )}
         {snippet && (
-          <p
-            class="search-snippet"
-            dangerouslySetInnerHTML={{ __html: snippet }}
+          <SearchSnippet
+            snippet={snippet}
+            externalHref={isUrlSnippet ? safeUrl : undefined}
           />
         )}
         {footer}
@@ -118,36 +130,61 @@ const SearchResultCard: FC<{
 
   // ── Quote ─────────────────────────────────────────────────────────────────
   if (post.format === "quote") {
+    const quoteContent = quoteHighlighted ?? post.quoteText;
+    const hasTitle = Boolean(titleHighlighted ?? post.title);
+    const foldUrlSnippetIntoSource = !hasTitle && isUrlSnippet;
+    const showAttribution = hasTitle || Boolean(safeUrl);
+
+    const attributionEl = showAttribution && (
+      <div class={`search-quote-attribution${quoteContent ? "" : " mb-1"}`}>
+        <span aria-hidden="true">—</span>{" "}
+        {safeUrl ? (
+          <a
+            href={safeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="search-result-source-link"
+          >
+            {titleHighlighted ? (
+              <span dangerouslySetInnerHTML={{ __html: titleHighlighted }} />
+            ) : post.title ? (
+              <span>{post.title}</span>
+            ) : foldUrlSnippetIntoSource && snippet ? (
+              <span dangerouslySetInnerHTML={{ __html: snippet }} />
+            ) : (
+              <span>{externalLabel}</span>
+            )}
+            <Icon name="link-domain" class="search-result-external-icon" />
+          </a>
+        ) : titleHighlighted ? (
+          <span dangerouslySetInnerHTML={{ __html: titleHighlighted }} />
+        ) : (
+          <span>{post.title}</span>
+        )}
+      </div>
+    );
+
     return (
       <article {...postAttrs}>
-        {quoteHighlighted && (
+        {quoteContent ? (
           <blockquote class="feed-quote mb-1">
-            <p
-              class="text-base"
-              dangerouslySetInnerHTML={{ __html: quoteHighlighted }}
-            />
-            {post.title && (
-              <footer class="text-xs text-muted-foreground mt-1">
-                {post.url ? (
-                  <a
-                    href={post.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="hover:underline"
-                  >
-                    — {post.title}
-                  </a>
-                ) : (
-                  <span>— {post.title}</span>
-                )}
-              </footer>
+            {quoteHighlighted ? (
+              <p
+                class="text-base"
+                dangerouslySetInnerHTML={{ __html: quoteHighlighted }}
+              />
+            ) : (
+              <p class="text-base">{post.quoteText}</p>
             )}
+            {attributionEl}
           </blockquote>
+        ) : (
+          attributionEl
         )}
-        {snippet && (
-          <p
-            class="search-snippet"
-            dangerouslySetInnerHTML={{ __html: snippet }}
+        {snippet && !foldUrlSnippetIntoSource && (
+          <SearchSnippet
+            snippet={snippet}
+            externalHref={isUrlSnippet ? safeUrl : undefined}
           />
         )}
         {footer}

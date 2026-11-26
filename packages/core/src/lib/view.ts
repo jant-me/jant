@@ -48,7 +48,7 @@ import {
 } from "./summary.js";
 import { renderTiptapDocumentAroundBoundary } from "./tiptap-render.js";
 import { toMediaKind } from "./upload.js";
-import { highlightText } from "./search-snippet.js";
+import { buildSearchSnippet, highlightText } from "./search-snippet.js";
 import { getPostPath, isFullUrl, toPublicPath, toSameSitePath } from "./url.js";
 
 // =============================================================================
@@ -719,12 +719,17 @@ export function toSearchResultView(
     }
   }
 
+  const snippetFromUrl =
+    Boolean(query && result.snippet && post.url) &&
+    result.snippet === buildSearchSnippet([post.url], query ?? "");
+
   return {
     post,
     rank: result.rank,
     snippet: result.snippet,
     titleHighlighted,
     quoteHighlighted,
+    ...(snippetFromUrl ? { snippetFromUrl: true } : {}),
   };
 }
 
