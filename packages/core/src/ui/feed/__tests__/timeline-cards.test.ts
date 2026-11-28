@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import type { Context } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { describe, expect, it } from "vitest";
-import { readComponentCss } from "../../../__tests__/helpers/component-css.js";
+import {
+  readAuthorCss,
+  readComponentCss,
+  readReaderCss,
+} from "../../../__tests__/helpers/component-css.js";
 import type { MediaView, PostView } from "../../../types.js";
 import { I18nProvider } from "../../../i18n/context.js";
 import { createI18n } from "../../../i18n/i18n.js";
@@ -1134,5 +1138,61 @@ describe("timeline cards", () => {
       QuoteCard({ post: createPostView({ format: "quote" }), mode: "feed" }),
     );
     expect(quoteHtml).toMatch(/<blockquote[^>]*data-post-quote/);
+  });
+
+  it("emits lang alongside data-post-language so :lang() rules match per post", () => {
+    const tagged = renderWithI18n(
+      QuoteCard({
+        post: createPostView({ format: "quote", language: "zh-Hans" }),
+        mode: "feed",
+      }),
+    );
+    expect(tagged).toMatch(
+      /<article[^>]*\blang="zh-Hans"[^>]*\bdata-post-language="zh-Hans"/,
+    );
+
+    const untagged = renderWithI18n(
+      QuoteCard({
+        post: createPostView({ format: "quote", language: undefined }),
+        mode: "feed",
+      }),
+    );
+    expect(untagged).not.toMatch(/<article[^>]*\blang="/);
+    expect(untagged).not.toContain("data-post-language");
+  });
+
+  it("reverts CJK quotes, blockquotes, and titles from text-wrap: pretty to greedy wrap", () => {
+    const presetCss = readFileSync(
+      new URL("../../../preset.css", import.meta.url),
+      "utf8",
+    );
+    const readerCss = readReaderCss();
+    const authorCss = readAuthorCss();
+    const exportCss = readFileSync(
+      new URL(
+        "../../../services/export-theme/styles/main.css",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(presetCss).toMatch(
+      /\.prose blockquote:is\(:lang\(zh\), :lang\(ja\), :lang\(ko\)\)\s*\{[^}]*font-style:\s*normal;[^}]*text-wrap:\s*wrap;/,
+    );
+    expect(readerCss).toMatch(
+      /:is\(\s*\.feed-quote-content,\s*\.feed-quote-commentary,\s*\.feed-note-title,\s*\.collection-directory-title\s*\):is\(:lang\(zh\), :lang\(ja\), :lang\(ko\)\),[\s\S]*?\.post-detail-title:is\(:lang\(zh\), :lang\(ja\), :lang\(ko\)\)\s*\{\s*text-wrap:\s*wrap;\s*\}/,
+    );
+    expect(authorCss).toMatch(
+      /\.compose-quote-text\s*\{[^}]*text-wrap:\s*wrap;/,
+    );
+    expect(authorCss).not.toMatch(
+      /\.compose-quote-text\s*\{[^}]*text-wrap:\s*pretty;/,
+    );
+    expect(exportCss).toMatch(
+      /blockquote:is\(:lang\(zh\), :lang\(ja\), :lang\(ko\)\)\s*\{[^}]*font-style:\s*normal;[^}]*text-wrap:\s*wrap;/,
+    );
+    expect(exportCss).toMatch(
+      /:is\(\s*\.post-card-quote-content,\s*\.post-card-quote-commentary,[\s\S]*?\):is\(:lang\(zh\), :lang\(ja\), :lang\(ko\)\)\s*\{\s*text-wrap:\s*wrap;\s*\}/,
+    );
   });
 });

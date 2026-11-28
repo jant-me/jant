@@ -1249,7 +1249,8 @@
        pixel value per breakpoint. The `rows` attribute is set to match. */
     min-height: calc(var(--compose-quote-input-leading) * 4em);
     padding-top: 0.5rem;
-    text-wrap: pretty;
+    /* Editable `<textarea>`: keep greedy wrapping so typing never reflows earlier lines. */
+    text-wrap: wrap;
   }
 
   @media (min-width: 700px) {

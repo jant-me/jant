@@ -494,11 +494,14 @@ html {
   }
 }
 
-/* CJK: no italic for blockquotes (no true italic glyph) */
-:lang(zh) .prose blockquote,
-:lang(ja) .prose blockquote,
-:lang(ko) .prose blockquote {
+/* CJK: no italic for blockquotes (no true italic glyph), and greedy line
+   wrapping instead of Safari's paragraph-wide `text-wrap: pretty`, which
+   pulls earlier square-grid CJK lines short to flatten the rag. Matching
+   `:lang()` directly on the blockquote keeps per-post `<article lang>`
+   overrides accurate on mixed-language feeds. */
+.prose blockquote:is(:lang(zh), :lang(ja), :lang(ko)) {
   font-style: normal;
+  text-wrap: wrap;
 }
 
 /*

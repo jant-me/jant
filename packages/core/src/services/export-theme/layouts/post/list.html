@@ -8,6 +8,7 @@
   {{- $replies := $root.Pages.ByWeight -}}
   {{- $hasReplies := gt (len $replies) 0 -}}
   <article class="thread thread-{{ $format }}{{ if $hasReplies }} thread-has-replies{{ end }}" id="{{ $slug }}" data-format="{{ $format }}" data-slug="{{ $slug }}"
+    {{- with $root.Params.language }} lang="{{ . }}"{{ end -}}
     {{- if $root.Params.pinned_at }} data-post-pinned{{ end -}}
     {{- if $root.Params.featured_at }} data-post-featured{{ end -}}
   >

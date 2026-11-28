@@ -3796,6 +3796,21 @@
     text-wrap: pretty;
   }
 
+  /* CJK scripts set on a square grid where greedy wrapping fills each line
+     cleanly to the margin. Safari's whole-paragraph `text-wrap: pretty` pulls
+     earlier lines short to flatten the rag — leaving a wide dead gap on the
+     right and breaking mid-word, most noticeably on narrow phone quotes. */
+  :is(
+    .feed-quote-content,
+    .feed-quote-commentary,
+    .feed-note-title,
+    .collection-directory-title
+  ):is(:lang(zh), :lang(ja), :lang(ko)),
+  :is(.thread-group-detail, .post-detail)
+    .post-detail-title:is(:lang(zh), :lang(ja), :lang(ko)) {
+    text-wrap: wrap;
+  }
+
   .feed-quote-commentary::before {
     content: "";
     position: absolute;

@@ -233,11 +233,11 @@ blockquote cite {
   font-size: var(--type-sm);
 }
 
-/* CJK: no italic for blockquotes (no true italic glyph) */
-:lang(zh) blockquote,
-:lang(ja) blockquote,
-:lang(ko) blockquote {
+/* CJK: no italic for blockquotes (no true italic glyph), and greedy line
+   wrapping instead of Safari's paragraph-wide `text-wrap: pretty`. */
+blockquote:is(:lang(zh), :lang(ja), :lang(ko)) {
   font-style: normal;
+  text-wrap: wrap;
 }
 
 ul,
@@ -1158,6 +1158,19 @@ hr.feed-divider {
     var(--site-text-primary)
   );
   text-wrap: pretty;
+}
+
+/* CJK scripts fill each line cleanly under greedy wrapping; Safari's
+   paragraph-wide `text-wrap: pretty` shortens earlier lines on narrow screens. */
+:is(
+  .post-card-quote-content,
+  .post-card-quote-commentary,
+  .post-card-link-title,
+  .thread-link-title,
+  .reply-link-title,
+  .collection-directory-title
+):is(:lang(zh), :lang(ja), :lang(ko)) {
+  text-wrap: wrap;
 }
 
 .post-card-quote-commentary::before {

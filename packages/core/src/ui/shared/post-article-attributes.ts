@@ -23,7 +23,8 @@ type PostArticleAttributeSource = Pick<
  * detail, search, and partial-render modes.
  *
  * @param post - Render-ready Post identity and action state
- * @returns Data attributes consumed by menus, shortcuts, themes, and scripts
+ * @returns Article attributes (`lang` and `data-*`) consumed by CSS `:lang()`,
+ *   menus, shortcuts, themes, and scripts
  *
  * @example
  * ```tsx
@@ -51,7 +52,9 @@ export function getPostArticleAttributes(post: PostArticleAttributeSource) {
       ? { "data-thread-draft-tail-id": post.draftTailId }
       : {}),
     "data-post-visibility": post.visibility,
-    ...(post.language ? { "data-post-language": post.language } : {}),
+    ...(post.language
+      ? { lang: post.language, "data-post-language": post.language }
+      : {}),
     ...(isChildPost ? { "data-post-reply": "" } : {}),
   };
 }
