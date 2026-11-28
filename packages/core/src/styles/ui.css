@@ -3696,11 +3696,44 @@
     position: relative;
     padding-left: 0;
     font-family: var(--font-serif);
-    color: var(--site-text-primary);
+    color: color-mix(
+      in oklch,
+      var(--site-text-primary) 90%,
+      var(--site-page-bg)
+    );
     font-size: var(--type-content-quote);
     line-height: var(--type-content-quote-leading);
     white-space: pre-line;
     text-wrap: pretty;
+  }
+
+  /* Longer passages and multi-paragraph excerpts read as calm book pages
+     rather than headline-sized pull-quotes. `:where()` keeps specificity low
+     so embedded contexts (such as `.compose-reply-context-body`) still win. */
+  .feed-quote-content:where([data-quote-length="long"]) {
+    font-size: var(--type-content-quote-long);
+    line-height: var(--type-content-quote-long-leading);
+  }
+
+  /* CJK Han glyphs fill the full em box, so Latin's 1.16x / 1.4 pull-quote
+     scale packs Chinese quotes into a dense block. Step optical size down,
+     open leading to book rhythm, add subtle Song tracking, and let Safari
+     hang trailing punctuation at the right margin. */
+  .feed-quote-content:is(:lang(zh), :lang(ja), :lang(ko)) {
+    font-size: calc(var(--type-content-body) * 1.1);
+    line-height: 1.72;
+    letter-spacing: 0.02em;
+    hanging-punctuation: allow-end;
+    text-spacing-trim: normal;
+  }
+
+  .feed-quote-content:where([data-quote-length="long"]):is(
+      :lang(zh),
+      :lang(ja),
+      :lang(ko)
+    ) {
+    font-size: calc(var(--type-content-body) * 1.03);
+    line-height: 1.82;
   }
 
   .feed-quote-post .feed-quote {
@@ -3731,11 +3764,11 @@
 
   .feed-quote-mark {
     position: relative;
-    width: 1.7rem;
-    margin-bottom: -0.1rem;
+    width: 1.6rem;
+    margin-bottom: 0.4rem;
     margin-left: -0.04rem;
-    color: color-mix(in srgb, var(--site-accent) 14%, var(--site-divider));
-    opacity: 0.66;
+    color: color-mix(in srgb, var(--site-accent) 18%, var(--site-divider));
+    opacity: 0.62;
   }
 
   .feed-quote-attribution {

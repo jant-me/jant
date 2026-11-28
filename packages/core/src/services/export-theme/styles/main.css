@@ -238,6 +238,8 @@ blockquote cite {
 blockquote:is(:lang(zh), :lang(ja), :lang(ko)) {
   font-style: normal;
   text-wrap: wrap;
+  hanging-punctuation: allow-end;
+  text-spacing-trim: normal;
 }
 
 ul,
@@ -1077,13 +1079,13 @@ hr.feed-divider {
 .post-card-quote-mark {
   display: block;
   position: relative;
-  width: 1.7rem;
-  margin-bottom: -0.1rem;
+  width: 1.6rem;
+  margin-bottom: 0.4rem;
   margin-left: -0.04rem;
   line-height: 0;
   pointer-events: none;
-  color: color-mix(in srgb, var(--site-accent) 14%, var(--site-divider));
-  opacity: 0.66;
+  color: color-mix(in srgb, var(--site-accent) 18%, var(--site-divider));
+  opacity: 0.62;
 }
 
 .post-card-quote-mark svg {
@@ -1094,12 +1096,34 @@ hr.feed-divider {
 
 .post-card-quote-content {
   font-family: var(--font-serif);
-  color: var(--site-text-primary);
+  color: color-mix(in oklch, var(--site-text-primary) 90%, var(--site-page-bg));
   font-size: var(--type-content-quote);
   line-height: var(--type-content-quote-leading);
   white-space: pre-line;
   text-wrap: pretty;
   margin: 0;
+}
+
+.post-card-quote-content:where([data-quote-length="long"]) {
+  font-size: var(--type-content-quote-long);
+  line-height: var(--type-content-quote-long-leading);
+}
+
+.post-card-quote-content:is(:lang(zh), :lang(ja), :lang(ko)) {
+  font-size: calc(var(--type-content-body) * 1.1);
+  line-height: 1.72;
+  letter-spacing: 0.02em;
+  hanging-punctuation: allow-end;
+  text-spacing-trim: normal;
+}
+
+.post-card-quote-content:where([data-quote-length="long"]):is(
+    :lang(zh),
+    :lang(ja),
+    :lang(ko)
+  ) {
+  font-size: calc(var(--type-content-body) * 1.03);
+  line-height: 1.82;
 }
 
 .post-card-quote-attribution {

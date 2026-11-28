@@ -502,6 +502,8 @@ html {
 .prose blockquote:is(:lang(zh), :lang(ja), :lang(ko)) {
   font-style: normal;
   text-wrap: wrap;
+  hanging-punctuation: allow-end;
+  text-spacing-trim: normal;
 }
 
 /*

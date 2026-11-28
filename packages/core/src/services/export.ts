@@ -77,6 +77,7 @@ import PARTIAL_HEADER from "./export-theme/layouts/partials/header.html?raw";
 import PARTIAL_FOOTER from "./export-theme/layouts/partials/footer.html?raw";
 import PARTIAL_PAGINATION from "./export-theme/layouts/partials/pagination.html?raw";
 import PARTIAL_POST_CARD from "./export-theme/layouts/partials/post-card.html?raw";
+import PARTIAL_QUOTE_LENGTH from "./export-theme/layouts/partials/quote-length.html?raw";
 import PARTIAL_MEDIA_GALLERY from "./export-theme/layouts/partials/media-gallery.html?raw";
 import PARTIAL_REPLY from "./export-theme/layouts/partials/reply.html?raw";
 import PARTIAL_THREAD_PREVIEW from "./export-theme/layouts/partials/thread-preview.html?raw";
@@ -745,6 +746,10 @@ export function createExportService(
       exportFiles.push({
         path: "themes/jant/layouts/partials/media-gallery.html",
         content: PARTIAL_MEDIA_GALLERY,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/quote-length.html",
+        content: PARTIAL_QUOTE_LENGTH,
       });
       exportFiles.push({
         path: "themes/jant/layouts/partials/reply.html",

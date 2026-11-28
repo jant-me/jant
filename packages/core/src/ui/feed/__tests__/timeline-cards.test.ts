@@ -10,6 +10,7 @@ import {
 import type { MediaView, PostView } from "../../../types.js";
 import { I18nProvider } from "../../../i18n/context.js";
 import { createI18n } from "../../../i18n/i18n.js";
+import { getQuoteLength } from "../../../lib/summary.js";
 import { NoteCard } from "../NoteCard.js";
 import { LinkCard } from "../LinkCard.js";
 import { QuoteCard } from "../QuoteCard.js";
@@ -1193,6 +1194,72 @@ describe("timeline cards", () => {
     );
     expect(exportCss).toMatch(
       /:is\(\s*\.post-card-quote-content,\s*\.post-card-quote-commentary,[\s\S]*?\):is\(:lang\(zh\), :lang\(ja\), :lang\(ko\)\)\s*\{\s*text-wrap:\s*wrap;\s*\}/,
+    );
+  });
+
+  it("classifies short epigrams vs long passages and scales CJK quotes accordingly", () => {
+    const shortZh = "我们必须犯错误，这样我们才学会同情别人。";
+    const longZh =
+      "我们这一生中最重要的事就是积累回忆。人们很容易不自觉地陷入只顾攒钱的惯性思维，却忘了钱只是手段而非目的。经历就像投资的资金一样，会带来回报。学会好好生活，就意味着学会在储蓄与为经历消费之间取得平衡。";
+    const multiParagraph = "第一句。\n\n第二句。";
+
+    expect(getQuoteLength(shortZh)).toBe("short");
+    expect(getQuoteLength(longZh)).toBe("long");
+    expect(getQuoteLength(multiParagraph)).toBe("long");
+    expect(getQuoteLength("While we wait for life, life passes.")).toBe(
+      "short",
+    );
+
+    const shortHtml = renderWithI18n(
+      QuoteCard({
+        post: createPostView({ format: "quote", quoteText: shortZh }),
+        mode: "feed",
+      }),
+    );
+    expect(shortHtml).toContain('data-quote-length="short"');
+
+    const longHtml = renderWithI18n(
+      QuoteCard({
+        post: createPostView({ format: "quote", quoteText: longZh }),
+        mode: "detail",
+      }),
+    );
+    expect(longHtml).toContain('data-quote-length="long"');
+
+    const compactHtml = renderWithI18n(
+      QuoteCard({
+        post: createPostView({ format: "quote", quoteText: longZh }),
+        mode: "compact",
+      }),
+    );
+    expect(compactHtml).not.toContain("data-quote-length");
+
+    const tokens = readFileSync(
+      new URL("../../../styles/tokens.css", import.meta.url),
+      "utf8",
+    );
+    const readerCss = readReaderCss();
+    const exportCss = readFileSync(
+      new URL(
+        "../../../services/export-theme/styles/main.css",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    // Latin serif faces sit ahead of the CJK fallback so embedded acronyms and
+    // digits inside CJK quotes render in New York / Charter instead of Songti.
+    expect(tokens).toMatch(
+      /--font-serif:\s*"New York Small"[\s\S]*?var\(--font-cjk-serif-fallback\)/,
+    );
+    expect(readerCss).toMatch(
+      /\.feed-quote-content:is\(:lang\(zh\), :lang\(ja\), :lang\(ko\)\)\s*\{[^}]*line-height:\s*1\.72;[^}]*letter-spacing:\s*0\.02em;[^}]*hanging-punctuation:\s*allow-end;/,
+    );
+    expect(readerCss).toMatch(
+      /\.feed-quote-content:where\(\[data-quote-length="long"\]\):is\(\s*:lang\(zh\),\s*:lang\(ja\),\s*:lang\(ko\)\s*\)\s*\{[^}]*line-height:\s*1\.82;/,
+    );
+    expect(exportCss).toMatch(
+      /\.post-card-quote-content:where\(\[data-quote-length="long"\]\):is\(\s*:lang\(zh\),\s*:lang\(ja\),\s*:lang\(ko\)\s*\)\s*\{[^}]*line-height:\s*1\.82;/,
     );
   });
 });

@@ -20,6 +20,7 @@ import { StarRating } from "../shared/StarRating.js";
 import { PostFooter } from "../shared/PostFooter.js";
 import { PostStatusBadges } from "./PostStatusBadges.js";
 import { sanitizeUrl, extractDisplayDomain } from "../../lib/url.js";
+import { getQuoteLength } from "../../lib/summary.js";
 import { DecorativeQuoteMark } from "../shared/DecorativeQuoteMark.js";
 import { EmptyPostContent } from "../shared/EmptyPostContent.js";
 import { MediaGallery } from "../shared/MediaGallery.js";
@@ -38,6 +39,8 @@ export const QuoteCard: FC<TimelineCardProps> = ({
   const showCite =
     !!post.quoteText || (!isCompact && !!(post.title || safeUrl));
   const showCommentary = !isCompact && !!commentaryHtml;
+  const quoteLength =
+    !isCompact && post.quoteText ? getQuoteLength(post.quoteText) : undefined;
 
   return (
     <article
@@ -62,6 +65,7 @@ export const QuoteCard: FC<TimelineCardProps> = ({
               {!isCompact && <DecorativeQuoteMark class="feed-quote-mark" />}
               <div
                 class={`p-content feed-quote-content${isCompact ? " text-sm" : isDetail ? " post-detail-quote" : ""}`}
+                data-quote-length={quoteLength}
               >
                 {post.quoteText}
               </div>

@@ -1,0 +1,19 @@
+{{- /*
+  Mirror `getQuoteLength` in `lib/summary.ts`: `"long"` when a quote spans
+  multiple paragraphs (blank line) or exceeds 110 weighted columns (wide CJK
+  characters count as 2, matching `textWidth`), otherwise `"short"`.
+*/ -}}
+{{- $trimmed := strings.TrimSpace (string .) -}}
+{{- $result := "short" -}}
+{{- if $trimmed -}}
+  {{- if findRE `\r?\n[ \t]*\r?\n` $trimmed -}}
+    {{- $result = "long" -}}
+  {{- else -}}
+    {{- $wide := len (findRE `[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\x{3000}-\x{303F}\x{FF00}-\x{FF60}\x{FFE0}-\x{FFE6}]` $trimmed) -}}
+    {{- $width := add (strings.RuneCount $trimmed) $wide -}}
+    {{- if gt $width 110 -}}
+      {{- $result = "long" -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- return $result -}}

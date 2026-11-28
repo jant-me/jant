@@ -200,6 +200,38 @@ const WIDE_CHAR =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303F\uFF00-\uFF60\uFFE0-\uFFE6]/u;
 
 /**
+ * Display-width threshold separating pull-quote epigrams from passage excerpts.
+ *
+ * 110 weighted columns is ~55 CJK characters or ~110 Latin characters (~3 lines
+ * on a phone). Beyond that — or when the quote has multiple paragraphs — the
+ * card steps down from pull-quote sizing to a calmer book-passage scale.
+ */
+export const LONG_QUOTE_TEXT_WIDTH = 110;
+
+export type QuoteLength = "short" | "long";
+
+/**
+ * Classify a Quote post's body as a short epigram or a longer passage so CSS
+ * can scale typography without turning multi-sentence excerpts into oversized
+ * display blocks.
+ *
+ * @param text - Plain-text quote body
+ * @returns `"long"` for multi-paragraph quotes or text wider than
+ *   `LONG_QUOTE_TEXT_WIDTH`, otherwise `"short"`
+ * @example
+ * ```ts
+ * getQuoteLength("While we wait for life, life passes."); // "short"
+ * getQuoteLength("A\n\nB"); // "long"
+ * ```
+ */
+export function getQuoteLength(text: string): QuoteLength {
+  const trimmed = text.trim();
+  if (!trimmed) return "short";
+  if (/\r?\n[ \t]*\r?\n/.test(trimmed)) return "long";
+  return textWidth(trimmed) > LONG_QUOTE_TEXT_WIDTH ? "long" : "short";
+}
+
+/**
  * Recursively extracts plain text from a Tiptap node, ignoring marks.
  */
 function extractPlainText(node: TiptapNode): string {
