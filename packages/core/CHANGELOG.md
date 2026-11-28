@@ -1,5 +1,11 @@
 # @jant/core
 
+## 1.5.1
+
+### Patch Changes
+
+- [#193](https://github.com/jant-me/jant/pull/193) [`8ef84e4`](https://github.com/jant-me/jant/commit/8ef84e474f4984b932b98fe1ca1f0173abf0a67b) Thanks [@chenyahui](https://github.com/chenyahui)! - Restore syntax highlighting colors in published code blocks and code theme previews.
+
 ## 1.5.0
 
 ### Minor Changes
